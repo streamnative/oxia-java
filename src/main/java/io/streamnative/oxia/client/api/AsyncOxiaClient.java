@@ -5,20 +5,20 @@ import lombok.NonNull;
 
 public interface AsyncOxiaClient extends AutoCloseable {
     /**
-     * The returned future my complete exceptionally with an {@link UnexpectedVersionException}.
+     * The returned future may complete exceptionally with an {@link UnexpectedVersionException}.
      */
     @NonNull CompletableFuture<PutResult> put(@NonNull String key, @NonNull byte[] payload, long expectedVersion);
 
     @NonNull CompletableFuture<PutResult> put(@NonNull String key, @NonNull byte[] payload);
 
     /**
-     * The returned future my complete exceptionally with an {@link UnexpectedVersionException} or a
+     * The returned future may complete exceptionally with an {@link UnexpectedVersionException} or a
      * {@link KeyNotFoundException}.
      */
     @NonNull CompletableFuture<Void> delete(@NonNull String key, long expectedVersion);
 
     /**
-     * The returned future my complete exceptionally with a {@link KeyNotFoundException}.
+     * The returned future may complete exceptionally with a {@link KeyNotFoundException}.
      */
     @NonNull CompletableFuture<Void> delete(@NonNull String key);
 
