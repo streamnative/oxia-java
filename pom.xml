@@ -143,6 +143,7 @@
                 <version>${spotbugs.plugin.version}</version>
                 <configuration>
                     <excludeFilterFile>etc/findbugsExclude.xml</excludeFilterFile>
+                    <onlyAnalyze>io.streamnative.oxia.client.*</onlyAnalyze>
                 </configuration>
                 <executions>
                     <execution>
