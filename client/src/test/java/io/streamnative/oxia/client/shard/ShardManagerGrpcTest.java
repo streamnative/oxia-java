@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import org.awaitility.Duration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -155,7 +154,7 @@ class ShardManagerGrpcTest {
         responses.add(gateToRecovery);
         try (var shardManager = new ShardManager("address", clientSupplier)) {
             var bootstrap = shardManager.start();
-            await("bootstrapping").timeout(Duration.FIVE_MINUTES).until(bootstrap::isDone);
+            await("bootstrapping").until(bootstrap::isDone);
             assertThat(bootstrap).isNotCompletedExceptionally();
             assertThat(shardManager.leader(1)).isEqualTo("leader 1");
             gateToFailure.open();
@@ -163,7 +162,6 @@ class ShardManagerGrpcTest {
             responses.add(o -> o.onNext(newShardAssignmentResponse(1, 2, 3, "leader 2")));
             gateToRecovery.open();
             await("recovering to leader 2")
-                    .timeout(Duration.FIVE_MINUTES)
                     .untilAsserted(() -> assertThat(shardManager.leader(1)).isEqualTo("leader 2"));
         }
     }
@@ -178,7 +176,7 @@ class ShardManagerGrpcTest {
         responses.add(gateToRecovery);
         try (var shardManager = new ShardManager("address", clientSupplier)) {
             var bootstrap = shardManager.start();
-            await("bootstrapping").timeout(Duration.FIVE_MINUTES).until(bootstrap::isDone);
+            await("bootstrapping").until(bootstrap::isDone);
             assertThat(bootstrap).isNotCompletedExceptionally();
             assertThat(shardManager.leader(1)).isEqualTo("leader 1");
             gateToFailure.open();
@@ -186,7 +184,6 @@ class ShardManagerGrpcTest {
             responses.add(o -> o.onNext(newShardAssignmentResponse(1, 2, 3, "leader 2")));
             gateToRecovery.open();
             await("recovering to leader 2")
-                    .timeout(Duration.FIVE_MINUTES)
                     .untilAsserted(() -> assertThat(shardManager.leader(1)).isEqualTo("leader 2"));
         }
     }
