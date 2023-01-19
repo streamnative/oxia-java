@@ -64,15 +64,15 @@ public class ShardManager implements AutoCloseable {
         return receiver.bootstrap();
     }
 
-    public int get(String key) {
+    int get(String key) {
         return assignments.get(key);
     }
 
-    public List<Integer> getAll() {
+    List<Integer> getAll() {
         return assignments.getAll();
     }
 
-    public String leader(int shardId) {
+    String leader(int shardId) {
         return assignments.leader(shardId);
     }
 
