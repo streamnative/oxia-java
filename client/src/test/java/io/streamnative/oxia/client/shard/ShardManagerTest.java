@@ -148,7 +148,7 @@ public class ShardManagerTest {
     class ExponentialBackoffTests {
         @Test
         void exponentialBackOffFn() {
-            var fn = new ShardManager.ReceiveWithRecovery.ExponentialBackoff(() -> 10L, 100L, 1000L);
+            var fn = new ShardManager.ReceiveWithRecovery.ExponentialBackoff(() -> -10L, 100L, 1000L);
             assertThat(fn.apply(1)).isEqualTo(12L);
             assertThat(fn.apply(2)).isEqualTo(14L);
             assertThat(fn.apply(3)).isEqualTo(18L);
