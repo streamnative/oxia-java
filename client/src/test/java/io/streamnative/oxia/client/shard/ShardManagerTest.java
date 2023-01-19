@@ -81,7 +81,8 @@ public class ShardManagerTest {
             ShardManager.Assignments assignments;
 
             @Mock ReadWriteLock lock;
-            @Mock Lock rLock, wLock;
+            @Mock Lock rLock;
+            @Mock Lock wLock;
 
             @BeforeEach
             void mocking() {
