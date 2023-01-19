@@ -24,7 +24,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.function.Consumer;
 import java.util.function.LongFunction;
-import org.awaitility.Duration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -274,9 +273,7 @@ public class ShardManagerTest {
                     .thenReturn(terminalError, terminalError, terminalComplete, terminalBlocking);
             when(retryIntervalFn.apply(anyLong())).thenReturn(1L);
             var terminated = recovery.receive();
-            await()
-                    .timeout(Duration.FIVE_MINUTES)
-                    .untilAsserted(() -> assertThat(retryCounter).hasValue(4));
+            await().untilAsserted(() -> assertThat(retryCounter).hasValue(4));
             recovery.close();
             await().until(terminated::isDone);
             verify(receiver, times(4)).receive();
