@@ -17,18 +17,27 @@ import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientImplBase;
 import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientStub;
 import io.streamnative.oxia.proto.ShardAssignmentsRequest;
 import io.streamnative.oxia.proto.ShardAssignmentsResponse;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import lombok.SneakyThrows;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class ShardManagerGrpcTest {
 
-    private final List<Consumer<StreamObserver<ShardAssignmentsResponse>>> responses =
-            new ArrayList<>();
+    private final BlockingQueue<Consumer<StreamObserver<ShardAssignmentsResponse>>> responses =
+            new ArrayBlockingQueue<>(10);
+    private final ScheduledExecutorService responseSender =
+            Executors.newSingleThreadScheduledExecutor();
+    private final CompletableFuture<Void> test = new CompletableFuture<>();
+    private final AtomicLong shardAssignmentsCount = new AtomicLong();
 
     private final OxiaClientImplBase serviceImpl =
             mock(
@@ -36,10 +45,23 @@ class ShardManagerGrpcTest {
                     delegatesTo(
                             new OxiaClientImplBase() {
                                 @Override
+                                @SneakyThrows
                                 public void shardAssignments(
                                         ShardAssignmentsRequest request,
                                         StreamObserver<ShardAssignmentsResponse> responseObserver) {
-                                    responses.forEach(c -> c.accept(responseObserver));
+                                    shardAssignmentsCount.incrementAndGet();
+                                    System.out.println(responseObserver);
+                                    responseSender.execute(
+                                            () -> {
+                                                while (!test.isDone()) {
+                                                    try {
+                                                        var consumer = responses.take();
+                                                        consumer.accept(responseObserver);
+                                                    } catch (InterruptedException e) {
+                                                        throw new RuntimeException(e);
+                                                    }
+                                                }
+                                            });
                                 }
                             }));
 
@@ -63,20 +85,19 @@ class ShardManagerGrpcTest {
 
     @AfterEach
     void tearDown() {
+        test.complete(null);
         server.shutdownNow();
         channel.shutdownNow();
+        responseSender.shutdownNow();
     }
 
     @Test
     public void start() throws Exception {
-        var gate = new GateResponse();
-        responses.add(gate);
-        responses.add(o -> o.onNext(newShardAssignmentResponse(1, 2, 3, "leader 1")));
         try (var shardManager = new ShardManager("address", clientSupplier)) {
             var bootstrap = shardManager.start();
             assertThat(bootstrap).isNotCompleted();
             assertThat(shardManager.getAll()).isEmpty();
-            gate.open();
+            responses.add(o -> o.onNext(newShardAssignmentResponse(1, 2, 3, "leader 1")));
             await("bootstrapping").until(bootstrap::isDone);
             assertThat(bootstrap).isNotCompletedExceptionally();
             assertThat(shardManager.getAll()).containsOnly(1);
@@ -89,17 +110,14 @@ class ShardManagerGrpcTest {
         var s1v1 = newShardAssignmentResponse(1, 2, 5, "leader 1");
         var s1v2 = newShardAssignmentResponse(1, 2, 3, "leader 2");
         var strategy = new StaticShardStrategy().assign("key1", s1v1).assign("key2", s1v1);
-        var gate = new GateResponse();
-        responses.add(o -> o.onNext(s1v1));
-        responses.add(gate);
-        responses.add(o -> o.onNext(s1v2));
         try (var shardManager = new ShardManager(strategy, "address", clientSupplier)) {
+            responses.add(o -> o.onNext(s1v1));
             shardManager.start().get();
             assertThat(shardManager.get("key1")).isEqualTo(1);
             assertThat(shardManager.get("key2")).isEqualTo(1);
             assertThat(shardManager.leader(1)).isEqualTo("leader 1");
             strategy.assign("key1", s1v2);
-            gate.open();
+            responses.add(o -> o.onNext(s1v2));
             await("application of update")
                     .untilAsserted(
                             () -> {
@@ -118,16 +136,13 @@ class ShardManagerGrpcTest {
         var s1 = newShardAssignmentResponse(1, 1, 3, "leader 1");
         var s2 = newShardAssignmentResponse(2, 2, 4, "leader 2");
         var strategy = new StaticShardStrategy().assign("key1", s1);
-        var gate = new GateResponse();
-        responses.add(o -> o.onNext(s1));
-        responses.add(gate);
-        responses.add(o -> o.onNext(s2));
         try (var shardManager = new ShardManager(strategy, "address", clientSupplier)) {
+            responses.add(o -> o.onNext(s1));
             shardManager.start().get();
             assertThat(shardManager.get("key1")).isEqualTo(1);
             assertThat(shardManager.leader(1)).isEqualTo("leader 1");
             strategy.assign("key2", s2);
-            gate.open();
+            responses.add(o -> o.onNext(s2));
             await("removal of shard 1")
                     .untilAsserted(
                             () -> {
@@ -146,21 +161,13 @@ class ShardManagerGrpcTest {
 
     @Test
     public void recoveryFromError() throws Exception {
-        var gateToFailure = new GateResponse();
-        var gateToRecovery = new GateResponse();
-        responses.add(o -> o.onNext(newShardAssignmentResponse(1, 2, 3, "leader 1")));
-        responses.add(gateToFailure);
-        responses.add(o -> o.onError(new RuntimeException("stream fail")));
-        responses.add(gateToRecovery);
         try (var shardManager = new ShardManager("address", clientSupplier)) {
-            var bootstrap = shardManager.start();
-            await("bootstrapping").until(bootstrap::isDone);
-            assertThat(bootstrap).isNotCompletedExceptionally();
+            responses.add(o -> o.onNext(newShardAssignmentResponse(1, 2, 3, "leader 1")));
+            shardManager.start().get();
             assertThat(shardManager.leader(1)).isEqualTo("leader 1");
-            gateToFailure.open();
-            responses.clear();
+            responses.add(o -> o.onError(new RuntimeException("stream fail")));
+            await("next request").untilAsserted(() -> assertThat(shardAssignmentsCount).hasValue(2));
             responses.add(o -> o.onNext(newShardAssignmentResponse(1, 2, 3, "leader 2")));
-            gateToRecovery.open();
             await("recovering to leader 2")
                     .untilAsserted(() -> assertThat(shardManager.leader(1)).isEqualTo("leader 2"));
         }
@@ -168,21 +175,13 @@ class ShardManagerGrpcTest {
 
     @Test
     public void recoveryFromEndOfStream() throws Exception {
-        var gateToFailure = new GateResponse();
-        var gateToRecovery = new GateResponse();
-        responses.add(o -> o.onNext(newShardAssignmentResponse(1, 2, 3, "leader 1")));
-        responses.add(gateToFailure);
-        responses.add(StreamObserver::onCompleted);
-        responses.add(gateToRecovery);
         try (var shardManager = new ShardManager("address", clientSupplier)) {
-            var bootstrap = shardManager.start();
-            await("bootstrapping").until(bootstrap::isDone);
-            assertThat(bootstrap).isNotCompletedExceptionally();
+            responses.add(o -> o.onNext(newShardAssignmentResponse(1, 2, 3, "leader 1")));
+            shardManager.start().get();
             assertThat(shardManager.leader(1)).isEqualTo("leader 1");
-            gateToFailure.open();
-            responses.clear();
+            responses.add(StreamObserver::onCompleted);
+            await("next request").untilAsserted(() -> assertThat(shardAssignmentsCount).hasValue(2));
             responses.add(o -> o.onNext(newShardAssignmentResponse(1, 2, 3, "leader 2")));
-            gateToRecovery.open();
             await("recovering to leader 2")
                     .untilAsserted(() -> assertThat(shardManager.leader(1)).isEqualTo("leader 2"));
         }

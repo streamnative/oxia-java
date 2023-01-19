@@ -205,7 +205,8 @@ public class ShardManager implements AutoCloseable {
                 var attempt = attemptCounter.getAndIncrement();
                 try {
                     if (attempt > 0) {
-                        Thread.sleep(retryIntervalFn.apply(attempt));
+                        var interval = retryIntervalFn.apply(attempt);
+                        Thread.sleep(interval);
                     }
                     receiver.receive().get();
                 } catch (InterruptedException e) {
@@ -241,7 +242,7 @@ public class ShardManager implements AutoCloseable {
             @Override
             public Long apply(long retryIndex) {
                 return Math.min(
-                        ((long) Math.pow(2.0, retryIndex)) + (randomLongSupplier.get() % maxRandom),
+                        ((long) Math.pow(2.0, retryIndex)) + (Math.abs(randomLongSupplier.get()) % maxRandom),
                         maxIntervalMs);
             }
         }
@@ -283,10 +284,10 @@ public class ShardManager implements AutoCloseable {
                                     // Signal to the manager that we have some initial shard assignments
                                     bootstrap.complete(null);
                                 });
+                System.out.println(observer);
                 // Start the stream
                 var client = clientSuppler.apply(serviceAddress);
-                client.shardAssignments(
-                        ShardAssignmentsRequest.newBuilder().getDefaultInstanceForType(), observer);
+                client.shardAssignments(ShardAssignmentsRequest.getDefaultInstance(), observer);
             } catch (Exception e) {
                 terminal.completeExceptionally(e);
             }
