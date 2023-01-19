@@ -175,7 +175,7 @@ public class ShardManager implements AutoCloseable {
     static class ReceiveWithRecovery implements Receiver {
         private final ScheduledExecutorService executor;
         private final CompletableFuture<Void> closed;
-        private final AtomicLong retryCounter;
+        private final AtomicLong attemptCounter;
         private final LongFunction<Long> retryIntervalFn;
         private final Receiver receiver;
 
@@ -200,12 +200,14 @@ public class ShardManager implements AutoCloseable {
             return receiver.bootstrap();
         }
 
-        @VisibleForTesting
-        void receiveWithRetry() {
+        private void receiveWithRetry() {
             while (!closed.isDone()) {
+                var attempt = attemptCounter.getAndIncrement();
                 try {
+                    if (attempt > 0) {
+                        Thread.sleep(retryIntervalFn.apply(attempt));
+                    }
                     receiver.receive().get();
-                    Thread.sleep(retryIntervalFn.apply(retryCounter.getAndIncrement()));
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     throw new RuntimeException(e);
