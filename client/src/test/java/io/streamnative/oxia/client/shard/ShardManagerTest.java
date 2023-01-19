@@ -27,7 +27,7 @@ public class ShardManagerTest {
                         new Shard(7, "leader 3", new HashRange(6, 6)), //
                         new Shard(4, "leader 2", new HashRange(10, 12)) // Merge
                         );
-        var assignments = ShardManager.applyUpdates(existing, updates);
+        var assignments = ShardManager.Assignments.applyUpdates(existing, updates);
         assertThat(assignments)
                 .satisfies(
                         a -> {

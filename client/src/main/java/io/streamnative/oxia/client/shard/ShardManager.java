@@ -3,14 +3,14 @@ package io.streamnative.oxia.client.shard;
 import static io.grpc.Status.fromThrowable;
 import static io.streamnative.oxia.client.shard.HashRangeShardStrategy.Xxh332HashRangeShardStrategy;
 import static java.util.Collections.unmodifiableMap;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
+import static lombok.AccessLevel.PACKAGE;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.grpc.stub.StreamObserver;
-import io.streamnative.oxia.client.shard.ShardManager.StreamTerminal.Complete;
-import io.streamnative.oxia.client.shard.ShardManager.StreamTerminal.Error;
 import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientStub;
 import io.streamnative.oxia.proto.ShardAssignmentsRequest;
 import io.streamnative.oxia.proto.ShardAssignmentsResponse;
@@ -19,154 +19,286 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
+import java.util.Random;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.LongFunction;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
+@RequiredArgsConstructor(access = PACKAGE)
 @Slf4j
-@RequiredArgsConstructor
 public class ShardManager implements AutoCloseable {
-    private final ShardStrategy shardStrategy;
-    private final String serviceAddress;
-    private final Function<String, OxiaClientStub> clientSuppler;
-    private final ReadWriteLock rwLock = new ReentrantReadWriteLock();
-    private final Lock rLock = rwLock.readLock();
-    private final Lock wLock = rwLock.writeLock();
-    private final CompletableFuture<Void> bootstrap = new CompletableFuture<>();
-    private final BlockingQueue<StreamTerminal> streamTerminal = new ArrayBlockingQueue<>(1);
-    private final ScheduledExecutorService executor =
-            Executors.newSingleThreadScheduledExecutor(
-                    r -> new Thread(r, "shard-manager-assignments-stream-observer"));
-    private Map<Integer, Shard> shards = new HashMap<>();
-    private volatile boolean closed = false;
+    private final Receiver receiver;
+    private final Assignments assignments;
 
     ShardManager(String serviceAddress, Function<String, OxiaClientStub> clientSuppler) {
         this(Xxh332HashRangeShardStrategy, serviceAddress, clientSuppler);
     }
 
+    @VisibleForTesting
+    ShardManager(
+            ShardStrategy strategy,
+            String serviceAddress,
+            Function<String, OxiaClientStub> clientSuppler) {
+        super();
+        assignments = new Assignments(strategy);
+        receiver =
+                new ReceiveWithRecovery(new GrpcReceiver(serviceAddress, clientSuppler, assignments));
+    }
+
     CompletableFuture<Void> start() {
-        receiveWithRecovery();
-        return bootstrap;
-    }
-
-    private void receiveWithRecovery() {
-        executor.execute(
-                () -> {
-                    while (!closed) {
-                        streamTerminal.clear();
-                        receive();
-                        try {
-                            // Now block until the stream observer thread needs attention
-                            var terminal = streamTerminal.take();
-                            log.error("Shard assignments stream terminated: {}", terminal);
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                            throw new RuntimeException(e);
-                        }
-                    }
-                });
-    }
-
-    private void receive() {
-        try {
-            var observer =
-                    new ShardAssignmentsObserver(
-                            streamTerminal,
-                            s -> {
-                                update(
-                                        s.getAssignmentsList().stream()
-                                                .map(ShardConverter::fromProto)
-                                                .collect(toList()));
-                                // Signal to the manager that we have some initial shard assignments
-                                bootstrap.complete(null);
-                            });
-            // Start the stream
-            var client = clientSuppler.apply(serviceAddress);
-            client.shardAssignments(
-                    ShardAssignmentsRequest.newBuilder().getDefaultInstanceForType(), observer);
-        } catch (Exception e) {
-            bootstrap.completeExceptionally(e);
-        }
+        receiver.receive();
+        return receiver.bootstrap();
     }
 
     public int get(String key) {
-        var test = shardStrategy.acceptsKeyPredicate(key);
-        var shard = shards.values().stream().filter(test).findAny();
-        return shard
-                .map(Shard::id)
-                .orElseThrow(() -> new IllegalStateException("shard not found for key: " + key));
+        return assignments.get(key);
     }
 
     public List<Integer> getAll() {
-        try {
-            rLock.lock();
-            return shards.keySet().stream().toList();
-        } finally {
-            rLock.unlock();
-        }
+        return assignments.getAll();
     }
 
     public String leader(int shardId) {
-        try {
-            rLock.lock();
-            return Optional.ofNullable(shards.get(shardId))
-                    .map(Shard::leader)
-                    .orElseThrow(() -> new IllegalStateException("shard not found for id: " + shardId));
-        } finally {
-            rLock.unlock();
-        }
-    }
-
-    void update(List<Shard> updates) {
-        try {
-            wLock.lock();
-            shards = applyUpdates(shards, updates);
-        } finally {
-            wLock.unlock();
-        }
-    }
-
-    @VisibleForTesting
-    static Map<Integer, Shard> applyUpdates(Map<Integer, Shard> assignments, List<Shard> updates) {
-        var toDelete = new ArrayList<>();
-        updates.forEach(
-                update ->
-                        update
-                                .findOverlapping(assignments.values())
-                                .forEach(
-                                        existing -> {
-                                            log.info("Deleting shard {} as it overlaps with {}", existing, update);
-                                            toDelete.add(existing.id());
-                                        }));
-        return unmodifiableMap(
-                Stream.concat(
-                                assignments.entrySet().stream()
-                                        .filter(e -> !toDelete.contains(e.getKey()))
-                                        .map(Map.Entry::getValue),
-                                updates.stream())
-                        .collect(toMap(Shard::id, identity())));
+        return assignments.leader(shardId);
     }
 
     @Override
     public void close() throws Exception {
-        closed = true;
-        executor.shutdownNow();
+        receiver.close();
     }
 
-    @RequiredArgsConstructor
+    @VisibleForTesting
+    static class Assignments {
+        private final Lock rLock;
+        private final Lock wLock;
+        private Map<Integer, Shard> shards = new HashMap<>();
+        private final ShardStrategy shardStrategy;
+
+        Assignments(ShardStrategy shardStrategy) {
+            this(new ReentrantReadWriteLock(), shardStrategy);
+        }
+
+        Assignments(ReadWriteLock lock, ShardStrategy shardStrategy) {
+            this.shardStrategy = shardStrategy;
+            rLock = lock.readLock();
+            wLock = lock.writeLock();
+        }
+
+        public int get(String key) {
+            try {
+                rLock.lock();
+                var test = shardStrategy.acceptsKeyPredicate(key);
+                var shard = shards.values().stream().filter(test).findAny();
+                return shard
+                        .map(Shard::id)
+                        .orElseThrow(() -> new IllegalStateException("shard not found for key: " + key));
+            } finally {
+                rLock.unlock();
+            }
+        }
+
+        public List<Integer> getAll() {
+            try {
+                rLock.lock();
+                return shards.keySet().stream().toList();
+            } finally {
+                rLock.unlock();
+            }
+        }
+
+        public String leader(int shardId) {
+            try {
+                rLock.lock();
+                return Optional.ofNullable(shards.get(shardId))
+                        .map(Shard::leader)
+                        .orElseThrow(() -> new IllegalStateException("shard not found for id: " + shardId));
+            } finally {
+                rLock.unlock();
+            }
+        }
+
+        void update(List<Shard> updates) {
+            try {
+                wLock.lock();
+                shards = applyUpdates(shards, updates);
+            } finally {
+                wLock.unlock();
+            }
+        }
+
+        @VisibleForTesting
+        static Map<Integer, Shard> applyUpdates(Map<Integer, Shard> assignments, List<Shard> updates) {
+            var toDelete = new ArrayList<>();
+            updates.forEach(
+                    update ->
+                            update
+                                    .findOverlapping(assignments.values())
+                                    .forEach(
+                                            existing -> {
+                                                log.info("Deleting shard {} as it overlaps with {}", existing, update);
+                                                toDelete.add(existing.id());
+                                            }));
+            return unmodifiableMap(
+                    Stream.concat(
+                                    assignments.entrySet().stream()
+                                            .filter(e -> !toDelete.contains(e.getKey()))
+                                            .map(Map.Entry::getValue),
+                                    updates.stream())
+                            .collect(toMap(Shard::id, identity())));
+        }
+    }
+
+    interface Receiver extends AutoCloseable {
+        @NonNull
+        CompletableFuture<Void> receive();
+
+        @NonNull
+        CompletableFuture<Void> bootstrap();
+    }
+
+    @RequiredArgsConstructor(access = PACKAGE)
+    @VisibleForTesting
+    static class ReceiveWithRecovery implements Receiver {
+        private final ScheduledExecutorService executor;
+        private final CompletableFuture<Void> closed;
+        private final AtomicLong retryCounter;
+        private final LongFunction<Long> retryIntervalFn;
+        private final Receiver receiver;
+
+        ReceiveWithRecovery(@NonNull Receiver receiver) {
+            this(
+                    Executors.newSingleThreadScheduledExecutor(
+                            r -> new Thread(r, "shard-manager-assignments-receiver")),
+                    new CompletableFuture<>(),
+                    new AtomicLong(),
+                    new ExponentialBackoff(),
+                    receiver);
+        }
+
+        @Override
+        public @NonNull CompletableFuture<Void> receive() {
+            executor.execute(this::receiveWithRetry);
+            return closed;
+        }
+
+        @Override
+        public @NonNull CompletableFuture<Void> bootstrap() {
+            return receiver.bootstrap();
+        }
+
+        @VisibleForTesting
+        void receiveWithRetry() {
+            while (!closed.isDone()) {
+                try {
+                    receiver.receive().get();
+                    Thread.sleep(retryIntervalFn.apply(retryCounter.getAndIncrement()));
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException(e);
+                } catch (ExecutionException e) {
+                    log.error("Shard assignments stream terminated", e.getCause());
+                }
+            }
+        }
+
+        @Override
+        public void close() throws Exception {
+            closed.complete(null);
+            executor.shutdown();
+        }
+
+        @RequiredArgsConstructor(access = PACKAGE)
+        @VisibleForTesting
+        static class ExponentialBackoff implements LongFunction<Long> {
+            private final Random random;
+            private final long maxRandom;
+            private final long maxIntervalMs;
+
+            ExponentialBackoff() {
+                this(new Random(), 500L, SECONDS.toMillis(30));
+            }
+
+            @Override
+            public Long apply(long retryIndex) {
+                return Math.min(
+                        ((long) Math.pow(2.0, retryIndex)) + random.nextLong(maxRandom), maxIntervalMs);
+            }
+        }
+    }
+
+    @RequiredArgsConstructor(access = PACKAGE)
+    @VisibleForTesting
+    static class GrpcReceiver implements Receiver {
+        private final String serviceAddress;
+        private final Function<String, OxiaClientStub> clientSuppler;
+        private final Assignments assignments;
+        private final CompletableFuture<Void> bootstrap;
+        private final Supplier<CompletableFuture<Void>> streamTerminalSupplier;
+
+        GrpcReceiver(
+                @NonNull String serviceAddress,
+                @NonNull Function<String, OxiaClientStub> clientSuppler,
+                @NonNull Assignments assignments) {
+            this(
+                    serviceAddress,
+                    clientSuppler,
+                    assignments,
+                    new CompletableFuture<>(),
+                    CompletableFuture::new);
+        }
+
+        public @NonNull CompletableFuture<Void> receive() {
+            var terminal = streamTerminalSupplier.get();
+            try {
+                var observer =
+                        new ShardAssignmentsObserver(
+                                terminal,
+                                s -> {
+                                    var updates =
+                                            s.getAssignmentsList().stream()
+                                                    .map(ShardConverter::fromProto)
+                                                    .collect(toList());
+                                    assignments.update(updates);
+                                    // Signal to the manager that we have some initial shard assignments
+                                    bootstrap.complete(null);
+                                });
+                // Start the stream
+                var client = clientSuppler.apply(serviceAddress);
+                client.shardAssignments(
+                        ShardAssignmentsRequest.newBuilder().getDefaultInstanceForType(), observer);
+            } catch (Exception e) {
+                terminal.completeExceptionally(e);
+            }
+            return terminal;
+        }
+
+        @Override
+        public @NonNull CompletableFuture<Void> bootstrap() {
+            return bootstrap;
+        }
+
+        @Override
+        public void close() throws Exception {}
+    }
+
+    @RequiredArgsConstructor(access = PACKAGE)
+    @VisibleForTesting
     static class ShardAssignmentsObserver implements StreamObserver<ShardAssignmentsResponse> {
-        private final BlockingQueue<StreamTerminal> streamTerminal;
+        private final CompletableFuture<Void> streamTerminal;
         private final Consumer<ShardAssignmentsResponse> shardAssignmentsConsumer;
 
         @Override
@@ -176,11 +308,10 @@ public class ShardManager implements AutoCloseable {
 
         @SneakyThrows
         @Override
-        public void onError(Throwable throwable) {
-            log.error("Failed receiving shard assignments - GRPC status: {}", fromThrowable(throwable));
+        public void onError(Throwable t) {
+            log.error("Failed receiving shard assignments - GRPC status: {}", fromThrowable(t));
             // Stream is broken, signal that recovery is necessary
-            //noinspection ResultOfMethodCallIgnored
-            streamTerminal.offer(new Error(throwable));
+            streamTerminal.completeExceptionally(t);
         }
 
         @SneakyThrows
@@ -188,16 +319,7 @@ public class ShardManager implements AutoCloseable {
         public void onCompleted() {
             log.info("Shard Assignment stream completed.");
             // Stream is broken, signal that recovery is necessary
-            //noinspection ResultOfMethodCallIgnored
-            streamTerminal.offer(Complete.INSTANCE);
-        }
-    }
-
-    sealed interface StreamTerminal permits Complete, Error {
-        record Error(Throwable t) implements StreamTerminal {}
-
-        enum Complete implements StreamTerminal {
-            INSTANCE;
+            streamTerminal.complete(null);
         }
     }
 }
