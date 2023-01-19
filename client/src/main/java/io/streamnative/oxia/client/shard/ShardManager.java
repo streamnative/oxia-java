@@ -224,18 +224,23 @@ public class ShardManager implements AutoCloseable {
         @RequiredArgsConstructor(access = PACKAGE)
         @VisibleForTesting
         static class ExponentialBackoff implements LongFunction<Long> {
-            private final Random random;
+            private final Supplier<Long> randomLongSupplier;
             private final long maxRandom;
             private final long maxIntervalMs;
 
             ExponentialBackoff() {
-                this(new Random(), 500L, SECONDS.toMillis(30));
+                super();
+                var random = new Random();
+                randomLongSupplier = random::nextLong;
+                this.maxRandom = 500L;
+                this.maxIntervalMs = SECONDS.toMillis(30);
             }
 
             @Override
             public Long apply(long retryIndex) {
                 return Math.min(
-                        ((long) Math.pow(2.0, retryIndex)) + random.nextLong(maxRandom), maxIntervalMs);
+                        ((long) Math.pow(2.0, retryIndex)) + (randomLongSupplier.get() % maxRandom),
+                        maxIntervalMs);
             }
         }
     }
