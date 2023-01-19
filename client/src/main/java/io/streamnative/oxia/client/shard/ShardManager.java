@@ -292,7 +292,7 @@ public class ShardManager implements AutoCloseable {
         }
 
         @Override
-        public void close() throws Exception {}
+        public void close() {}
     }
 
     @RequiredArgsConstructor(access = PACKAGE)
