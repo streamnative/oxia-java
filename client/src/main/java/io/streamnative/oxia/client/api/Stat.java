@@ -1,5 +1,8 @@
 package io.streamnative.oxia.client.api;
 
+
+import lombok.NonNull;
+
 /**
  * Oxia record metadata.
  *
@@ -37,5 +40,9 @@ public record Stat(long version, long createdTimestamp, long modifiedTimestamp) 
         if (timestamp < 0) {
             throw new IllegalArgumentException("Invalid timestamp: " + timestamp);
         }
+    }
+
+    public static @NonNull Stat fromProto(@NonNull io.streamnative.oxia.proto.Stat response) {
+        return null; // TODO
     }
 }

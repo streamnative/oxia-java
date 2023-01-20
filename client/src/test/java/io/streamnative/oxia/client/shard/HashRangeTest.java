@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.streamnative.oxia.proto.Int32HashRange;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -50,5 +52,17 @@ class HashRangeTest {
         var range1 = new HashRange(min1, max1);
         var range2 = new HashRange(min2, max2);
         assertThat(range1.overlaps(range2)).isEqualTo(overlaps);
+    }
+
+    @Test
+    void fromProto() {
+        var range =
+                HashRange.fromProto(
+                        Int32HashRange.newBuilder()
+                                .setMinHashInclusive(Integer.MIN_VALUE)
+                                .setMaxHashInclusive(-1)
+                                .build());
+        assertThat(range.minInclusive()).isEqualTo(((long) Integer.MAX_VALUE) + 1L);
+        assertThat(range.maxInclusive()).isEqualTo(((long) Integer.MAX_VALUE * 2L) + 1L);
     }
 }

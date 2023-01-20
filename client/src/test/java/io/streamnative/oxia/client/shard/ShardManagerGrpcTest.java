@@ -1,6 +1,6 @@
 package io.streamnative.oxia.client.shard;
 
-import static io.streamnative.oxia.client.shard.ModelUtil.newShardAssignmentResponse;
+import static io.streamnative.oxia.client.shard.ModelFactory.newShardAssignmentResponse;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
