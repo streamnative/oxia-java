@@ -44,19 +44,19 @@ public class ShardManager implements AutoCloseable {
     private final Receiver receiver;
     private final Assignments assignments;
 
-    ShardManager(String serviceAddress, Function<String, OxiaClientStub> clientSuppler) {
-        this(Xxh332HashRangeShardStrategy, serviceAddress, clientSuppler);
+    ShardManager(String serviceAddress, Function<String, OxiaClientStub> clientSupplier) {
+        this(Xxh332HashRangeShardStrategy, serviceAddress, clientSupplier);
     }
 
     @VisibleForTesting
     ShardManager(
             ShardStrategy strategy,
             String serviceAddress,
-            Function<String, OxiaClientStub> clientSuppler) {
+            Function<String, OxiaClientStub> clientSupplier) {
         super();
         assignments = new Assignments(strategy);
         receiver =
-                new ReceiveWithRecovery(new GrpcReceiver(serviceAddress, clientSuppler, assignments));
+                new ReceiveWithRecovery(new GrpcReceiver(serviceAddress, clientSupplier, assignments));
     }
 
     CompletableFuture<Void> start() {
