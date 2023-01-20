@@ -252,18 +252,18 @@ public class ShardManager implements AutoCloseable {
     @VisibleForTesting
     static class GrpcReceiver implements Receiver {
         private final String serviceAddress;
-        private final Function<String, OxiaClientStub> clientSuppler;
+        private final Function<String, OxiaClientStub> clientSupplier;
         private final Assignments assignments;
         private final CompletableFuture<Void> bootstrap;
         private final Supplier<CompletableFuture<Void>> streamTerminalSupplier;
 
         GrpcReceiver(
                 @NonNull String serviceAddress,
-                @NonNull Function<String, OxiaClientStub> clientSuppler,
+                @NonNull Function<String, OxiaClientStub> clientSupplier,
                 @NonNull Assignments assignments) {
             this(
                     serviceAddress,
-                    clientSuppler,
+                    clientSupplier,
                     assignments,
                     new CompletableFuture<>(),
                     CompletableFuture::new);
@@ -286,7 +286,7 @@ public class ShardManager implements AutoCloseable {
                                 });
                 System.out.println(observer);
                 // Start the stream
-                var client = clientSuppler.apply(serviceAddress);
+                var client = clientSupplier.apply(serviceAddress);
                 client.shardAssignments(ShardAssignmentsRequest.getDefaultInstance(), observer);
             } catch (Exception e) {
                 terminal.completeExceptionally(e);
