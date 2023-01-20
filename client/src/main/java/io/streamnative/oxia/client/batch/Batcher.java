@@ -12,42 +12,52 @@ import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor(access = PACKAGE)
 class Batcher implements Runnable, AutoCloseable {
-    @NonNull private final String name;
-    private final long linger;
-    private final int maxRequestsPerBatch;
-    private final int operationQueueCapacity;
+    record Config(
+            String name,
+            long shardId,
+            long lingerMs,
+            int maxRequestsPerBatch,
+            int operationQueueCapacity) {}
+
+    @NonNull private final Config config;
     @NonNull private final Function<Long, Batch> batchFactory;
-    private final long shardId;
-    private final BlockingQueue<Operation> operations =
-            new ArrayBlockingQueue<>(operationQueueCapacity);
+    @NonNull private final BlockingQueue<Operation> operations;
+    @NonNull private final Clock clock;
     private volatile boolean closed;
-    private final Clock clock;
+
+    Batcher(@NonNull Config config, @NonNull Function<Long, Batch> batchFactory) {
+        this(
+                config,
+                batchFactory,
+                new ArrayBlockingQueue<>(config.operationQueueCapacity),
+                Clock.systemUTC());
+    }
 
     @Override
     public void run() {
         Batch batch = null;
-        var lingerBudget = -1L;
+        var lingerBudgetMs = -1L;
         while (!closed) {
             try {
                 Operation operation = null;
                 if (batch == null) {
                     operation = operations.poll();
                 } else {
-                    operation = operations.poll(lingerBudget, MILLISECONDS);
-                    var spentLingerBudget = Math.max(0, clock.millis() - batch.getStartTime());
-                    lingerBudget = Math.max(0L, lingerBudget - spentLingerBudget);
+                    operation = operations.poll(lingerBudgetMs, MILLISECONDS);
+                    var spentLingerBudgetMs = Math.max(0, clock.millis() - batch.getStartTime());
+                    lingerBudgetMs = Math.max(0L, lingerBudgetMs - spentLingerBudgetMs);
                 }
 
                 if (operation != null) {
                     if (batch == null) {
-                        batch = batchFactory.apply(shardId);
-                        lingerBudget = linger;
+                        batch = batchFactory.apply(config.shardId);
+                        lingerBudgetMs = config.lingerMs;
                     }
                     batch.add(operation);
                 }
 
                 if (batch != null) {
-                    if (batch.size() == maxRequestsPerBatch || lingerBudget == 0) {
+                    if (batch.size() == config.maxRequestsPerBatch || lingerBudgetMs == 0) {
                         batch.complete();
                         batch = null;
                     }
