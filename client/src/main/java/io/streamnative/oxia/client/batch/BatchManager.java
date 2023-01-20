@@ -16,13 +16,18 @@ public class BatchManager implements AutoCloseable {
 
     private final ConcurrentMap<Long, Batcher> batchersByShardId = new ConcurrentHashMap<>();
     private final Function<Long, Batcher> batcherFactory;
+    private volatile boolean closed;
 
     Batcher getBatcher(long shardId) {
+        if (closed) {
+            throw new IllegalStateException("Batch manager is closed");
+        }
         return batchersByShardId.computeIfAbsent(shardId, batcherFactory);
     }
 
     @Override
     public void close() throws Exception {
+        closed = true;
         var exceptions =
                 batchersByShardId.values().stream()
                         .map(
