@@ -44,7 +44,7 @@ public class ShardManager implements AutoCloseable {
     private final Receiver receiver;
     private final Assignments assignments;
 
-    ShardManager(String serviceAddress, Function<String, OxiaClientStub> clientSupplier) {
+    public ShardManager(String serviceAddress, Function<String, OxiaClientStub> clientSupplier) {
         this(Xxh332HashRangeShardStrategy, serviceAddress, clientSupplier);
     }
 
@@ -58,20 +58,20 @@ public class ShardManager implements AutoCloseable {
                 new ReceiveWithRecovery(new GrpcReceiver(serviceAddress, clientSupplier, assignments));
     }
 
-    CompletableFuture<Void> start() {
+    public CompletableFuture<Void> start() {
         receiver.receive();
         return receiver.bootstrap();
     }
 
-    int get(String key) {
+    public int get(String key) {
         return assignments.get(key);
     }
 
-    List<Integer> getAll() {
+    public List<Integer> getAll() {
         return assignments.getAll();
     }
 
-    String leader(int shardId) {
+    public String leader(int shardId) {
         return assignments.leader(shardId);
     }
 
@@ -275,9 +275,7 @@ public class ShardManager implements AutoCloseable {
                                 terminal,
                                 s -> {
                                     var updates =
-                                            s.getAssignmentsList().stream()
-                                                    .map(ShardConverter::fromProto)
-                                                    .collect(toList());
+                                            s.getAssignmentsList().stream().map(Shard::fromProto).collect(toList());
                                     assignments.update(updates);
                                     // Signal to the manager that we have some initial shard assignments
                                     bootstrap.complete(null);

@@ -16,12 +16,14 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
     public static final Duration DefaultBatchLinger = Duration.ofMillis(5);
     public static final int DefaultMaxRequestsPerBatch = 1000;
     public static final Duration DefaultRequestTimeout = Duration.ofSeconds(30);
+    public static final int DefaultOperationQueueCapacity = 1000;
 
     @NonNull private final String serviceAddress;
     private Consumer<Notification> notificationCallback;
     @NonNull private Duration requestTimeout = DefaultRequestTimeout;
     @NonNull private Duration batchLinger = DefaultBatchLinger;
-    @NonNull private int maxRequestsPerBatch = DefaultMaxRequestsPerBatch;
+    private int maxRequestsPerBatch = DefaultMaxRequestsPerBatch;
+    private int operationQueueCapacity = DefaultOperationQueueCapacity;
 
     @Override
     public @NonNull OxiaClientBuilder notificationCallback(
@@ -49,23 +51,31 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
         return this;
     }
 
+    public @NonNull OxiaClientBuilder operationQueueCapacity(int operationQueueCapacity) {
+        if (operationQueueCapacity < 0) {
+            throw new IllegalArgumentException(
+                    "operationQueueCapacity must be greater than zero: " + operationQueueCapacity);
+        }
+        this.operationQueueCapacity = operationQueueCapacity;
+        return this;
+    }
+
     public @NonNull AsyncOxiaClient asyncClient() {
         return new AsyncOxiaClientImpl(
-                new ClientConfig(
-                        serviceAddress,
-                        notificationCallback,
-                        requestTimeout,
-                        batchLinger,
-                        maxRequestsPerBatch));
+                null, // TODO
+                null, // TODO
+                null // TODO
+                //                new ClientConfig(
+                //                        serviceAddress,
+                //                        notificationCallback,
+                //                        requestTimeout,
+                //                        batchLinger,
+                //                        maxRequestsPerBatch,
+                //                        operationQueueCapacity)
+                );
     }
 
     public @NonNull SyncOxiaClient syncClient() {
-        return new SyncOxiaClientImpl(
-                new ClientConfig(
-                        serviceAddress,
-                        notificationCallback,
-                        requestTimeout,
-                        batchLinger,
-                        maxRequestsPerBatch));
+        return new SyncOxiaClientImpl(asyncClient());
     }
 }

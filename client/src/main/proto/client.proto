@@ -269,7 +269,7 @@ message ListResponse {
 }
 
 /**
- * Stats about the current version of a key.
+ * Stats about the current versionId of a key.
  */
 message Stat {
   // The current version of the key
