@@ -13,7 +13,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor(access = PACKAGE)
 class Batcher implements Runnable, AutoCloseable {
     record Config(
-            String name,
             long shardId,
             long lingerMs,
             int maxRequestsPerBatch,
