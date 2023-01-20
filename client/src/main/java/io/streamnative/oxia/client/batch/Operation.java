@@ -8,6 +8,7 @@ import static io.streamnative.oxia.client.batch.Operation.WriteOperation;
 import static io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import static io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import static io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
+
 import io.streamnative.oxia.proto.DeleteRangeRequest;
 import io.streamnative.oxia.proto.DeleteRequest;
 import io.streamnative.oxia.proto.GetRequest;
