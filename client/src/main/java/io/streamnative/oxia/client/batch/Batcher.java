@@ -12,11 +12,7 @@ import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor(access = PACKAGE)
 class Batcher implements Runnable, AutoCloseable {
-    record Config(
-            long shardId,
-            long lingerMs,
-            int maxRequestsPerBatch,
-            int operationQueueCapacity) {}
+    record Config(long shardId, long lingerMs, int maxRequestsPerBatch, int operationQueueCapacity) {}
 
     @NonNull private final Config config;
     @NonNull private final Function<Long, Batch> batchFactory;
