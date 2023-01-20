@@ -19,11 +19,12 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-        <assertj.version>3.23.1</assertj.version>
+        <assertj.version>3.24.1</assertj.version>
         <checkstyle.version>10.3.3</checkstyle.version>
         <lombok.version>1.18.24</lombok.version>
-        <junit.jupiter.version>5.9.0</junit.jupiter.version>
-        <mockito.junit.jupiter.version>4.8.0</mockito.junit.jupiter.version>
+        <slf4j.version>2.0.5</slf4j.version>
+        <junit.jupiter.version>5.9.2</junit.jupiter.version>
+        <mockito.junit.jupiter.version>4.11.0</mockito.junit.jupiter.version>
 
         <checkstyle.plugin.version>3.2.0</checkstyle.plugin.version>
         <jacoco.plugin.version>0.8.8</jacoco.plugin.version>
@@ -36,6 +37,11 @@
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>${slf4j.version}</version>
+            </dependency>
             <dependency>
                 <groupId>org.projectlombok</groupId>
                 <artifactId>lombok</artifactId>
@@ -51,6 +57,12 @@
             <dependency>
                 <groupId>org.junit.jupiter</groupId>
                 <artifactId>junit-jupiter</artifactId>
+                <version>${junit.jupiter.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter-params</artifactId>
                 <version>${junit.jupiter.version}</version>
                 <scope>test</scope>
             </dependency>
@@ -131,6 +143,7 @@
                 <version>${spotbugs.plugin.version}</version>
                 <configuration>
                     <excludeFilterFile>etc/findbugsExclude.xml</excludeFilterFile>
+                    <onlyAnalyze>io.streamnative.oxia.client.*</onlyAnalyze>
                 </configuration>
                 <executions>
                     <execution>
@@ -204,6 +217,25 @@
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${maven.surefire.plugin.version}</version>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>3.2.0</version>
+                <executions>
+                    <execution>
+                        <id>add-source</id>
+                        <goals>
+                            <goal>add-source</goal>
+                        </goals>
+                        <phase>generate-sources</phase>
+                        <configuration>
+                            <sources>
+                                <source>target/generated-sources/protobuf/java</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <!-- Check test coverage -->
