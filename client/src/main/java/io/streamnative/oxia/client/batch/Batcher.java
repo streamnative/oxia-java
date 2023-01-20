@@ -27,33 +27,29 @@ class Batcher implements Runnable, AutoCloseable {
     @Override
     public void run() {
         Batch batch = null;
-        var maxPollBudget = linger == 0L ? maxPollDuration : linger;
-        var pollBudget = -1L;
-        var lingerStart = -1L;
         var startPoll = -1L;
-
+        var lingerBudget = -1L;
         while (!closed) {
             try {
                 Operation operation = null;
                 if (batch == null) {
                     operation = operations.poll();
-                    pollBudget = maxPollBudget;
+                    lingerBudget = linger;
                 } else {
                     startPoll = clock.millis();
-                    operation = operations.poll(pollBudget, MILLISECONDS);
-                    pollBudget -= Math.max(0, clock.millis() - startPoll);
+                    operation = operations.poll(lingerBudget, MILLISECONDS);
+                    var pollDuration = Math.max(0, clock.millis() - startPoll);
+                    lingerBudget = Math.max(0L, lingerBudget - pollDuration);
                 }
 
                 if (operation != null) {
                     if (batch == null) {
                         batch = batchFactory.apply(shardId);
-                        lingerStart = clock.millis();
                     }
                     batch.add(operation);
                 }
 
                 if (batch != null) {
-                    var lingerBudget = linger == 0 ? 0 : Math.max(0, linger - (clock.millis() - lingerStart));
                     if (batch.size() == maxRequestsPerBatch || lingerBudget == 0) {
                         batch.complete();
                         batch = null;
