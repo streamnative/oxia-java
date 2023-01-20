@@ -275,9 +275,7 @@ public class ShardManager implements AutoCloseable {
                                 terminal,
                                 s -> {
                                     var updates =
-                                            s.getAssignmentsList().stream()
-                                                    .map(ShardConverter::fromProto)
-                                                    .collect(toList());
+                                            s.getAssignmentsList().stream().map(Shard::fromProto).collect(toList());
                                     assignments.update(updates);
                                     // Signal to the manager that we have some initial shard assignments
                                     bootstrap.complete(null);

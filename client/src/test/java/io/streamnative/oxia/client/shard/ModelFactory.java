@@ -6,7 +6,7 @@ import io.streamnative.oxia.proto.ShardAssignment;
 import io.streamnative.oxia.proto.ShardAssignmentsResponse;
 import lombok.NonNull;
 
-public class ModelUtil {
+public class ModelFactory {
     static @NonNull Int32HashRange newHashRange(int min, int max) {
         return Int32HashRange.newBuilder().setMinHashInclusive(min).setMaxHashInclusive(max).build();
     }
