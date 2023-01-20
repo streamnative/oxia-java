@@ -8,6 +8,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
@@ -41,7 +42,7 @@ public class BatchManager implements AutoCloseable {
     }
 
     @RequiredArgsConstructor(access = PACKAGE)
-    static class ShutdownException extends Exception {
-        private final List<Exception> exceptions;
+    public static class ShutdownException extends Exception {
+        @Getter private final List<Exception> exceptions;
     }
 }
