@@ -1,21 +1,21 @@
 package io.streamnative.oxia.client.batch;
 
-import java.util.HashMap;
-import java.util.Map;
+
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Function;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor
 public class BatchManager implements AutoCloseable {
 
-    private final ConcurrentMap<Integer, Batcher> batchersByShardId = new ConcurrentHashMap<>();
-    private BatcherFactory batcherFactory = null;
+    private final ConcurrentMap<Long, Batcher> batchersByShardId = new ConcurrentHashMap<>();
+    private final Function<Long, Batcher> batcherFactory;
 
-    Batcher getBatcher(int shardId) {
-        return batchersByShardId.computeIfAbsent(shardId, s -> batcherFactory.newBatcher(s));
+    Batcher getBatcher(long shardId) {
+        return batchersByShardId.computeIfAbsent(shardId, batcherFactory);
     }
 
     @Override
-    public void close() throws Exception {
-
-    }
+    public void close() throws Exception {}
 }
