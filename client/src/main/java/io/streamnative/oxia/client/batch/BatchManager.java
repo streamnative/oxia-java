@@ -1,6 +1,10 @@
 package io.streamnative.oxia.client.batch;
 
+import static java.util.stream.Collectors.toList;
+import static lombok.AccessLevel.PACKAGE;
 
+import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
@@ -17,5 +21,27 @@ public class BatchManager implements AutoCloseable {
     }
 
     @Override
-    public void close() throws Exception {}
+    public void close() throws Exception {
+        var exceptions =
+                batchersByShardId.values().stream()
+                        .map(
+                                b -> {
+                                    try {
+                                        b.close();
+                                        return null;
+                                    } catch (Exception e) {
+                                        return e;
+                                    }
+                                })
+                        .filter(Objects::nonNull)
+                        .collect(toList());
+        if (!exceptions.isEmpty()) {
+            throw new ShutdownException(exceptions);
+        }
+    }
+
+    @RequiredArgsConstructor(access = PACKAGE)
+    static class ShutdownException extends Exception {
+        private final List<Exception> exceptions;
+    }
 }
