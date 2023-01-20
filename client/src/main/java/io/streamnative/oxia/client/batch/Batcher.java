@@ -14,7 +14,6 @@ import lombok.RequiredArgsConstructor;
 class Batcher implements Runnable, AutoCloseable {
     @NonNull private final String name;
     private final long linger;
-    private final long maxPollDuration;
     private final int maxRequestsPerBatch;
     private final int operationQueueCapacity;
     @NonNull private final Function<Long, Batch> batchFactory;
@@ -27,24 +26,22 @@ class Batcher implements Runnable, AutoCloseable {
     @Override
     public void run() {
         Batch batch = null;
-        var startPoll = -1L;
         var lingerBudget = -1L;
         while (!closed) {
             try {
                 Operation operation = null;
                 if (batch == null) {
                     operation = operations.poll();
-                    lingerBudget = linger;
                 } else {
-                    startPoll = clock.millis();
                     operation = operations.poll(lingerBudget, MILLISECONDS);
-                    var pollDuration = Math.max(0, clock.millis() - startPoll);
-                    lingerBudget = Math.max(0L, lingerBudget - pollDuration);
+                    var spentLingerBudget = Math.max(0, clock.millis() - batch.getStartTime());
+                    lingerBudget = Math.max(0L, lingerBudget - spentLingerBudget);
                 }
 
                 if (operation != null) {
                     if (batch == null) {
                         batch = batchFactory.apply(shardId);
+                        lingerBudget = linger;
                     }
                     batch.add(operation);
                 }

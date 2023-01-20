@@ -13,6 +13,7 @@ import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOpe
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
 import io.streamnative.oxia.proto.ReadRequest;
 import io.streamnative.oxia.proto.WriteRequest;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -25,33 +26,37 @@ import lombok.Setter;
 
 sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
 
+    long getStartTime();
+
     @RequiredArgsConstructor(access = PACKAGE)
     abstract class BatchFactory implements Function<Long, Batch> {
         @Getter(PACKAGE)
         private final BatchContext ctx;
 
+        final Clock clock;
+
         public abstract Batch apply(Long shardId);
     }
 
     class WriteBatchFactory extends BatchFactory {
-        WriteBatchFactory(BatchContext ctx) {
-            super(ctx);
+        WriteBatchFactory(BatchContext ctx, Clock clock) {
+            super(ctx, clock);
         }
 
         @Override
         public Batch apply(Long shardId) {
-            return new WriteBatch(shardId, getCtx().requestTimeout());
+            return new WriteBatch(shardId, clock.millis(), getCtx().requestTimeout());
         }
     }
 
     class ReadBatchFactory extends BatchFactory {
-        ReadBatchFactory(BatchContext ctx) {
-            super(ctx);
+        ReadBatchFactory(BatchContext ctx, Clock clock) {
+            super(ctx, clock);
         }
 
         @Override
         public Batch apply(Long shardId) {
-            return new ReadBatch(shardId, getCtx().requestTimeout());
+            return new ReadBatch(shardId, clock.millis(), getCtx().requestTimeout());
         }
     }
 
@@ -72,8 +77,8 @@ sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
         private final List<DeleteOperation> deletes = new ArrayList<>();
         private final List<DeleteRangeOperation> deleteRanges = new ArrayList<>();
 
-        WriteBatch(long shardId, @NonNull Duration requestTimeout) {
-            super(shardId, requestTimeout);
+        WriteBatch(long shardId, long createTime, @NonNull Duration requestTimeout) {
+            super(shardId, createTime, requestTimeout);
         }
 
         public void add(@NonNull Operation operation) {
@@ -119,8 +124,8 @@ sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
             }
         }
 
-        ReadBatch(long shardId, @NonNull Duration requestTimeout) {
-            super(shardId, requestTimeout);
+        ReadBatch(long shardId, long createTime, @NonNull Duration requestTimeout) {
+            super(shardId, createTime, requestTimeout);
         }
 
         @Override
@@ -143,6 +148,7 @@ sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
     @RequiredArgsConstructor(access = PRIVATE)
     abstract class BatchBase {
         @Getter private final long shardId;
+        @Getter private final long startTime;
         @Getter private final Duration requestTimeout;
 
         @Getter
