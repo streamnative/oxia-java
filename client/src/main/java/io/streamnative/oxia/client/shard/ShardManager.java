@@ -53,7 +53,6 @@ public class ShardManager implements AutoCloseable {
             ShardStrategy strategy,
             String serviceAddress,
             Function<String, OxiaClientStub> clientSupplier) {
-        super();
         assignments = new Assignments(strategy);
         receiver =
                 new ReceiveWithRecovery(new GrpcReceiver(serviceAddress, clientSupplier, assignments));
@@ -232,7 +231,6 @@ public class ShardManager implements AutoCloseable {
             private final long maxIntervalMs;
 
             ExponentialBackoff() {
-                super();
                 var random = new Random();
                 randomLongSupplier = random::nextLong;
                 this.maxRandom = 500L;
