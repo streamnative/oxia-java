@@ -7,10 +7,11 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 
 @RequiredArgsConstructor(access = PACKAGE)
 public class Batcher implements Runnable, AutoCloseable {
@@ -35,13 +36,13 @@ public class Batcher implements Runnable, AutoCloseable {
                 Clock.systemUTC());
     }
 
-    public <R> CompletableFuture<R> add(Operation<R> operation) {
+    @SneakyThrows
+    public <R> void add(@NonNull Operation<R> operation) {
         var timeout = config.requestTimeout();
         try {
-            if (operations.offer(operation, timeout.toMillis(), MILLISECONDS)) {
-                return new CompletableFuture<>(); // TODO
-            } else {
-                return new CompletableFuture<>(); // TODO
+            if (!operations.offer(operation, timeout.toMillis(), MILLISECONDS)) {
+                throw new TimeoutException(
+                        "Queue full - could not add new operation. Consider increasing 'operationQueueCapacity'");
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

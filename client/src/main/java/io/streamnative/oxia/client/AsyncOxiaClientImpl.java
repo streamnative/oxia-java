@@ -38,27 +38,35 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     public @NonNull CompletableFuture<PutResult> put(
             @NonNull String key, byte @NonNull [] payload, long expectedVersion) {
         var shardId = shardManager.get(key);
-        return writeBatchManager
+        var callback = new CompletableFuture<PutResult>();
+        writeBatchManager
                 .getBatcher(shardId)
-                .add(new PutOperation(key, payload, expectedVersion));
+                .add(new PutOperation(callback, key, payload, expectedVersion));
+        return callback;
     }
 
     @Override
     public @NonNull CompletableFuture<PutResult> put(@NonNull String key, byte @NonNull [] payload) {
         var shardId = shardManager.get(key);
-        return writeBatchManager.getBatcher(shardId).add(new PutOperation(key, payload));
+        var callback = new CompletableFuture<PutResult>();
+        writeBatchManager.getBatcher(shardId).add(new PutOperation(callback, key, payload));
+        return callback;
     }
 
     @Override
     public @NonNull CompletableFuture<Boolean> delete(@NonNull String key, long expectedVersion) {
         var shardId = shardManager.get(key);
-        return writeBatchManager.getBatcher(shardId).add(new DeleteOperation(key, expectedVersion));
+        var callback = new CompletableFuture<Boolean>();
+        writeBatchManager.getBatcher(shardId).add(new DeleteOperation(callback, key, expectedVersion));
+        return callback;
     }
 
     @Override
     public @NonNull CompletableFuture<Boolean> delete(@NonNull String key) {
         var shardId = shardManager.get(key);
-        return writeBatchManager.getBatcher(shardId).add(new DeleteOperation(key));
+        var callback = new CompletableFuture<Boolean>();
+        writeBatchManager.getBatcher(shardId).add(new DeleteOperation(callback, key));
+        return callback;
     }
 
     @Override
@@ -67,7 +75,12 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         return CompletableFuture.allOf(
                 shardManager.getAll().stream()
                         .map(writeBatchManager::getBatcher)
-                        .map(b -> b.add(new DeleteRangeOperation(minKeyInclusive, maxKeyExclusive)))
+                        .map(
+                                b -> {
+                                    var callback = new CompletableFuture<Void>();
+                                    b.add(new DeleteRangeOperation(callback, minKeyInclusive, maxKeyExclusive));
+                                    return callback;
+                                })
                         .collect(toList())
                         .toArray(new CompletableFuture[0]));
     }
@@ -75,7 +88,9 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     @Override
     public @NonNull CompletableFuture<GetResult> get(@NonNull String key) {
         var shardId = shardManager.get(key);
-        return readBatchManager.getBatcher(shardId).add(new GetOperation(key));
+        var callback = new CompletableFuture<GetResult>();
+        readBatchManager.getBatcher(shardId).add(new GetOperation(callback, key));
+        return callback;
     }
 
     @Override
@@ -84,7 +99,12 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         List<CompletableFuture<List<String>>> responses =
                 shardManager.getAll().stream()
                         .map(readBatchManager::getBatcher)
-                        .map(b -> b.add(new ListOperation(minKeyInclusive, maxKeyExclusive)))
+                        .map(
+                                b -> {
+                                    var callback = new CompletableFuture<List<String>>();
+                                    b.add(new ListOperation(callback, minKeyInclusive, maxKeyExclusive));
+                                    return callback;
+                                })
                         .collect(toList());
         return CompletableFuture.allOf(responses.toArray(new CompletableFuture[0]))
                 .thenApply(

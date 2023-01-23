@@ -9,13 +9,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 import lombok.Getter;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 public class BatchManager implements AutoCloseable {
 
     private final ConcurrentMap<Long, Batcher> batchersByShardId = new ConcurrentHashMap<>();
-    private final Function<Long, Batcher> batcherFactory;
+    private final @NonNull Function<Long, Batcher> batcherFactory;
     private volatile boolean closed;
 
     public Batcher getBatcher(long shardId) {
@@ -48,6 +49,6 @@ public class BatchManager implements AutoCloseable {
 
     @RequiredArgsConstructor(access = PACKAGE)
     public static class ShutdownException extends Exception {
-        @Getter private final List<Exception> exceptions;
+        @Getter private final @NonNull List<Exception> exceptions;
     }
 }
