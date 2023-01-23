@@ -27,7 +27,7 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
-sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
+public sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
 
     long getStartTime();
 
@@ -37,7 +37,6 @@ sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
 
     long getShardId();
 
-    @NonNull
     Duration getRequestTimeout();
 
     void complete();
@@ -72,15 +71,21 @@ sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
 
         @Override
         public void complete() {
-            var response = getClientSupplier().get().write(toProto());
-            for (var i = 0; i < deletes.size(); i++) {
-                deletes.get(i).complete(response.getDeletes(i));
-            }
-            for (var i = 0; i < deleteRanges.size(); i++) {
-                deleteRanges.get(i).complete(response.getDeleteRanges(i));
-            }
-            for (var i = 0; i < puts.size(); i++) {
-                puts.get(i).complete(response.getPuts(i));
+            try {
+                var response = getClientSupplier().get().write(toProto());
+                for (var i = 0; i < deletes.size(); i++) {
+                    deletes.get(i).complete(response.getDeletes(i));
+                }
+                for (var i = 0; i < deleteRanges.size(); i++) {
+                    deleteRanges.get(i).complete(response.getDeleteRanges(i));
+                }
+                for (var i = 0; i < puts.size(); i++) {
+                    puts.get(i).complete(response.getPuts(i));
+                }
+            } catch (Throwable batchError) {
+                deletes.forEach(d -> d.fail(batchError));
+                deleteRanges.forEach(f -> f.fail(batchError));
+                puts.forEach(p -> p.fail(batchError));
             }
         }
 
@@ -125,12 +130,17 @@ sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
 
         @Override
         public void complete() {
-            var response = getClientSupplier().get().read(toProto());
-            for (var i = 0; i < gets.size(); i++) {
-                gets.get(i).complete(response.getGets(i));
-            }
-            for (var i = 0; i < lists.size(); i++) {
-                lists.get(i).complete(response.getLists(i));
+            try {
+                var response = getClientSupplier().get().read(toProto());
+                for (var i = 0; i < gets.size(); i++) {
+                    gets.get(i).complete(response.getGets(i));
+                }
+                for (var i = 0; i < lists.size(); i++) {
+                    lists.get(i).complete(response.getLists(i));
+                }
+            } catch (Throwable batchError) {
+                gets.forEach(g -> g.fail(batchError));
+                lists.forEach(l -> l.fail(batchError));
             }
         }
 
@@ -166,14 +176,18 @@ sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
         final @NonNull Clock clock;
 
         public abstract @NonNull Batch apply(@NonNull Long shardId);
+
+        BatchFactory(
+                @NonNull Supplier<OxiaClientBlockingStub> clientSupplier, @NonNull ClientConfig config) {
+            this(clientSupplier, config, Clock.systemUTC());
+        }
     }
 
     class WriteBatchFactory extends BatchFactory {
+
         WriteBatchFactory(
-                @NonNull Supplier<OxiaClientBlockingStub> clientSupplier,
-                @NonNull ClientConfig config,
-                @NonNull Clock clock) {
-            super(clientSupplier, config, clock);
+                @NonNull Supplier<OxiaClientBlockingStub> clientSupplier, @NonNull ClientConfig config) {
+            super(clientSupplier, config, Clock.systemUTC());
         }
 
         @Override
@@ -183,11 +197,10 @@ sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
     }
 
     class ReadBatchFactory extends BatchFactory {
+
         ReadBatchFactory(
-                @NonNull Supplier<OxiaClientBlockingStub> clientSupplier,
-                @NonNull ClientConfig ctx,
-                @NonNull Clock clock) {
-            super(clientSupplier, ctx, clock);
+                @NonNull Supplier<OxiaClientBlockingStub> clientSupplier, @NonNull ClientConfig config) {
+            super(clientSupplier, config);
         }
 
         @Override

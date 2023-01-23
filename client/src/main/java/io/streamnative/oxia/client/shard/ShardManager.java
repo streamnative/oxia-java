@@ -44,7 +44,7 @@ public class ShardManager implements AutoCloseable {
     private final Receiver receiver;
     private final Assignments assignments;
 
-    ShardManager(String serviceAddress, Function<String, OxiaClientStub> clientSupplier) {
+    public ShardManager(String serviceAddress, Function<String, OxiaClientStub> clientSupplier) {
         this(Xxh332HashRangeShardStrategy, serviceAddress, clientSupplier);
     }
 

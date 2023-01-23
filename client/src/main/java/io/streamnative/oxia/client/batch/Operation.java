@@ -34,6 +34,12 @@ import lombok.NonNull;
 
 public sealed interface Operation<R> permits ReadOperation, WriteOperation {
 
+    CompletableFuture<R> callback();
+
+    default void fail(Throwable t) {
+        callback().completeExceptionally(t);
+    }
+
     sealed interface ReadOperation<R> extends Operation<R> permits GetOperation, ListOperation {
         record GetOperation(@NonNull CompletableFuture<GetResult> callback, @NonNull String key)
                 implements ReadOperation<GetResult> {
@@ -43,10 +49,9 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
 
             void complete(@NonNull GetResponse response) {
                 switch (response.getStatus()) {
-                    case KEY_NOT_FOUND -> callback.completeExceptionally(new KeyNotFoundException(key));
+                    case KEY_NOT_FOUND -> fail(new KeyNotFoundException(key));
                     case OK -> callback.complete(GetResult.fromProto(response));
-                    default -> callback.completeExceptionally(
-                            new IllegalStateException("GRPC.Status: " + response.getStatus().name()));
+                    default -> fail(new IllegalStateException("GRPC.Status: " + response.getStatus().name()));
                 }
             }
         }
@@ -88,12 +93,10 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
 
             void complete(@NonNull PutResponse response) {
                 switch (response.getStatus()) {
-                    case UNEXPECTED_VERSION -> callback.completeExceptionally(
-                            new UnexpectedVersionException(expectedVersion));
-                    case KEY_NOT_FOUND -> callback.completeExceptionally(new KeyNotFoundException(key));
+                    case UNEXPECTED_VERSION -> fail(new UnexpectedVersionException(expectedVersion));
+                    case KEY_NOT_FOUND -> fail(new KeyNotFoundException(key));
                     case OK -> callback.complete(PutResult.fromProto(response));
-                    default -> callback.completeExceptionally(
-                            new IllegalStateException("GRPC.Status: " + response.getStatus().name()));
+                    default -> fail(new IllegalStateException("GRPC.Status: " + response.getStatus().name()));
                 }
             }
 
@@ -116,12 +119,10 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
 
             void complete(@NonNull DeleteResponse response) {
                 switch (response.getStatus()) {
-                    case UNEXPECTED_VERSION -> callback.completeExceptionally(
-                            new UnexpectedVersionException(expectedVersion));
+                    case UNEXPECTED_VERSION -> fail(new UnexpectedVersionException(expectedVersion));
                     case KEY_NOT_FOUND -> callback.complete(false);
                     case OK -> callback.complete(true);
-                    default -> callback.completeExceptionally(
-                            new IllegalStateException("GRPC.Status: " + response.getStatus().name()));
+                    default -> fail(new IllegalStateException("GRPC.Status: " + response.getStatus().name()));
                 }
             }
 
@@ -146,8 +147,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 if (response.getStatus() == Status.OK) {
                     callback.complete(null);
                 } else {
-                    callback.completeExceptionally(
-                            new IllegalStateException("GRPC.Status: " + response.getStatus().name()));
+                    fail(new IllegalStateException("GRPC.Status: " + response.getStatus().name()));
                 }
             }
         }
