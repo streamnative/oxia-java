@@ -3,7 +3,6 @@ package io.streamnative.oxia.client.shard;
 import static io.grpc.Status.fromThrowable;
 import static io.streamnative.oxia.client.shard.HashRangeShardStrategy.Xxh332HashRangeShardStrategy;
 import static java.util.Collections.unmodifiableMap;
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
@@ -11,6 +10,8 @@ import static lombok.AccessLevel.PACKAGE;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.grpc.stub.StreamObserver;
+import io.streamnative.oxia.client.grpc.ReceiveWithRecovery;
+import io.streamnative.oxia.client.grpc.Receiver;
 import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientStub;
 import io.streamnative.oxia.proto.ShardAssignmentsRequest;
 import io.streamnative.oxia.proto.ShardAssignmentsResponse;
@@ -19,18 +20,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Random;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.LongFunction;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import lombok.NonNull;
@@ -161,91 +156,6 @@ public class ShardManager implements AutoCloseable {
         }
     }
 
-    interface Receiver extends AutoCloseable {
-        @NonNull
-        CompletableFuture<Void> receive();
-
-        @NonNull
-        CompletableFuture<Void> bootstrap();
-    }
-
-    @RequiredArgsConstructor(access = PACKAGE)
-    @VisibleForTesting
-    static class ReceiveWithRecovery implements Receiver {
-        private final ScheduledExecutorService executor;
-        private final CompletableFuture<Void> closed;
-        private final AtomicLong attemptCounter;
-        private final LongFunction<Long> retryIntervalFn;
-        private final Receiver receiver;
-
-        ReceiveWithRecovery(@NonNull Receiver receiver) {
-            this(
-                    Executors.newSingleThreadScheduledExecutor(
-                            r -> new Thread(r, "shard-manager-assignments-receiver")),
-                    new CompletableFuture<>(),
-                    new AtomicLong(),
-                    new ExponentialBackoff(),
-                    receiver);
-        }
-
-        @Override
-        public @NonNull CompletableFuture<Void> receive() {
-            executor.execute(this::receiveWithRetry);
-            return closed;
-        }
-
-        @Override
-        public @NonNull CompletableFuture<Void> bootstrap() {
-            return receiver.bootstrap();
-        }
-
-        private void receiveWithRetry() {
-            while (!closed.isDone()) {
-                var attempt = attemptCounter.getAndIncrement();
-                try {
-                    if (attempt > 0) {
-                        var interval = retryIntervalFn.apply(attempt);
-                        Thread.sleep(interval);
-                    }
-                    receiver.receive().get();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException(e);
-                } catch (ExecutionException e) {
-                    log.error("Shard assignments stream terminated", e.getCause());
-                }
-            }
-        }
-
-        @Override
-        public void close() throws Exception {
-            closed.complete(null);
-            executor.shutdown();
-        }
-
-        @RequiredArgsConstructor(access = PACKAGE)
-        @VisibleForTesting
-        static class ExponentialBackoff implements LongFunction<Long> {
-            private final Supplier<Long> randomLongSupplier;
-            private final long maxRandom;
-            private final long maxIntervalMs;
-
-            ExponentialBackoff() {
-                var random = new Random();
-                randomLongSupplier = random::nextLong;
-                this.maxRandom = 500L;
-                this.maxIntervalMs = SECONDS.toMillis(30);
-            }
-
-            @Override
-            public Long apply(long retryIndex) {
-                return Math.min(
-                        ((long) Math.pow(2.0, retryIndex)) + (Math.abs(randomLongSupplier.get()) % maxRandom),
-                        maxIntervalMs);
-            }
-        }
-    }
-
     @RequiredArgsConstructor(access = PACKAGE)
     @VisibleForTesting
     static class GrpcReceiver implements Receiver {
@@ -280,7 +190,6 @@ public class ShardManager implements AutoCloseable {
                                     // Signal to the manager that we have some initial shard assignments
                                     bootstrap.complete(null);
                                 });
-                System.out.println(observer);
                 // Start the stream
                 var client = clientSupplier.apply(serviceAddress);
                 client.shardAssignments(ShardAssignmentsRequest.getDefaultInstance(), observer);
