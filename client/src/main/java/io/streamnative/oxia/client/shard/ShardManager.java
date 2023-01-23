@@ -58,20 +58,20 @@ public class ShardManager implements AutoCloseable {
                 new ReceiveWithRecovery(new GrpcReceiver(serviceAddress, clientSupplier, assignments));
     }
 
-    CompletableFuture<Void> start() {
+    public CompletableFuture<Void> start() {
         receiver.receive();
         return receiver.bootstrap();
     }
 
-    int get(String key) {
+    public int get(String key) {
         return assignments.get(key);
     }
 
-    List<Integer> getAll() {
+    public List<Integer> getAll() {
         return assignments.getAll();
     }
 
-    String leader(int shardId) {
+    public String leader(int shardId) {
         return assignments.leader(shardId);
     }
 

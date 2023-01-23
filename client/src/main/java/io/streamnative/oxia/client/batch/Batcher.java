@@ -4,19 +4,26 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static lombok.AccessLevel.PACKAGE;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor(access = PACKAGE)
-class Batcher implements Runnable, AutoCloseable {
-    record Config(long shardId, long lingerMs, int maxRequestsPerBatch, int operationQueueCapacity) {}
+public class Batcher implements Runnable, AutoCloseable {
+    record Config(
+            long shardId,
+            long lingerMs,
+            int maxRequestsPerBatch,
+            int operationQueueCapacity,
+            @NonNull Duration requestTimeout) {}
 
     @NonNull private final Config config;
     @NonNull private final Function<Long, Batch> batchFactory;
-    @NonNull private final BlockingQueue<Operation> operations;
+    @NonNull private final BlockingQueue<Operation<?>> operations;
     @NonNull private final Clock clock;
     private volatile boolean closed;
 
@@ -28,13 +35,27 @@ class Batcher implements Runnable, AutoCloseable {
                 Clock.systemUTC());
     }
 
+    public <R> CompletableFuture<R> add(Operation<R> operation) {
+        var timeout = config.requestTimeout();
+        try {
+            if (operations.offer(operation, timeout.toMillis(), MILLISECONDS)) {
+                return new CompletableFuture<>(); // TODO
+            } else {
+                return new CompletableFuture<>(); // TODO
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        }
+    }
+
     @Override
     public void run() {
         Batch batch = null;
         var lingerBudgetMs = -1L;
         while (!closed) {
             try {
-                Operation operation = null;
+                Operation<?> operation = null;
                 if (batch == null) {
                     operation = operations.poll();
                 } else {
@@ -58,7 +79,7 @@ class Batcher implements Runnable, AutoCloseable {
                     }
                 }
             } catch (InterruptedException e) {
-                batch.setFailure(e);
+                //                batch.setFailure(e);
             }
         }
     }

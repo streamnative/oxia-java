@@ -11,6 +11,7 @@ import io.streamnative.oxia.client.batch.Operation.ReadOperation.ListOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
+import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientFutureStub;
 import io.streamnative.oxia.proto.ReadRequest;
 import io.streamnative.oxia.proto.WriteRequest;
 import java.time.Clock;
@@ -19,6 +20,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +32,8 @@ sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
 
     @RequiredArgsConstructor(access = PACKAGE)
     abstract class BatchFactory implements Function<Long, Batch> {
+        final Supplier<OxiaClientFutureStub> clientSupplier;
+
         @Getter(PACKAGE)
         private final BatchContext ctx;
 
@@ -39,28 +43,29 @@ sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
     }
 
     class WriteBatchFactory extends BatchFactory {
-        WriteBatchFactory(BatchContext ctx, Clock clock) {
-            super(ctx, clock);
+        WriteBatchFactory(
+                Supplier<OxiaClientFutureStub> clientSupplier, BatchContext ctx, Clock clock) {
+            super(clientSupplier, ctx, clock);
         }
 
         @Override
         public Batch apply(Long shardId) {
-            return new WriteBatch(shardId, clock.millis(), getCtx().requestTimeout());
+            return new WriteBatch(clientSupplier, shardId, clock.millis(), getCtx().requestTimeout());
         }
     }
 
     class ReadBatchFactory extends BatchFactory {
-        ReadBatchFactory(BatchContext ctx, Clock clock) {
-            super(ctx, clock);
+        ReadBatchFactory(Supplier<OxiaClientFutureStub> clientSupplier, BatchContext ctx, Clock clock) {
+            super(clientSupplier, ctx, clock);
         }
 
         @Override
         public Batch apply(Long shardId) {
-            return new ReadBatch(shardId, clock.millis(), getCtx().requestTimeout());
+            return new ReadBatch(clientSupplier, shardId, clock.millis(), getCtx().requestTimeout());
         }
     }
 
-    void add(@NonNull Operation operation);
+    void add(@NonNull Operation<?> operation);
 
     int size();
 
@@ -77,11 +82,15 @@ sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
         private final List<DeleteOperation> deletes = new ArrayList<>();
         private final List<DeleteRangeOperation> deleteRanges = new ArrayList<>();
 
-        WriteBatch(long shardId, long createTime, @NonNull Duration requestTimeout) {
-            super(shardId, createTime, requestTimeout);
+        WriteBatch(
+                @NonNull Supplier<OxiaClientFutureStub> clientSupplier,
+                long shardId,
+                long createTime,
+                @NonNull Duration requestTimeout) {
+            super(clientSupplier, shardId, createTime, requestTimeout);
         }
 
-        public void add(@NonNull Operation operation) {
+        public void add(@NonNull Operation<?> operation) {
             if (operation instanceof PutOperation p) {
                 puts.add(p);
             } else if (operation instanceof DeleteOperation d) {
@@ -97,7 +106,9 @@ sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
         }
 
         @Override
-        public void complete() {}
+        public void complete() {
+            var write = getClientSupplier().get().write(toProto());
+        }
 
         WriteRequest toProto() {
             return WriteRequest.newBuilder()
@@ -116,7 +127,7 @@ sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
 
         private Instant time;
 
-        public void add(@NonNull Operation operation) {
+        public void add(@NonNull Operation<?> operation) {
             if (operation instanceof GetOperation g) {
                 gets.add(g);
             } else if (operation instanceof ListOperation l) {
@@ -124,8 +135,12 @@ sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
             }
         }
 
-        ReadBatch(long shardId, long createTime, @NonNull Duration requestTimeout) {
-            super(shardId, createTime, requestTimeout);
+        ReadBatch(
+                @NonNull Supplier<OxiaClientFutureStub> clientSupplier,
+                long shardId,
+                long createTime,
+                @NonNull Duration requestTimeout) {
+            super(clientSupplier, shardId, createTime, requestTimeout);
         }
 
         @Override
@@ -134,7 +149,9 @@ sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
         }
 
         @Override
-        public void complete() {}
+        public void complete() {
+            var write = getClientSupplier().get().read(toProto());
+        }
 
         ReadRequest toProto() {
             return ReadRequest.newBuilder()
@@ -147,6 +164,7 @@ sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
 
     @RequiredArgsConstructor(access = PRIVATE)
     abstract class BatchBase {
+        @Getter private final Supplier<OxiaClientFutureStub> clientSupplier;
         @Getter private final long shardId;
         @Getter private final long startTime;
         @Getter private final Duration requestTimeout;

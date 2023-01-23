@@ -18,7 +18,7 @@ public class BatchManager implements AutoCloseable {
     private final Function<Long, Batcher> batcherFactory;
     private volatile boolean closed;
 
-    Batcher getBatcher(long shardId) {
+    public Batcher getBatcher(long shardId) {
         if (closed) {
             throw new IllegalStateException("Batch manager is closed");
         }
