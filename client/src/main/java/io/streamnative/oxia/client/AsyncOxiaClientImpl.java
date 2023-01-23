@@ -11,6 +11,7 @@ import io.streamnative.oxia.client.batch.Operation.ReadOperation.ListOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
+import io.streamnative.oxia.client.notify.NotificationManager;
 import io.streamnative.oxia.client.shard.ShardManager;
 import java.util.Collection;
 import java.util.List;
@@ -23,11 +24,16 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 class AsyncOxiaClientImpl implements AsyncOxiaClient {
     private final ShardManager shardManager;
+    private final AutoCloseable notificationManager;
     private final BatchManager readBatchManager;
     private final BatchManager writeBatchManager;
 
     AsyncOxiaClientImpl(ClientConfig config) {
         shardManager = new ShardManager(config.serviceAddress(), null);
+        notificationManager =
+                config.notificationCallback() == null
+                        ? NotificationManager.NullObject
+                        : new NotificationManager(config.serviceAddress(), null, config.notificationCallback());
         readBatchManager = BatchManager.newReadBatchManager(config, null);
         writeBatchManager = BatchManager.newWriteBatchManager(config, null);
     }
@@ -129,6 +135,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     public void close() throws Exception {
         readBatchManager.close();
         writeBatchManager.close();
+        notificationManager.close();
         shardManager.close();
     }
 }
