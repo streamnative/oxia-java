@@ -5,25 +5,19 @@ import static java.util.Collections.singletonList;
 import static java.util.Map.entry;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.awaitility.Awaitility.await;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.streamnative.oxia.client.grpc.Receiver;
 import io.streamnative.oxia.proto.ShardAssignmentsResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.function.Consumer;
-import java.util.function.LongFunction;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -144,26 +138,6 @@ public class ShardManagerTest {
     }
 
     @Nested
-    @DisplayName("Tests for the exponential backoff of retries")
-    class ExponentialBackoffTests {
-        @Test
-        void exponentialBackOffFn() {
-            var fn = new ShardManager.ReceiveWithRecovery.ExponentialBackoff(() -> -10L, 100L, 1000L);
-            assertThat(fn.apply(1)).isEqualTo(12L);
-            assertThat(fn.apply(2)).isEqualTo(14L);
-            assertThat(fn.apply(3)).isEqualTo(18L);
-            assertThat(fn.apply(4)).isEqualTo(26L);
-            assertThat(fn.apply(5)).isEqualTo(42L);
-            assertThat(fn.apply(6)).isEqualTo(74L);
-            assertThat(fn.apply(7)).isEqualTo(138L);
-            assertThat(fn.apply(8)).isEqualTo(266L);
-            assertThat(fn.apply(9)).isEqualTo(522L);
-            assertThat(fn.apply(10)).isEqualTo(1000L);
-            assertThat(fn.apply(11)).isEqualTo(1000L);
-        }
-    }
-
-    @Nested
     @DisplayName("Tests for the GRPC Stream Observer")
     class ObserverTests {
         @Test
@@ -202,7 +176,7 @@ public class ShardManagerTest {
     class ManagerTests {
         @Mock ShardManager.Assignments assignments;
         @Mock CompletableFuture<Void> bootstrap;
-        @Mock ShardManager.Receiver receiver;
+        @Mock Receiver receiver;
         ShardManager manager;
 
         @BeforeEach
@@ -240,60 +214,6 @@ public class ShardManagerTest {
         void leader() {
             manager.leader(1);
             verify(assignments).leader(1);
-        }
-    }
-
-    @Nested
-    @DisplayName("Receiver recovery tests")
-    class RecoveryTests {
-        @Mock LongFunction<Long> retryIntervalFn;
-        @Mock ShardManager.Receiver receiver;
-        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
-        CompletableFuture<Void> closed = new CompletableFuture<>();
-        CompletableFuture<Void> bootstrap = new CompletableFuture<>();
-        CompletableFuture<Void> terminalComplete = new CompletableFuture<>();
-        CompletableFuture<Void> terminalError = new CompletableFuture<>();
-        CompletableFuture<Void> terminalBlocking = new CompletableFuture<>();
-        AtomicLong retryCounter = new AtomicLong();
-        ShardManager.ReceiveWithRecovery recovery;
-
-        @BeforeEach
-        void mocking() {
-            recovery =
-                    new ShardManager.ReceiveWithRecovery(
-                            executor, closed, retryCounter, retryIntervalFn, receiver);
-            terminalComplete.complete(null);
-            terminalError.completeExceptionally(new RuntimeException());
-        }
-
-        @Test
-        void retry() throws Exception {
-            //noinspection unchecked
-            when(receiver.receive())
-                    .thenReturn(terminalError, terminalError, terminalComplete, terminalBlocking);
-            when(retryIntervalFn.apply(anyLong())).thenReturn(1L);
-            var terminated = recovery.receive();
-            await().untilAsserted(() -> assertThat(retryCounter).hasValue(4));
-            recovery.close();
-            await().until(terminated::isDone);
-            verify(receiver, times(4)).receive();
-            var inOrder = inOrder(retryIntervalFn);
-            inOrder.verify(retryIntervalFn).apply(1);
-            inOrder.verify(retryIntervalFn).apply(2);
-            inOrder.verify(retryIntervalFn).apply(3);
-        }
-
-        @Test
-        void close() throws Exception {
-            recovery.close();
-            assertThat(executor.isShutdown()).isTrue();
-            assertThat(closed).isCompleted();
-        }
-
-        @Test
-        void bootstrap() {
-            when(receiver.bootstrap()).thenReturn(bootstrap);
-            assertThat(recovery.bootstrap()).isEqualTo(bootstrap);
         }
     }
 }
