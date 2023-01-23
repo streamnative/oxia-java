@@ -61,18 +61,15 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
     }
 
     public @NonNull AsyncOxiaClient asyncClient() {
-        return new AsyncOxiaClientImpl(
-                null, // TODO
-                null, // TODO
-                null // TODO
-                //                new ClientConfig(
-                //                        serviceAddress,
-                //                        notificationCallback,
-                //                        requestTimeout,
-                //                        batchLinger,
-                //                        maxRequestsPerBatch,
-                //                        operationQueueCapacity)
-                );
+        var config =
+                new ClientConfig(
+                        serviceAddress,
+                        notificationCallback,
+                        requestTimeout,
+                        batchLinger,
+                        maxRequestsPerBatch,
+                        operationQueueCapacity);
+        return new AsyncOxiaClientImpl(config);
     }
 
     public @NonNull SyncOxiaClient syncClient() {
