@@ -8,19 +8,19 @@ import lombok.NonNull;
 public interface SyncOxiaClient extends AutoCloseable {
 
     /**
-     * Conditionally associates a payload with a key if the server's version of the record is as
+     * Conditionally associates a payload with a key if the server's versionId of the record is as
      * specified, at the instant when the put is applied. The put will not be applied if the server's
-     * version of the record does not match the expectation set in the call.
+     * versionId of the record does not match the expectation set in the call.
      *
      * @param key The key with which the payload should be associated.
      * @param payload The payload to associate with the key.
-     * @param expectedVersion The version of the record that this put operation is scoped to.
+     * @param expectedVersionId The versionId of the record that this put operation is scoped to.
      * @return The result of the put at the specified key.
-     * @throws UnexpectedVersionException The version at the server did not that match supplied in the
-     *     call.
+     * @throws UnexpectedVersionIdException The versionId at the server did not that match supplied in
+     *     the call.
      */
-    PutResult put(@NonNull String key, byte @NonNull [] payload, long expectedVersion)
-            throws UnexpectedVersionException;
+    PutResult put(@NonNull String key, byte @NonNull [] payload, long expectedVersionId)
+            throws UnexpectedVersionIdException;
 
     /**
      * Associates a payload with a key.
@@ -33,17 +33,17 @@ public interface SyncOxiaClient extends AutoCloseable {
 
     /**
      * Conditionally deletes the record associated with the key if the record exists, and the server's
-     * version of the record is as specified, at the instant when the delete is applied. The delete
-     * will not be applied if the server's version of the record does not match the expectation set in
-     * the call.
+     * versionId of the record is as specified, at the instant when the delete is applied. The delete
+     * will not be applied if the server's versionId of the record does not match the expectation set
+     * in the call.
      *
      * @param key Deletes the record with the specified key.
-     * @param expectedVersion The version of the record that this delete operation is scoped to.
+     * @param expectedVersionId The versionId of the record that this delete operation is scoped to.
      * @return True if the key was actually present on the server, false otherwise.
-     * @throws UnexpectedVersionException The version at the server did not that match supplied in the
-     *     call.
+     * @throws UnexpectedVersionIdException The versionId at the server did not that match supplied in
+     *     the call.
      */
-    boolean delete(@NonNull String key, long expectedVersion) throws UnexpectedVersionException;
+    boolean delete(@NonNull String key, long expectedVersionId) throws UnexpectedVersionIdException;
 
     /**
      * Deletes the record associated with the key if the record exists.

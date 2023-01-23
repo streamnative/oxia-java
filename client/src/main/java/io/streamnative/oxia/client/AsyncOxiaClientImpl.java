@@ -34,12 +34,12 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
     @Override
     public @NonNull CompletableFuture<PutResult> put(
-            @NonNull String key, byte @NonNull [] payload, long expectedVersion) {
+            @NonNull String key, byte @NonNull [] payload, long expectedVersionId) {
         var shardId = shardManager.get(key);
         var callback = new CompletableFuture<PutResult>();
         writeBatchManager
                 .getBatcher(shardId)
-                .add(new PutOperation(callback, key, payload, expectedVersion));
+                .add(new PutOperation(callback, key, payload, expectedVersionId));
         return callback;
     }
 
@@ -52,10 +52,12 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     }
 
     @Override
-    public @NonNull CompletableFuture<Boolean> delete(@NonNull String key, long expectedVersion) {
+    public @NonNull CompletableFuture<Boolean> delete(@NonNull String key, long expectedVersionId) {
         var shardId = shardManager.get(key);
         var callback = new CompletableFuture<Boolean>();
-        writeBatchManager.getBatcher(shardId).add(new DeleteOperation(callback, key, expectedVersion));
+        writeBatchManager
+                .getBatcher(shardId)
+                .add(new DeleteOperation(callback, key, expectedVersionId));
         return callback;
     }
 

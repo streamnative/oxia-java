@@ -16,7 +16,7 @@ import com.google.protobuf.ByteString;
 import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.KeyNotFoundException;
 import io.streamnative.oxia.client.api.PutResult;
-import io.streamnative.oxia.client.api.UnexpectedVersionException;
+import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
 import io.streamnative.oxia.proto.DeleteRangeRequest;
 import io.streamnative.oxia.proto.DeleteRangeResponse;
 import io.streamnative.oxia.proto.DeleteRequest;
@@ -93,7 +93,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
 
             void complete(@NonNull PutResponse response) {
                 switch (response.getStatus()) {
-                    case UNEXPECTED_VERSION -> fail(new UnexpectedVersionException(expectedVersion));
+                    case UNEXPECTED_VERSION -> fail(new UnexpectedVersionIdException(expectedVersion));
                     case KEY_NOT_FOUND -> fail(new KeyNotFoundException(key));
                     case OK -> callback.complete(PutResult.fromProto(response));
                     default -> fail(new IllegalStateException("GRPC.Status: " + response.getStatus().name()));
@@ -119,7 +119,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
 
             void complete(@NonNull DeleteResponse response) {
                 switch (response.getStatus()) {
-                    case UNEXPECTED_VERSION -> fail(new UnexpectedVersionException(expectedVersion));
+                    case UNEXPECTED_VERSION -> fail(new UnexpectedVersionIdException(expectedVersion));
                     case KEY_NOT_FOUND -> callback.complete(false);
                     case OK -> callback.complete(true);
                     default -> fail(new IllegalStateException("GRPC.Status: " + response.getStatus().name()));
