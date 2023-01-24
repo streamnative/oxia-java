@@ -7,4 +7,8 @@
     <Class name="io.streamnative.oxia.client.api.GetResult" />
     <Bug pattern="EI_EXPOSE_REP2" />
   </Match>
+  <Match>
+    <Class name="io.streamnative.oxia.client.OxiaClientBuilder" />
+    <Bug pattern="URF_UNREAD_FIELD" />
+  </Match>
 </FindBugsFilter>

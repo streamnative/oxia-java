@@ -6,7 +6,7 @@ import java.util.function.Consumer;
 import lombok.NonNull;
 
 public class ProtoUtil {
-    public static long versionNotExists = -1;
+    public static final long versionNotExists = -1;
 
     public static int longToUint32(long value) {
         return ByteBuffer.allocate(8).putLong(value).position(4).getInt();
