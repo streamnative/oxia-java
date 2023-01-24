@@ -297,14 +297,12 @@ class BatchTest {
 
         @Test
         public void completeOk() {
+            var getResponse = GetResponse.newBuilder().setStatus(KEY_NOT_FOUND).build();
+            var listResponse = ListResponse.newBuilder().addAllKeys(List.of("a", "b", "c")).build();
             readResponses.add(
                     o ->
                             o.onNext(
-                                    ReadResponse.newBuilder()
-                                            .addGets(GetResponse.newBuilder().setStatus(KEY_NOT_FOUND).build())
-                                            .addLists(
-                                                    ListResponse.newBuilder().addAllKeys(List.of("a", "b", "c")).build())
-                                            .build()));
+                                    ReadResponse.newBuilder().addGets(getResponse).addLists(listResponse).build()));
             readResponses.add(StreamObserver::onCompleted);
 
             batch.add(get);

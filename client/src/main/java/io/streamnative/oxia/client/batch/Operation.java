@@ -30,6 +30,7 @@ import io.streamnative.oxia.proto.PutResponse;
 import io.streamnative.oxia.proto.Status;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import lombok.NonNull;
 
@@ -120,6 +121,13 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 return expectedVersion == that.expectedVersion
                         && key.equals(that.key)
                         && Arrays.equals(payload, that.payload);
+            }
+
+            @Override
+            public int hashCode() {
+                int result = Objects.hash(key, expectedVersion);
+                result = 31 * result + Arrays.hashCode(payload);
+                return result;
             }
         }
 

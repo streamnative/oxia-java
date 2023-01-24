@@ -3,6 +3,7 @@ package io.streamnative.oxia.client.api;
 
 import io.streamnative.oxia.proto.GetResponse;
 import java.util.Arrays;
+import java.util.Objects;
 import lombok.NonNull;
 
 /**
@@ -27,5 +28,12 @@ public record GetResult(byte @NonNull [] payload, @NonNull Stat stat) {
         }
         GetResult getResult = (GetResult) o;
         return Arrays.equals(payload, getResult.payload) && stat.equals(getResult.stat);
+    }
+
+    @Override
+    public int hashCode() {
+        int result = Objects.hash(stat);
+        result = 31 * result + Arrays.hashCode(payload);
+        return result;
     }
 }

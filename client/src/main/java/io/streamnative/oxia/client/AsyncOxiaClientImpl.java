@@ -26,7 +26,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     private final BatchManager readBatchManager;
     private final BatchManager writeBatchManager;
 
-    public AsyncOxiaClientImpl(ClientConfig config) {
+    AsyncOxiaClientImpl(ClientConfig config) {
         shardManager = new ShardManager(config.serviceAddress(), null);
         readBatchManager = BatchManager.newReadBatchManager(config, null);
         writeBatchManager = BatchManager.newReadBatchManager(config, null);
