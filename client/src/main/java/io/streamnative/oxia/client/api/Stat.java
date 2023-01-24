@@ -43,6 +43,7 @@ public record Stat(long version, long createdTimestamp, long modifiedTimestamp) 
     }
 
     public static @NonNull Stat fromProto(@NonNull io.streamnative.oxia.proto.Stat response) {
-        return null; // TODO
+        return new Stat(
+                response.getVersion(), response.getCreatedTimestamp(), response.getModifiedTimestamp());
     }
 }

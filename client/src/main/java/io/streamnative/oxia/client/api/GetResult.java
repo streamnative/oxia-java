@@ -2,6 +2,7 @@ package io.streamnative.oxia.client.api;
 
 
 import io.streamnative.oxia.proto.GetResponse;
+import java.util.Arrays;
 import lombok.NonNull;
 
 /**
@@ -13,5 +14,18 @@ import lombok.NonNull;
 public record GetResult(byte @NonNull [] payload, @NonNull Stat stat) {
     public static @NonNull GetResult fromProto(@NonNull GetResponse response) {
         return new GetResult(response.getPayload().toByteArray(), Stat.fromProto(response.getStat()));
+    }
+
+    // Recquired as records do not handle array equals
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        GetResult getResult = (GetResult) o;
+        return Arrays.equals(payload, getResult.payload) && stat.equals(getResult.stat);
     }
 }

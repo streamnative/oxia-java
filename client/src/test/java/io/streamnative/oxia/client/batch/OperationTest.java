@@ -1,0 +1,318 @@
+package io.streamnative.oxia.client.batch;
+
+import static io.streamnative.oxia.proto.Status.KEY_NOT_FOUND;
+import static io.streamnative.oxia.proto.Status.OK;
+import static io.streamnative.oxia.proto.Status.UNEXPECTED_VERSION;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import com.google.protobuf.ByteString;
+import io.streamnative.oxia.client.api.GetResult;
+import io.streamnative.oxia.client.api.KeyNotFoundException;
+import io.streamnative.oxia.client.api.PutResult;
+import io.streamnative.oxia.client.api.UnexpectedVersionException;
+import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
+import io.streamnative.oxia.client.batch.Operation.ReadOperation.ListOperation;
+import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
+import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
+import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
+import io.streamnative.oxia.proto.DeleteRangeResponse;
+import io.streamnative.oxia.proto.DeleteResponse;
+import io.streamnative.oxia.proto.GetResponse;
+import io.streamnative.oxia.proto.ListResponse;
+import io.streamnative.oxia.proto.PutResponse;
+import io.streamnative.oxia.proto.Stat;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+@ExtendWith(MockitoExtension.class)
+class OperationTest {
+
+    @Nested
+    @DisplayName("Tests of get operation")
+    class GetOperationTests {
+
+        CompletableFuture<GetResult> callback = new CompletableFuture<>();
+        GetOperation op = new GetOperation(callback, "key");
+
+        @Test
+        void toProto() {
+            var request = op.toProto();
+            assertThat(request.getKey()).isEqualTo(op.key());
+        }
+
+        @Test
+        void completeKeyNotFound() {
+            var response = GetResponse.newBuilder().setStatus(KEY_NOT_FOUND).build();
+            op.complete(response);
+            assertThat(callback).isCompletedExceptionally();
+            assertThatThrownBy(callback::get)
+                    .satisfies(
+                            e -> {
+                                assertThat(e).isInstanceOf(ExecutionException.class);
+                                assertThat(e.getCause())
+                                        .isInstanceOf(KeyNotFoundException.class)
+                                        .hasMessage("key not found: key");
+                            });
+        }
+
+        @Test
+        void completeOk() {
+            var payload = "hello".getBytes(UTF_8);
+            var response =
+                    GetResponse.newBuilder()
+                            .setStatus(OK)
+                            .setPayload(ByteString.copyFrom(payload))
+                            .setStat(
+                                    Stat.newBuilder()
+                                            .setVersion(1L)
+                                            .setCreatedTimestamp(2L)
+                                            .setModifiedTimestamp(3L)
+                                            .build())
+                            .build();
+            op.complete(response);
+            assertThat(callback)
+                    .isCompletedWithValueMatching(
+                            r ->
+                                    r.equals(
+                                            new GetResult(
+                                                    payload, new io.streamnative.oxia.client.api.Stat(1L, 2L, 3L))));
+        }
+
+        @Test
+        void completeOther() {
+            var response = GetResponse.newBuilder().setStatusValue(-1).build();
+            op.complete(response);
+            assertThat(callback).isCompletedExceptionally();
+            assertThatThrownBy(callback::get)
+                    .satisfies(
+                            e -> {
+                                assertThat(e).isInstanceOf(ExecutionException.class);
+                                assertThat(e.getCause())
+                                        .isInstanceOf(IllegalStateException.class)
+                                        .hasMessage("GRPC.Status: UNRECOGNIZED");
+                            });
+        }
+    }
+
+    @Nested
+    @DisplayName("Tests of list operation")
+    class ListOperationTests {
+        CompletableFuture<List<String>> callback = new CompletableFuture<>();
+        ListOperation op = new ListOperation(callback, "a", "b");
+
+        @Test
+        void toProto() {
+            var request = op.toProto();
+            assertThat(request.getStartInclusive()).isEqualTo(op.minKeyInclusive());
+            assertThat(request.getEndExclusive()).isEqualTo(op.maxKeyInclusive());
+        }
+
+        @Test
+        void completeOk() {
+            var response = ListResponse.newBuilder().addAllKeys(List.of("a", "b", "c")).build();
+            op.complete(response);
+            assertThat(callback).isCompletedWithValueMatching(r -> r.equals(List.of("a", "b", "c")));
+        }
+    }
+
+    @Nested
+    @DisplayName("Tests of put operation")
+    class PutOperationTests {
+        CompletableFuture<PutResult> callback = new CompletableFuture<>();
+        byte[] payload = "hello".getBytes(UTF_8);
+        PutOperation op = new PutOperation(callback, "key", payload, 10L);
+
+        @Test
+        void toProtoNoExpectedVersion() {
+            var op = new PutOperation(callback, "key", payload);
+            var request = op.toProto();
+            assertThat(request)
+                    .satisfies(
+                            r -> {
+                                assertThat(r.getKey()).isEqualTo(op.key());
+                                assertThat(r.getPayload().toByteArray()).isEqualTo(op.payload());
+                                assertThat(r.hasExpectedVersion()).isFalse();
+                            });
+        }
+
+        @Test
+        void toProtoExpectedVersion() {
+            var op = new PutOperation(callback, "key", payload, 1L);
+            var request = op.toProto();
+            assertThat(request)
+                    .satisfies(
+                            r -> {
+                                assertThat(r.getKey()).isEqualTo(op.key());
+                                assertThat(r.getPayload().toByteArray()).isEqualTo(op.payload());
+                                assertThat(r.getExpectedVersion()).isEqualTo(1L);
+                            });
+        }
+
+        @Test
+        void completeUnexpectedVersion() {
+            var response = PutResponse.newBuilder().setStatus(UNEXPECTED_VERSION).build();
+            op.complete(response);
+            assertThat(callback).isCompletedExceptionally();
+            assertThatThrownBy(callback::get)
+                    .satisfies(
+                            e -> {
+                                assertThat(e).isInstanceOf(ExecutionException.class);
+                                assertThat(e.getCause())
+                                        .isInstanceOf(UnexpectedVersionException.class)
+                                        .hasMessage("unexpected version: 10");
+                            });
+        }
+
+        @Test
+        void completeOk() {
+            var payload = "hello".getBytes(UTF_8);
+            var response =
+                    PutResponse.newBuilder()
+                            .setStatus(OK)
+                            .setStat(
+                                    Stat.newBuilder()
+                                            .setVersion(1L)
+                                            .setCreatedTimestamp(2L)
+                                            .setModifiedTimestamp(3L)
+                                            .build())
+                            .build();
+            op.complete(response);
+            assertThat(callback)
+                    .isCompletedWithValueMatching(
+                            r -> r.equals(new PutResult(new io.streamnative.oxia.client.api.Stat(1L, 2L, 3L))));
+        }
+
+        @Test
+        void completeOther() {
+            var response = PutResponse.newBuilder().setStatusValue(-1).build();
+            op.complete(response);
+            assertThat(callback).isCompletedExceptionally();
+            assertThatThrownBy(callback::get)
+                    .satisfies(
+                            e -> {
+                                assertThat(e).isInstanceOf(ExecutionException.class);
+                                assertThat(e.getCause())
+                                        .isInstanceOf(IllegalStateException.class)
+                                        .hasMessage("GRPC.Status: UNRECOGNIZED");
+                            });
+        }
+    }
+
+    @Nested
+    @DisplayName("Tests of delete operation")
+    class DeleteOperationTests {
+        CompletableFuture<Boolean> callback = new CompletableFuture<>();
+        DeleteOperation op = new DeleteOperation(callback, "key", 10L);
+
+        @Test
+        void toProtoNoExpectedVersion() {
+            var op = new DeleteOperation(callback, "key");
+            var request = op.toProto();
+            assertThat(request)
+                    .satisfies(
+                            r -> {
+                                assertThat(r.getKey()).isEqualTo(op.key());
+                                assertThat(r.hasExpectedVersion()).isFalse();
+                            });
+        }
+
+        @Test
+        void toProtoExpectedVersion() {
+            var op = new DeleteOperation(callback, "key", 1L);
+            var request = op.toProto();
+            assertThat(request)
+                    .satisfies(
+                            r -> {
+                                assertThat(r.getKey()).isEqualTo(op.key());
+                                assertThat(r.getExpectedVersion()).isEqualTo(1L);
+                            });
+        }
+
+        @Test
+        void completeUnexpectedVersion() {
+            var response = DeleteResponse.newBuilder().setStatus(UNEXPECTED_VERSION).build();
+            op.complete(response);
+            assertThat(callback).isCompletedExceptionally();
+            assertThatThrownBy(callback::get)
+                    .satisfies(
+                            e -> {
+                                assertThat(e).isInstanceOf(ExecutionException.class);
+                                assertThat(e.getCause())
+                                        .isInstanceOf(UnexpectedVersionException.class)
+                                        .hasMessage("unexpected version: 10");
+                            });
+        }
+
+        @Test
+        void completeOk() {
+            var response = DeleteResponse.newBuilder().setStatus(OK).build();
+            op.complete(response);
+            assertThat(callback).isCompletedWithValueMatching(r -> r);
+        }
+
+        @Test
+        void completeKeyNotFound() {
+            var response = DeleteResponse.newBuilder().setStatus(KEY_NOT_FOUND).build();
+            op.complete(response);
+            assertThat(callback).isCompletedWithValueMatching(r -> !r);
+        }
+
+        @Test
+        void completeOther() {
+            var response = DeleteResponse.newBuilder().setStatusValue(-1).build();
+            op.complete(response);
+            assertThat(callback).isCompletedExceptionally();
+            assertThatThrownBy(callback::get)
+                    .satisfies(
+                            e -> {
+                                assertThat(e).isInstanceOf(ExecutionException.class);
+                                assertThat(e.getCause())
+                                        .isInstanceOf(IllegalStateException.class)
+                                        .hasMessage("GRPC.Status: UNRECOGNIZED");
+                            });
+        }
+    }
+
+    @Nested
+    @DisplayName("Tests of delete range operation")
+    class DeleteRangeOperationTests {
+        CompletableFuture<Void> callback = new CompletableFuture<>();
+        DeleteRangeOperation op = new DeleteRangeOperation(callback, "a", "b");
+
+        @Test
+        void toProto() {
+            var request = op.toProto();
+            assertThat(request.getStartInclusive()).isEqualTo(op.minKeyInclusive());
+            assertThat(request.getEndExclusive()).isEqualTo(op.maxKeyInclusive());
+        }
+
+        @Test
+        void completeOk() {
+            var response = DeleteRangeResponse.newBuilder().setStatus(OK).build();
+            op.complete(response);
+            assertThat(callback).isCompleted();
+        }
+
+        @Test
+        void completeOther() {
+            var response = DeleteRangeResponse.newBuilder().setStatusValue(-1).build();
+            op.complete(response);
+            assertThat(callback).isCompletedExceptionally();
+            assertThatThrownBy(callback::get)
+                    .satisfies(
+                            e -> {
+                                assertThat(e).isInstanceOf(ExecutionException.class);
+                                assertThat(e.getCause())
+                                        .isInstanceOf(IllegalStateException.class)
+                                        .hasMessage("GRPC.Status: UNRECOGNIZED");
+                            });
+        }
+    }
+}

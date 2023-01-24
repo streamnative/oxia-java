@@ -28,6 +28,7 @@ import io.streamnative.oxia.proto.ListResponse;
 import io.streamnative.oxia.proto.PutRequest;
 import io.streamnative.oxia.proto.PutResponse;
 import io.streamnative.oxia.proto.Status;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import lombok.NonNull;
@@ -69,10 +70,11 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
             }
 
             void complete(@NonNull ListResponse response) {
-                unmodifiableList(
-                        response.getKeysList().asByteStringList().stream()
-                                .map(ByteString::toStringUtf8)
-                                .collect(toList()));
+                callback.complete(
+                        unmodifiableList(
+                                response.getKeysList().asByteStringList().stream()
+                                        .map(ByteString::toStringUtf8)
+                                        .collect(toList())));
             }
         }
     }
@@ -86,7 +88,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 long expectedVersion)
                 implements WriteOperation<PutResult> {
             PutRequest toProto() {
-                var builder = PutRequest.newBuilder().setKey(key);
+                var builder = PutRequest.newBuilder().setKey(key).setPayload(ByteString.copyFrom(payload));
                 setOptionalExpectedVersion(expectedVersion, builder::setExpectedVersion);
                 return builder.build();
             }
@@ -94,7 +96,6 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
             void complete(@NonNull PutResponse response) {
                 switch (response.getStatus()) {
                     case UNEXPECTED_VERSION -> fail(new UnexpectedVersionException(expectedVersion));
-                    case KEY_NOT_FOUND -> fail(new KeyNotFoundException(key));
                     case OK -> callback.complete(PutResult.fromProto(response));
                     default -> fail(new IllegalStateException("GRPC.Status: " + response.getStatus().name()));
                 }
@@ -105,6 +106,20 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                     @NonNull String key,
                     byte @NonNull [] payload) {
                 this(callback, key, payload, versionNotExists);
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) {
+                    return true;
+                }
+                if (o == null || getClass() != o.getClass()) {
+                    return false;
+                }
+                PutOperation that = (PutOperation) o;
+                return expectedVersion == that.expectedVersion
+                        && key.equals(that.key)
+                        && Arrays.equals(payload, that.payload);
             }
         }
 
