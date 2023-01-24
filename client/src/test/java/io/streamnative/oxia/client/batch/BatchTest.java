@@ -17,6 +17,7 @@ import io.grpc.StatusRuntimeException;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
 import io.grpc.stub.StreamObserver;
+import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.KeyNotFoundException;
 import io.streamnative.oxia.client.api.PutResult;
@@ -38,6 +39,8 @@ import io.streamnative.oxia.proto.ReadRequest;
 import io.streamnative.oxia.proto.ReadResponse;
 import io.streamnative.oxia.proto.WriteRequest;
 import io.streamnative.oxia.proto.WriteResponse;
+import java.time.Clock;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -365,11 +368,32 @@ class BatchTest {
         }
     }
 
+    ClientConfig config = new ClientConfig("address", n -> {}, Duration.ZERO, Duration.ZERO, 1, 1);
+
     @Nested
     @DisplayName("Tests of write batch factory")
-    class WriteBatchFactoryTests {}
+    class WriteBatchFactoryTests {
+
+        @Test
+        void apply() {
+            long start = Clock.systemUTC().millis();
+            var batch = new Batch.WriteBatchFactory(clientByShardId, config).apply(shardId);
+            assertThat(batch.getStartTime()).isGreaterThanOrEqualTo(start);
+            assertThat(batch.getStartTime()).isLessThanOrEqualTo(Clock.systemUTC().millis());
+            assertThat(batch.getShardId()).isEqualTo(shardId);
+        }
+    }
 
     @Nested
     @DisplayName("Tests of read batch factory")
-    class ReadBatchFactoryTests {}
+    class ReadBatchFactoryTests {
+        @Test
+        void apply() {
+            long start = Clock.systemUTC().millis();
+            var batch = new Batch.ReadBatchFactory(clientByShardId, config).apply(shardId);
+            assertThat(batch.getStartTime()).isGreaterThanOrEqualTo(start);
+            assertThat(batch.getStartTime()).isLessThanOrEqualTo(Clock.systemUTC().millis());
+            assertThat(batch.getShardId()).isEqualTo(shardId);
+        }
+    }
 }
