@@ -83,18 +83,18 @@ class BatcherTest {
         var callback = new CompletableFuture<GetResult>();
         Operation<?> op = new GetOperation(callback, "key");
         when(batchFactory.apply(shardId)).thenReturn(batch);
-        when(batch.size()).thenReturn(config.maxRequestsPerBatch());
+        when(batch.size()).thenReturn(config.maxRequestsPerBatch(), 1);
         executor.execute(() -> batcher.run());
         batcher.add(op);
         await().untilAsserted(() -> verify(batch).complete());
-        when(batch.size()).thenReturn(1);
+        batcher.add(op);
         await()
                 .untilAsserted(
                         () -> {
-                            verify(batchFactory).apply(shardId);
-                            verify(batch).add(op);
+                            verify(batchFactory, times(2)).apply(shardId);
+                            verify(batch, times(2)).add(op);
                         });
-        batcher.add(op);
+
         verifyNoInteractions(clock);
     }
 
