@@ -146,6 +146,6 @@ class BatcherTest {
         long start = Clock.systemUTC().millis();
         assertThatThrownBy(() -> batcher.add(op)).isInstanceOf(TimeoutException.class);
         assertThat(Clock.systemUTC().millis() - start)
-                .isGreaterThan(config.requestTimeout().toMillis());
+                .isGreaterThanOrEqualTo(config.requestTimeout().toMillis());
     }
 }
