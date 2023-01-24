@@ -74,7 +74,7 @@ class ShardManagerGrpcTest {
                                 }
                             }));
 
-    private Function<String, OxiaClientStub> clientSupplier;
+    private Function<String, OxiaClientStub> clientByShardId;
     private Server server;
     private ManagedChannel channel;
 
@@ -89,7 +89,7 @@ class ShardManagerGrpcTest {
                         .build()
                         .start();
         channel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
-        clientSupplier = a -> OxiaClientGrpc.newStub(channel);
+        clientByShardId = s -> OxiaClientGrpc.newStub(channel);
     }
 
     @AfterEach
@@ -102,7 +102,7 @@ class ShardManagerGrpcTest {
 
     @Test
     public void start() throws Exception {
-        try (var shardManager = new ShardManager("address", clientSupplier)) {
+        try (var shardManager = new ShardManager("address", clientByShardId)) {
             var bootstrap = shardManager.start();
             assertThat(bootstrap).isNotCompleted();
             assertThat(shardManager.getAll()).isEmpty();
@@ -119,7 +119,7 @@ class ShardManagerGrpcTest {
         var s1v1 = newShardAssignmentResponse(1, 2, 5, "leader 1");
         var s1v2 = newShardAssignmentResponse(1, 2, 3, "leader 2");
         var strategy = new StaticShardStrategy().assign("key1", s1v1).assign("key2", s1v1);
-        try (var shardManager = new ShardManager(strategy, "address", clientSupplier)) {
+        try (var shardManager = new ShardManager(strategy, "address", clientByShardId)) {
             responses.add(assignments(s1v1));
             shardManager.start().get();
             assertThat(shardManager.get("key1")).isEqualTo(1);
@@ -145,7 +145,7 @@ class ShardManagerGrpcTest {
         var s1 = newShardAssignmentResponse(1, 1, 3, "leader 1");
         var s2 = newShardAssignmentResponse(2, 2, 4, "leader 2");
         var strategy = new StaticShardStrategy().assign("key1", s1);
-        try (var shardManager = new ShardManager(strategy, "address", clientSupplier)) {
+        try (var shardManager = new ShardManager(strategy, "address", clientByShardId)) {
             responses.add(assignments(s1));
             shardManager.start().get();
             assertThat(shardManager.get("key1")).isEqualTo(1);
@@ -170,7 +170,7 @@ class ShardManagerGrpcTest {
 
     @Test
     public void recoveryFromError() throws Exception {
-        try (var shardManager = new ShardManager("address", clientSupplier)) {
+        try (var shardManager = new ShardManager("address", clientByShardId)) {
             responses.add(assignments(1, 2, 3, "leader 1"));
             shardManager.start().get();
             assertThat(shardManager.leader(1)).isEqualTo("leader 1");
@@ -184,7 +184,7 @@ class ShardManagerGrpcTest {
 
     @Test
     public void recoveryFromEndOfStream() throws Exception {
-        try (var shardManager = new ShardManager("address", clientSupplier)) {
+        try (var shardManager = new ShardManager("address", clientByShardId)) {
             var bootstrapped = shardManager.start();
             await("next request").untilAsserted(() -> assertThat(shardAssignmentsCount).hasValue(1));
             responses.add(assignments(1, 2, 3, "leader 1"));

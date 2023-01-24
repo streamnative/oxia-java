@@ -4,28 +4,26 @@ import static io.streamnative.oxia.client.ProtoUtil.longToUint32;
 import static java.util.stream.Collectors.toList;
 import static lombok.AccessLevel.PACKAGE;
 import static lombok.AccessLevel.PRIVATE;
-import static lombok.AccessLevel.PUBLIC;
 
+import com.google.common.annotations.VisibleForTesting;
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.ListOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
+import io.streamnative.oxia.client.shard.UnreachableShardException;
 import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientBlockingStub;
 import io.streamnative.oxia.proto.ReadRequest;
 import io.streamnative.oxia.proto.WriteRequest;
 import java.time.Clock;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 
 public sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
 
@@ -37,21 +35,18 @@ public sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
 
     long getShardId();
 
-    Duration getRequestTimeout();
-
     void complete();
 
     final class WriteBatch extends BatchBase implements Batch {
-        private final List<PutOperation> puts = new ArrayList<>();
-        private final List<DeleteOperation> deletes = new ArrayList<>();
-        private final List<DeleteRangeOperation> deleteRanges = new ArrayList<>();
+        @VisibleForTesting final List<PutOperation> puts = new ArrayList<>();
+        @VisibleForTesting final List<DeleteOperation> deletes = new ArrayList<>();
+        @VisibleForTesting final List<DeleteRangeOperation> deleteRanges = new ArrayList<>();
 
         WriteBatch(
-                @NonNull Supplier<OxiaClientBlockingStub> clientSupplier,
+                @NonNull Function<Long, Optional<OxiaClientBlockingStub>> clientByShard,
                 long shardId,
-                long createTime,
-                @NonNull Duration requestTimeout) {
-            super(clientSupplier, shardId, createTime, requestTimeout);
+                long createTime) {
+            super(clientByShard, shardId, createTime);
         }
 
         public void add(@NonNull Operation<?> operation) {
@@ -72,7 +67,11 @@ public sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
         @Override
         public void complete() {
             try {
-                var response = getClientSupplier().get().write(toProto());
+                var response =
+                        getClientByShard()
+                                .apply(getShardId())
+                                .map(c -> c.write(toProto()))
+                                .orElseThrow(() -> new UnreachableShardException(getShardId()));
                 for (var i = 0; i < deletes.size(); i++) {
                     deletes.get(i).complete(response.getDeletes(i));
                 }
@@ -102,10 +101,8 @@ public sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
     }
 
     final class ReadBatch extends BatchBase implements Batch {
-        private final List<GetOperation> gets = new ArrayList<>();
-        private final List<ListOperation> lists = new ArrayList<>();
-
-        private Instant time;
+        @VisibleForTesting final List<GetOperation> gets = new ArrayList<>();
+        @VisibleForTesting final List<ListOperation> lists = new ArrayList<>();
 
         public void add(@NonNull Operation<?> operation) {
             if (operation instanceof GetOperation g) {
@@ -116,11 +113,10 @@ public sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
         }
 
         ReadBatch(
-                @NonNull Supplier<OxiaClientBlockingStub> clientSupplier,
+                @NonNull Function<Long, Optional<OxiaClientBlockingStub>> clientByShard,
                 long shardId,
-                long createTime,
-                @NonNull Duration requestTimeout) {
-            super(clientSupplier, shardId, createTime, requestTimeout);
+                long createTime) {
+            super(clientByShard, shardId, createTime);
         }
 
         @Override
@@ -131,7 +127,11 @@ public sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
         @Override
         public void complete() {
             try {
-                var response = getClientSupplier().get().read(toProto());
+                var response =
+                        getClientByShard()
+                                .apply(getShardId())
+                                .map(c -> c.read(toProto()))
+                                .orElseThrow(() -> new UnreachableShardException(getShardId()));
                 for (var i = 0; i < gets.size(); i++) {
                     gets.get(i).complete(response.getGets(i));
                 }
@@ -156,19 +156,14 @@ public sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
 
     @RequiredArgsConstructor(access = PRIVATE)
     abstract class BatchBase {
-        @Getter private final @NonNull Supplier<OxiaClientBlockingStub> clientSupplier;
+        @Getter private final @NonNull Function<Long, Optional<OxiaClientBlockingStub>> clientByShard;
         @Getter private final long shardId;
         @Getter private final long startTime;
-        @Getter private final @NonNull Duration requestTimeout;
-
-        @Getter
-        @Setter(PUBLIC)
-        private Exception failure;
     }
 
     @RequiredArgsConstructor(access = PACKAGE)
     abstract class BatchFactory implements Function<Long, Batch> {
-        final @NonNull Supplier<OxiaClientBlockingStub> clientSupplier;
+        final @NonNull Function<Long, Optional<OxiaClientBlockingStub>> clientByShard;
 
         @Getter(PACKAGE)
         private final @NonNull ClientConfig config;
@@ -178,34 +173,37 @@ public sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
         public abstract @NonNull Batch apply(@NonNull Long shardId);
 
         BatchFactory(
-                @NonNull Supplier<OxiaClientBlockingStub> clientSupplier, @NonNull ClientConfig config) {
-            this(clientSupplier, config, Clock.systemUTC());
+                @NonNull Function<Long, Optional<OxiaClientBlockingStub>> clientByShard,
+                @NonNull ClientConfig config) {
+            this(clientByShard, config, Clock.systemUTC());
         }
     }
 
     class WriteBatchFactory extends BatchFactory {
 
         WriteBatchFactory(
-                @NonNull Supplier<OxiaClientBlockingStub> clientSupplier, @NonNull ClientConfig config) {
-            super(clientSupplier, config, Clock.systemUTC());
+                @NonNull Function<Long, Optional<OxiaClientBlockingStub>> clientByShard,
+                @NonNull ClientConfig config) {
+            super(clientByShard, config, Clock.systemUTC());
         }
 
         @Override
         public @NonNull Batch apply(@NonNull Long shardId) {
-            return new WriteBatch(clientSupplier, shardId, clock.millis(), getConfig().requestTimeout());
+            return new WriteBatch(clientByShard, shardId, clock.millis());
         }
     }
 
     class ReadBatchFactory extends BatchFactory {
 
         ReadBatchFactory(
-                @NonNull Supplier<OxiaClientBlockingStub> clientSupplier, @NonNull ClientConfig config) {
-            super(clientSupplier, config);
+                @NonNull Function<Long, Optional<OxiaClientBlockingStub>> clientByShard,
+                @NonNull ClientConfig config) {
+            super(clientByShard, config);
         }
 
         @Override
         public @NonNull Batch apply(@NonNull Long shardId) {
-            return new ReadBatch(clientSupplier, shardId, clock.millis(), getConfig().requestTimeout());
+            return new ReadBatch(clientByShard, shardId, clock.millis());
         }
     }
 }

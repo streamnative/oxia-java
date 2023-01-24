@@ -6,11 +6,11 @@ import static lombok.AccessLevel.PACKAGE;
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientBlockingStub;
 import java.time.Clock;
+import java.util.Optional;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -90,12 +90,14 @@ public class Batcher implements Runnable, AutoCloseable {
     }
 
     static @NonNull Function<Long, Batcher> newReadBatcherFactory(
-            @NonNull ClientConfig config, @NonNull Supplier<OxiaClientBlockingStub> clientSupplier) {
-        return s -> new Batcher(config, s, new Batch.ReadBatchFactory(clientSupplier, config));
+            @NonNull ClientConfig config,
+            @NonNull Function<Long, Optional<OxiaClientBlockingStub>> clientByShardId) {
+        return s -> new Batcher(config, s, new Batch.ReadBatchFactory(clientByShardId, config));
     }
 
     static @NonNull Function<Long, Batcher> writeReadBatcherFactory(
-            @NonNull ClientConfig config, @NonNull Supplier<OxiaClientBlockingStub> clientSupplier) {
-        return s -> new Batcher(config, s, new Batch.ReadBatchFactory(clientSupplier, config));
+            @NonNull ClientConfig config,
+            @NonNull Function<Long, Optional<OxiaClientBlockingStub>> clientByShardId) {
+        return s -> new Batcher(config, s, new Batch.ReadBatchFactory(clientByShardId, config));
     }
 }
