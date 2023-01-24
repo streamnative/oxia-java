@@ -169,7 +169,7 @@ class BatchTest {
                                             .addDeletes(DeleteResponse.newBuilder().setStatus(KEY_NOT_FOUND).build())
                                             .addDeleteRanges(DeleteRangeResponse.newBuilder().setStatus(OK).build())
                                             .build()));
-            writeResponses.add(o -> o.onCompleted());
+            writeResponses.add(StreamObserver::onCompleted);
 
             batch.add(put);
             batch.add(delete);
@@ -305,7 +305,7 @@ class BatchTest {
                                             .addLists(
                                                     ListResponse.newBuilder().addAllKeys(List.of("a", "b", "c")).build())
                                             .build()));
-            readResponses.add(o -> o.onCompleted());
+            readResponses.add(StreamObserver::onCompleted);
 
             batch.add(get);
             batch.add(list);
