@@ -10,6 +10,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.AdditionalAnswers.delegatesTo;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
@@ -53,6 +54,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -368,32 +370,40 @@ class BatchTest {
         }
     }
 
-    ClientConfig config = new ClientConfig("address", n -> {}, Duration.ZERO, Duration.ZERO, 1, 1);
-
     @Nested
     @DisplayName("Tests of write batch factory")
-    class WriteBatchFactoryTests {
+    class FactoryTests {
 
-        @Test
-        void apply() {
-            long start = Clock.systemUTC().millis();
-            var batch = new Batch.WriteBatchFactory(clientByShardId, config).apply(shardId);
-            assertThat(batch.getStartTime()).isGreaterThanOrEqualTo(start);
-            assertThat(batch.getStartTime()).isLessThanOrEqualTo(Clock.systemUTC().millis());
-            assertThat(batch.getShardId()).isEqualTo(shardId);
+        @Mock Clock clock;
+
+        ClientConfig config = new ClientConfig("address", n -> {}, Duration.ZERO, Duration.ZERO, 1, 1);
+
+        @BeforeEach
+        void mocking() {
+            when(clock.millis()).thenReturn(1L);
         }
-    }
 
-    @Nested
-    @DisplayName("Tests of read batch factory")
-    class ReadBatchFactoryTests {
-        @Test
-        void apply() {
-            long start = Clock.systemUTC().millis();
-            var batch = new Batch.ReadBatchFactory(clientByShardId, config).apply(shardId);
-            assertThat(batch.getStartTime()).isGreaterThanOrEqualTo(start);
-            assertThat(batch.getStartTime()).isLessThanOrEqualTo(Clock.systemUTC().millis());
-            assertThat(batch.getShardId()).isEqualTo(shardId);
+        @Nested
+        @DisplayName("Tests of write batch factory")
+        class WriteBatchFactoryTests {
+
+            @Test
+            void apply() {
+                var batch = new Batch.WriteBatchFactory(clientByShardId, config, clock).apply(shardId);
+                assertThat(batch.getStartTime()).isEqualTo(1L);
+                assertThat(batch.getShardId()).isEqualTo(shardId);
+            }
+        }
+
+        @Nested
+        @DisplayName("Tests of read batch factory")
+        class ReadBatchFactoryTests {
+            @Test
+            void apply() {
+                var batch = new Batch.ReadBatchFactory(clientByShardId, config, clock).apply(shardId);
+                assertThat(batch.getStartTime()).isEqualTo(1L);
+                assertThat(batch.getShardId()).isEqualTo(shardId);
+            }
         }
     }
 }

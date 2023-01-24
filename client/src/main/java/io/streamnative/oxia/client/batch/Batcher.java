@@ -91,13 +91,15 @@ public class Batcher implements Runnable, AutoCloseable {
 
     static @NonNull Function<Long, Batcher> newReadBatcherFactory(
             @NonNull ClientConfig config,
-            @NonNull Function<Long, Optional<OxiaClientBlockingStub>> clientByShardId) {
-        return s -> new Batcher(config, s, new Batch.ReadBatchFactory(clientByShardId, config));
+            @NonNull Function<Long, Optional<OxiaClientBlockingStub>> clientByShardId,
+            Clock clock) {
+        return s -> new Batcher(config, s, new Batch.ReadBatchFactory(clientByShardId, config, clock));
     }
 
     static @NonNull Function<Long, Batcher> writeReadBatcherFactory(
             @NonNull ClientConfig config,
-            @NonNull Function<Long, Optional<OxiaClientBlockingStub>> clientByShardId) {
-        return s -> new Batcher(config, s, new Batch.ReadBatchFactory(clientByShardId, config));
+            @NonNull Function<Long, Optional<OxiaClientBlockingStub>> clientByShardId,
+            Clock clock) {
+        return s -> new Batcher(config, s, new Batch.ReadBatchFactory(clientByShardId, config, clock));
     }
 }

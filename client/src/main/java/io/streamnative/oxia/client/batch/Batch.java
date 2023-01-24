@@ -25,7 +25,7 @@ import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
-public sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
+public interface Batch {
 
     long getStartTime();
 
@@ -171,20 +171,14 @@ public sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
         final @NonNull Clock clock;
 
         public abstract @NonNull Batch apply(@NonNull Long shardId);
-
-        BatchFactory(
-                @NonNull Function<Long, Optional<OxiaClientBlockingStub>> clientByShard,
-                @NonNull ClientConfig config) {
-            this(clientByShard, config, Clock.systemUTC());
-        }
     }
 
     class WriteBatchFactory extends BatchFactory {
-
-        WriteBatchFactory(
+        public WriteBatchFactory(
                 @NonNull Function<Long, Optional<OxiaClientBlockingStub>> clientByShard,
-                @NonNull ClientConfig config) {
-            super(clientByShard, config, Clock.systemUTC());
+                @NonNull ClientConfig config,
+                @NonNull Clock clock) {
+            super(clientByShard, config, clock);
         }
 
         @Override
@@ -194,11 +188,11 @@ public sealed interface Batch permits Batch.WriteBatch, Batch.ReadBatch {
     }
 
     class ReadBatchFactory extends BatchFactory {
-
-        ReadBatchFactory(
+        public ReadBatchFactory(
                 @NonNull Function<Long, Optional<OxiaClientBlockingStub>> clientByShard,
-                @NonNull ClientConfig config) {
-            super(clientByShard, config);
+                @NonNull ClientConfig config,
+                @NonNull Clock clock) {
+            super(clientByShard, config, clock);
         }
 
         @Override
