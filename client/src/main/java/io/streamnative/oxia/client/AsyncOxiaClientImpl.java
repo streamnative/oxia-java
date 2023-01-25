@@ -29,7 +29,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     AsyncOxiaClientImpl(ClientConfig config) {
         shardManager = new ShardManager(config.serviceAddress(), null);
         readBatchManager = BatchManager.newReadBatchManager(config, null);
-        writeBatchManager = BatchManager.newReadBatchManager(config, null);
+        writeBatchManager = BatchManager.newWriteBatchManager(config, null);
     }
 
     @Override

@@ -1,8 +1,14 @@
 package io.streamnative.oxia.client.batch;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -18,6 +24,7 @@ import java.time.Duration;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -139,6 +146,37 @@ class BatcherTest {
     }
 
     @Test
+    void interrupt() throws Exception {
+        var callback = new CompletableFuture<GetResult>();
+        Operation<?> op = new GetOperation(callback, "key");
+        queue = mock(BlockingQueue.class);
+        when(queue.offer(op, config.requestTimeout().toMillis(), MILLISECONDS)).thenReturn(true);
+        when(queue.poll()).thenReturn((Operation) op);
+        when(queue.poll(anyLong(), eq(MILLISECONDS))).thenThrow(new InterruptedException());
+        batcher = new Batcher(config, shardId, batchFactory, queue, clock);
+        when(batchFactory.apply(shardId)).thenReturn(batch);
+        when(batch.size()).thenReturn(1);
+        batcher.add(op);
+        var future = executor.submit(() -> batcher.run());
+        await()
+                .untilAsserted(
+                        () -> {
+                            assertThatThrownBy(future::get)
+                                    .satisfies(
+                                            e -> {
+                                                assertThat(e).isInstanceOf(ExecutionException.class);
+                                                assertThat(e.getCause())
+                                                        .satisfies(
+                                                                c -> {
+                                                                    assertThat(c)
+                                                                            .isInstanceOf(RuntimeException.class)
+                                                                            .hasCauseInstanceOf(InterruptedException.class);
+                                                                });
+                                            });
+                        });
+    }
+
+    @Test
     void addTimeout() throws Exception {
         var callback = new CompletableFuture<GetResult>();
         Operation<?> op = new GetOperation(callback, "key");
@@ -147,5 +185,28 @@ class BatcherTest {
         assertThatThrownBy(() -> batcher.add(op)).isInstanceOf(TimeoutException.class);
         assertThat(Clock.systemUTC().millis() - start)
                 .isGreaterThanOrEqualTo(config.requestTimeout().toMillis());
+    }
+
+    @Test
+    void unboundedPollAtStart() throws Exception {
+        var callback = new CompletableFuture<GetResult>();
+        Operation<?> op = new GetOperation(callback, "key");
+        queue = mock(BlockingQueue.class);
+        when(queue.offer(op, config.requestTimeout().toMillis(), MILLISECONDS)).thenReturn(true);
+        when(queue.poll()).thenReturn((Operation) op);
+        batcher = new Batcher(config, shardId, batchFactory, queue, clock);
+        when(batchFactory.apply(shardId)).thenReturn(batch);
+        when(batch.size()).thenReturn(1);
+        when(batch.getStartTime()).thenReturn(0L);
+        when(clock.millis()).thenReturn(0L, 100L, 200L, config.batchLinger().toMillis());
+        executor.execute(() -> batcher.run());
+        batcher.add(op);
+        var inOrder = inOrder(queue);
+        await()
+                .untilAsserted(
+                        () -> {
+                            inOrder.verify(queue, atLeastOnce()).poll();
+                            inOrder.verify(queue, atLeastOnce()).poll(anyLong(), eq(MILLISECONDS));
+                        });
     }
 }
