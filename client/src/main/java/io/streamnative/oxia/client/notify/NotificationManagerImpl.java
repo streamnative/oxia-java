@@ -44,9 +44,9 @@ public class NotificationManagerImpl implements NotificationManager {
     @NonNull private final Receiver receiver;
 
     public NotificationManagerImpl(
-            String serviceAddress,
-            Function<String, OxiaClientStub> clientSupplier,
-            Consumer<Notification> notificationCallback) {
+            @NonNull String serviceAddress,
+            @NonNull Function<String, OxiaClientStub> clientSupplier,
+            @NonNull Consumer<Notification> notificationCallback) {
         receiver =
                 new ReceiveWithRecovery(
                         new GrpcReceiver(serviceAddress, clientSupplier, notificationCallback));
@@ -67,10 +67,10 @@ public class NotificationManagerImpl implements NotificationManager {
     @RequiredArgsConstructor(access = PACKAGE)
     @VisibleForTesting
     static class GrpcReceiver implements Receiver {
-        private final String serviceAddress;
-        private final Function<String, OxiaClientStub> clientSupplier;
+        @NonNull private final String serviceAddress;
+        @NonNull private final Function<String, OxiaClientStub> clientSupplier;
         @NonNull private final Consumer<Notification> notificationCallback;
-        private final Supplier<CompletableFuture<Void>> streamTerminalSupplier;
+        @NonNull private final Supplier<CompletableFuture<Void>> streamTerminalSupplier;
 
         GrpcReceiver(
                 @NonNull String serviceAddress,
@@ -104,8 +104,8 @@ public class NotificationManagerImpl implements NotificationManager {
     @RequiredArgsConstructor(access = PACKAGE)
     @VisibleForTesting
     static class NotificationsObserver implements StreamObserver<NotificationBatch> {
-        private final CompletableFuture<Void> streamTerminal;
-        private final Consumer<Notification> notificationCallback;
+        @NonNull private final CompletableFuture<Void> streamTerminal;
+        @NonNull private final Consumer<Notification> notificationCallback;
 
         @Override
         public void onNext(NotificationBatch batch) {
