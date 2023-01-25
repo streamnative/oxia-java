@@ -2,6 +2,7 @@ package io.streamnative.oxia.client.api;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
+
 import com.google.protobuf.ByteString;
 import io.streamnative.oxia.proto.GetResponse;
 import io.streamnative.oxia.proto.Stat;
