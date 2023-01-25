@@ -17,12 +17,6 @@
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
         </dependency>
-        <dependency>
-            <groupId>io.streamnative.oxia</groupId>
-            <artifactId>oxia-client</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 
 </project>

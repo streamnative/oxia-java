@@ -1,10 +1,9 @@
 package io.streamnative.oxia.testcontainers;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-import io.streamnative.oxia.client.OxiaClientBuilder;
-import java.nio.charset.StandardCharsets;
 import org.junit.AfterClass;
-import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -28,15 +27,14 @@ public class OxiaContainerTest {
     }
 
     @Test
-    public void test() throws Exception {
-
-        try (var client = new OxiaClientBuilder(container.getServiceAddress()).syncClient()) {
-            client.put("hello", "world".getBytes(StandardCharsets.UTF_8), -1);
-            var result = client.get("hello");
-            Assert.assertEquals("world", new String(result.payload()));
-
-        } catch (Exception e) {
-            // TODO remove this catch block when client supports put and get
-        }
+    public void testPutGetWithCLI() throws Exception {
+        var result =
+                container.execInContainer("/oxia/bin/oxia", "client", "put", "-k", "hello", "-v", "world");
+        assertEquals(0, result.getExitCode());
+        result = container.execInContainer("/oxia/bin/oxia", "client", "get", "-k", "hello");
+        assertEquals(0, result.getExitCode());
+        var stdOut = result.getStdout();
+        assertTrue(
+                "Get should retrieve the value put before. Output: " + stdOut, stdOut.contains("world"));
     }
 }
