@@ -34,7 +34,8 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         notificationManager =
                 config.notificationCallback() == null
                         ? NotificationManagerImpl.NullObject
-                        : new NotificationManagerImpl(config.serviceAddress(), null, config.notificationCallback());
+                        : new NotificationManagerImpl(
+                                config.serviceAddress(), null, config.notificationCallback());
         readBatchManager = BatchManager.newReadBatchManager(config, null);
         writeBatchManager = BatchManager.newWriteBatchManager(config, null);
     }
