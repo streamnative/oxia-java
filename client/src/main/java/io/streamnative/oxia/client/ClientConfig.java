@@ -6,9 +6,10 @@ import java.time.Duration;
 import java.util.function.Consumer;
 import lombok.NonNull;
 
-record ClientConfig(
+public record ClientConfig(
         @NonNull String serviceAddress,
         Consumer<Notification> notificationCallback,
         @NonNull Duration requestTimeout,
         @NonNull Duration batchLinger,
-        @NonNull int maxRequestsPerBatch) {}
+        int maxRequestsPerBatch,
+        int operationQueueCapacity) {}
