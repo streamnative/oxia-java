@@ -165,12 +165,8 @@ class BatcherTest {
                                             e -> {
                                                 assertThat(e).isInstanceOf(ExecutionException.class);
                                                 assertThat(e.getCause())
-                                                        .satisfies(
-                                                                c -> {
-                                                                    assertThat(c)
-                                                                            .isInstanceOf(RuntimeException.class)
-                                                                            .hasCauseInstanceOf(InterruptedException.class);
-                                                                });
+                                                        .isInstanceOf(RuntimeException.class)
+                                                        .hasCauseInstanceOf(InterruptedException.class);
                                             });
                         });
     }
