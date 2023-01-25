@@ -8,6 +8,11 @@ import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+
 @Ignore("First we need to make sure we can access the docker image")
 public class OxiaContainerTest {
 
@@ -15,7 +20,7 @@ public class OxiaContainerTest {
 
     @BeforeClass
     public static void setupOxia() {
-        container = new OxiaContainer();
+        container = new OxiaContainer(OxiaContainer.DEFAULT_IMAGE_NAME);
         container.start();
     }
 
@@ -29,12 +34,21 @@ public class OxiaContainerTest {
     @Test
     public void testPutGetWithCLI() throws Exception {
         var result =
-                container.execInContainer("/oxia/bin/oxia", "client", "put", "-k", "hello", "-v", "world");
+                container.execInContainer("oxia", "client", "put", "-k", "hello", "-v", "world");
         assertEquals(0, result.getExitCode());
-        result = container.execInContainer("/oxia/bin/oxia", "client", "get", "-k", "hello");
+        result = container.execInContainer("oxia", "client", "get", "-k", "hello");
         assertEquals(0, result.getExitCode());
         var stdOut = result.getStdout();
         assertTrue(
                 "Get should retrieve the value put before. Output: " + stdOut, stdOut.contains("world"));
+    }
+
+    @Test
+    public void testMetricsUrl() throws Exception {
+        var httpClient = HttpClient.newHttpClient();
+        var request = HttpRequest.newBuilder(URI.create(container.getMetricsUrl())).build();
+        var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode());
+        assertTrue(response.body().contains("oxia"));
     }
 }

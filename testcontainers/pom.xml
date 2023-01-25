@@ -8,11 +8,10 @@
         <version>0.0.1-SNAPSHOT</version>
     </parent>
 
-    <artifactId>testcontainers</artifactId>
+    <artifactId>oxia-testcontainers</artifactId>
     <name>Oxia Testcontainers</name>
 
     <dependencies>
-
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
