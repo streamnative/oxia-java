@@ -9,12 +9,10 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.testcontainers.containers.Network;
 
-@Ignore("First we need to make sure we can access the docker image")
-public class OxiaContainerTest {
+public class OxiaContainerIT {
 
     private static final String HOST = "oxia";
     private static OxiaContainer container;
