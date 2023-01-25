@@ -101,7 +101,6 @@ class BatcherTest {
                             verify(batchFactory, times(2)).apply(shardId);
                             verify(batch, times(2)).add(op);
                         });
-
         verifyNoInteractions(clock);
     }
 
