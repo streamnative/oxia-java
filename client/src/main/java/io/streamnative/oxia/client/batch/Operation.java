@@ -1,7 +1,7 @@
 package io.streamnative.oxia.client.batch;
 
-import static io.streamnative.oxia.client.ProtoUtil.setOptionalExpectedVersion;
-import static io.streamnative.oxia.client.ProtoUtil.versionNotExists;
+import static io.streamnative.oxia.client.ProtoUtil.VersionIdNotExists;
+import static io.streamnative.oxia.client.ProtoUtil.setOptionalExpectedVersionId;
 import static io.streamnative.oxia.client.batch.Operation.ReadOperation;
 import static io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import static io.streamnative.oxia.client.batch.Operation.ReadOperation.ListOperation;
@@ -16,7 +16,7 @@ import com.google.protobuf.ByteString;
 import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.KeyNotFoundException;
 import io.streamnative.oxia.client.api.PutResult;
-import io.streamnative.oxia.client.api.UnexpectedVersionException;
+import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
 import io.streamnative.oxia.proto.DeleteRangeRequest;
 import io.streamnative.oxia.proto.DeleteRangeResponse;
 import io.streamnative.oxia.proto.DeleteRequest;
@@ -86,17 +86,17 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 @NonNull CompletableFuture<PutResult> callback,
                 @NonNull String key,
                 byte @NonNull [] payload,
-                long expectedVersion)
+                long expectedVersionId)
                 implements WriteOperation<PutResult> {
             PutRequest toProto() {
                 var builder = PutRequest.newBuilder().setKey(key).setPayload(ByteString.copyFrom(payload));
-                setOptionalExpectedVersion(expectedVersion, builder::setExpectedVersion);
+                setOptionalExpectedVersionId(expectedVersionId, builder::setExpectedVersion);
                 return builder.build();
             }
 
             void complete(@NonNull PutResponse response) {
                 switch (response.getStatus()) {
-                    case UNEXPECTED_VERSION -> fail(new UnexpectedVersionException(expectedVersion));
+                    case UNEXPECTED_VERSION -> fail(new UnexpectedVersionIdException(expectedVersionId));
                     case OK -> callback.complete(PutResult.fromProto(response));
                     default -> fail(new IllegalStateException("GRPC.Status: " + response.getStatus().name()));
                 }
@@ -106,7 +106,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                     @NonNull CompletableFuture<PutResult> callback,
                     @NonNull String key,
                     byte @NonNull [] payload) {
-                this(callback, key, payload, versionNotExists);
+                this(callback, key, payload, VersionIdNotExists);
             }
 
             @Override
@@ -118,31 +118,31 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                     return false;
                 }
                 PutOperation that = (PutOperation) o;
-                return expectedVersion == that.expectedVersion
+                return expectedVersionId == that.expectedVersionId
                         && key.equals(that.key)
                         && Arrays.equals(payload, that.payload);
             }
 
             @Override
             public int hashCode() {
-                int result = Objects.hash(key, expectedVersion);
+                int result = Objects.hash(key, expectedVersionId);
                 result = 31 * result + Arrays.hashCode(payload);
                 return result;
             }
         }
 
         record DeleteOperation(
-                @NonNull CompletableFuture<Boolean> callback, @NonNull String key, long expectedVersion)
+                @NonNull CompletableFuture<Boolean> callback, @NonNull String key, long expectedVersionId)
                 implements WriteOperation<Boolean> {
             DeleteRequest toProto() {
                 var builder = DeleteRequest.newBuilder().setKey(key);
-                setOptionalExpectedVersion(expectedVersion, builder::setExpectedVersion);
+                setOptionalExpectedVersionId(expectedVersionId, builder::setExpectedVersion);
                 return builder.build();
             }
 
             void complete(@NonNull DeleteResponse response) {
                 switch (response.getStatus()) {
-                    case UNEXPECTED_VERSION -> fail(new UnexpectedVersionException(expectedVersion));
+                    case UNEXPECTED_VERSION -> fail(new UnexpectedVersionIdException(expectedVersionId));
                     case KEY_NOT_FOUND -> callback.complete(false);
                     case OK -> callback.complete(true);
                     default -> fail(new IllegalStateException("GRPC.Status: " + response.getStatus().name()));
@@ -150,7 +150,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
             }
 
             public DeleteOperation(@NonNull CompletableFuture<Boolean> callback, @NonNull String key) {
-                this(callback, key, versionNotExists);
+                this(callback, key, VersionIdNotExists);
             }
         }
 

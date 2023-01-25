@@ -11,9 +11,10 @@ public class GetResult {
     /** The payload associated with the key specified in the call. */
     byte @NonNull [] payload;
     /** Metadata for the record associated with the key specified in the call. */
-    @NonNull Stat stat;
+    @NonNull Version version;
 
     public static @NonNull GetResult fromProto(@NonNull GetResponse response) {
-        return new GetResult(response.getPayload().toByteArray(), Stat.fromProto(response.getStat()));
+        return new GetResult(
+                response.getPayload().toByteArray(), Version.fromProto(response.getStat()));
     }
 }
