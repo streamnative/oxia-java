@@ -5,7 +5,7 @@ import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.SyncOxiaClient;
-import io.streamnative.oxia.client.api.UnexpectedVersionException;
+import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import lombok.AccessLevel;
@@ -20,9 +20,9 @@ class SyncOxiaClientImpl implements SyncOxiaClient {
     @SneakyThrows
     @Override
     public @NonNull PutResult put(
-            @NonNull String key, byte @NonNull [] payload, long expectedVersion) {
+            @NonNull String key, byte @NonNull [] payload, long expectedVersionId) {
         try {
-            return asyncClient.put(key, payload, expectedVersion).get();
+            return asyncClient.put(key, payload, expectedVersionId).get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
@@ -46,10 +46,10 @@ class SyncOxiaClientImpl implements SyncOxiaClient {
 
     @SneakyThrows
     @Override
-    public boolean delete(@NonNull String key, long expectedVersion)
-            throws UnexpectedVersionException {
+    public boolean delete(@NonNull String key, long expectedVersionId)
+            throws UnexpectedVersionIdException {
         try {
-            return asyncClient.delete(key, expectedVersion).get();
+            return asyncClient.delete(key, expectedVersionId).get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);

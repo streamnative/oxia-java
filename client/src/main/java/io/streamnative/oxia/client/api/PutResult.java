@@ -7,10 +7,10 @@ import lombok.NonNull;
 /**
  * The result of a client get request.
  *
- * @param stat Metadata for the record associated with the key specified in the call.
+ * @param version Metadata for the record associated with the key specified in the call.
  */
-public record PutResult(@NonNull Stat stat) {
+public record PutResult(@NonNull Version version) {
     public static @NonNull PutResult fromProto(@NonNull PutResponse response) {
-        return new PutResult(Stat.fromProto(response.getStat()));
+        return new PutResult(Version.fromProto(response.getStat()));
     }
 }

@@ -9,21 +9,21 @@ import lombok.NonNull;
 public interface AsyncOxiaClient extends AutoCloseable {
 
     /**
-     * Conditionally associates a payload with a key if the server's version of the record is as
+     * Conditionally associates a payload with a key if the server's versionId of the record is as
      * specified, at the instant when the put is applied. The put will not be applied if the server's
-     * version of the record does not match the expectation set in the call.
+     * versionId of the record does not match the expectation set in the call.
      *
      * @param key The key with which the payload should be associated.
      * @param payload The payload to associate with the key.
-     * @param expectedVersion The version of the record that this put operation is scoped to.
+     * @param expectedVersionId The versionId of the record that this put operation is scoped to.
      * @return The result of the put at the specified key. Supplied via a future that returns the
      *     {@link PutResult}. The future will complete exceptionally with an {@link
-     *     UnexpectedVersionException} if the version at the server did not that match supplied in the
-     *     call.
+     *     UnexpectedVersionIdException} if the versionId at the server did not that match supplied in
+     *     the call.
      */
     @NonNull
     CompletableFuture<PutResult> put(
-            @NonNull String key, byte @NonNull [] payload, long expectedVersion);
+            @NonNull String key, byte @NonNull [] payload, long expectedVersionId);
 
     /**
      * Associates a payload with a key.
@@ -38,19 +38,19 @@ public interface AsyncOxiaClient extends AutoCloseable {
 
     /**
      * Conditionally deletes the record associated with the key if the record exists, and the server's
-     * version of the record is as specified, at the instant when the delete is applied. The delete
-     * will not be applied if the server's version of the record does not match the expectation set in
-     * the call.
+     * versionId of the record is as specified, at the instant when the delete is applied. The delete
+     * will not be applied if the server's versionId of the record does not match the expectation set
+     * in the call.
      *
      * @param key Deletes the record with the specified key.
-     * @param expectedVersion The version of the record that this delete operation is scoped to.
+     * @param expectedVersionId The versionId of the record that this delete operation is scoped to.
      * @return A future that completes when the delete call has returned. The future can return a flag
      *     that will be true if the key was actually present on the server, false otherwise. The
-     *     future will complete exceptionally with an {@link UnexpectedVersionException} the version
-     *     at the server did not that match supplied in the call.
+     *     future will complete exceptionally with an {@link UnexpectedVersionIdException} the
+     *     versionId at the server did not that match supplied in the call.
      */
     @NonNull
-    CompletableFuture<Boolean> delete(@NonNull String key, long expectedVersion);
+    CompletableFuture<Boolean> delete(@NonNull String key, long expectedVersionId);
 
     /**
      * Deletes the record associated with the key if the record exists.

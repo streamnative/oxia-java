@@ -11,7 +11,8 @@ import com.google.protobuf.ByteString;
 import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.KeyNotFoundException;
 import io.streamnative.oxia.client.api.PutResult;
-import io.streamnative.oxia.client.api.UnexpectedVersionException;
+import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
+import io.streamnative.oxia.client.api.Version;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.ListOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
@@ -80,10 +81,7 @@ class OperationTest {
             op.complete(response);
             assertThat(callback)
                     .isCompletedWithValueMatching(
-                            r ->
-                                    r.equals(
-                                            new GetResult(
-                                                    payload, new io.streamnative.oxia.client.api.Stat(1L, 2L, 3L))));
+                            r -> r.equals(new GetResult(payload, new Version(1L, 2L, 3L))));
         }
 
         @Test
@@ -166,8 +164,8 @@ class OperationTest {
                             e -> {
                                 assertThat(e).isInstanceOf(ExecutionException.class);
                                 assertThat(e.getCause())
-                                        .isInstanceOf(UnexpectedVersionException.class)
-                                        .hasMessage("unexpected version: 10");
+                                        .isInstanceOf(UnexpectedVersionIdException.class)
+                                        .hasMessage("unexpected versionId: 10");
                             });
         }
 
@@ -186,8 +184,7 @@ class OperationTest {
                             .build();
             op.complete(response);
             assertThat(callback)
-                    .isCompletedWithValueMatching(
-                            r -> r.equals(new PutResult(new io.streamnative.oxia.client.api.Stat(1L, 2L, 3L))));
+                    .isCompletedWithValueMatching(r -> r.equals(new PutResult(new Version(1L, 2L, 3L))));
         }
 
         @Test
@@ -246,8 +243,8 @@ class OperationTest {
                             e -> {
                                 assertThat(e).isInstanceOf(ExecutionException.class);
                                 assertThat(e.getCause())
-                                        .isInstanceOf(UnexpectedVersionException.class)
-                                        .hasMessage("unexpected version: 10");
+                                        .isInstanceOf(UnexpectedVersionIdException.class)
+                                        .hasMessage("unexpected versionId: 10");
                             });
         }
 
