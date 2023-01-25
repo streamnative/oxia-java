@@ -12,7 +12,7 @@ public class OxiaContainer extends GenericContainer<OxiaContainer> {
     public static final int OXIA_PORT = 6648;
     public static final int METRICS_PORT = 8080;
 
-    public static final String DEFAULT_IMAGE_NAME = "oxia:latest";
+    public static final String DEFAULT_IMAGE_NAME = "streamnative/oxia:main";
 
     private final String containerName;
 
