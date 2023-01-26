@@ -29,7 +29,6 @@ import static java.util.stream.Collectors.toList;
 
 import com.google.protobuf.ByteString;
 import io.streamnative.oxia.client.api.GetResult;
-import io.streamnative.oxia.client.api.KeyNotFoundException;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
 import io.streamnative.oxia.proto.DeleteRangeRequest;
@@ -66,7 +65,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
 
             void complete(@NonNull GetResponse response) {
                 switch (response.getStatus()) {
-                    case KEY_NOT_FOUND -> fail(new KeyNotFoundException(key));
+                    case KEY_NOT_FOUND -> callback.complete(null);
                     case OK -> callback.complete(GetResult.fromProto(response));
                     default -> fail(new IllegalStateException("GRPC.Status: " + response.getStatus().name()));
                 }

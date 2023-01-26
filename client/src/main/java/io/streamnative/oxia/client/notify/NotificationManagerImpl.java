@@ -28,7 +28,7 @@ import io.streamnative.oxia.client.grpc.ReceiveWithRecovery;
 import io.streamnative.oxia.client.grpc.Receiver;
 import io.streamnative.oxia.proto.NotificationBatch;
 import io.streamnative.oxia.proto.NotificationsRequest;
-import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientStub;
+import io.streamnative.oxia.proto.OxiaClientGrpc;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
@@ -60,11 +60,11 @@ public class NotificationManagerImpl implements NotificationManager {
 
     public NotificationManagerImpl(
             @NonNull String serviceAddress,
-            @NonNull Function<String, OxiaClientStub> clientSupplier,
+            @NonNull Function<String, OxiaClientGrpc.OxiaClientStub> stubFactory,
             @NonNull Consumer<Notification> notificationCallback) {
         receiver =
                 new ReceiveWithRecovery(
-                        new GrpcReceiver(serviceAddress, clientSupplier, notificationCallback));
+                        new GrpcReceiver(serviceAddress, stubFactory, notificationCallback));
     }
 
     @Override
@@ -83,15 +83,15 @@ public class NotificationManagerImpl implements NotificationManager {
     @VisibleForTesting
     static class GrpcReceiver implements Receiver {
         @NonNull private final String serviceAddress;
-        @NonNull private final Function<String, OxiaClientStub> clientSupplier;
+        @NonNull private final Function<String, OxiaClientGrpc.OxiaClientStub> stubFactory;
         @NonNull private final Consumer<Notification> notificationCallback;
         @NonNull private final Supplier<CompletableFuture<Void>> streamTerminalSupplier;
 
         GrpcReceiver(
                 @NonNull String serviceAddress,
-                @NonNull Function<String, OxiaClientStub> clientSupplier,
+                @NonNull Function<String, OxiaClientGrpc.OxiaClientStub> stubFactory,
                 @NonNull Consumer<Notification> notificationCallback) {
-            this(serviceAddress, clientSupplier, notificationCallback, CompletableFuture::new);
+            this(serviceAddress, stubFactory, notificationCallback, CompletableFuture::new);
         }
 
         public @NonNull CompletableFuture<Void> receive() {
@@ -99,7 +99,7 @@ public class NotificationManagerImpl implements NotificationManager {
             try {
                 var observer = new NotificationsObserver(terminal, notificationCallback);
                 // Start the stream
-                var client = clientSupplier.apply(serviceAddress);
+                var client = stubFactory.apply(serviceAddress);
                 client.getNotifications(NotificationsRequest.getDefaultInstance(), observer);
             } catch (Exception e) {
                 terminal.completeExceptionally(e);

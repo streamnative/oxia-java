@@ -52,19 +52,19 @@ public class ShardManagerTest {
         void applyUpdates() {
             var existing =
                     Map.of(
-                            1, new Shard(1, "leader 1", new HashRange(1, 3)),
-                            2, new Shard(2, "leader 1", new HashRange(7, 9)),
-                            3, new Shard(3, "leader 2", new HashRange(4, 6)),
-                            4, new Shard(4, "leader 2", new HashRange(10, 11)),
-                            5, new Shard(5, "leader 3", new HashRange(11, 12)),
-                            6, new Shard(6, "leader 4", new HashRange(13, 13)));
+                            1L, new Shard(1L, "leader 1", new HashRange(1, 3)),
+                            2L, new Shard(2L, "leader 1", new HashRange(7, 9)),
+                            3L, new Shard(3L, "leader 2", new HashRange(4, 6)),
+                            4L, new Shard(4L, "leader 2", new HashRange(10, 11)),
+                            5L, new Shard(5L, "leader 3", new HashRange(11, 12)),
+                            6L, new Shard(6L, "leader 4", new HashRange(13, 13)));
             var updates =
                     List.of(
-                            new Shard(1, "leader 4", new HashRange(1, 3)), // Leader change
-                            new Shard(2, "leader 4", new HashRange(7, 9)), //
-                            new Shard(3, "leader 2", new HashRange(4, 5)), // Split
-                            new Shard(7, "leader 3", new HashRange(6, 6)), //
-                            new Shard(4, "leader 2", new HashRange(10, 12)) // Merge
+                            new Shard(1L, "leader 4", new HashRange(1, 3)), // Leader change
+                            new Shard(2L, "leader 4", new HashRange(7, 9)), //
+                            new Shard(3L, "leader 2", new HashRange(4, 5)), // Split
+                            new Shard(7L, "leader 3", new HashRange(6, 6)), //
+                            new Shard(4L, "leader 2", new HashRange(10, 12)) // Merge
                             );
             var assignments = ShardManager.Assignments.applyUpdates(existing, updates);
             assertThat(assignments)
@@ -72,12 +72,12 @@ public class ShardManagerTest {
                             a -> {
                                 assertThat(a)
                                         .containsOnly(
-                                                entry(1, new Shard(1, "leader 4", new HashRange(1, 3))),
-                                                entry(2, new Shard(2, "leader 4", new HashRange(7, 9))),
-                                                entry(3, new Shard(3, "leader 2", new HashRange(4, 5))),
-                                                entry(7, new Shard(7, "leader 3", new HashRange(6, 6))),
-                                                entry(4, new Shard(4, "leader 2", new HashRange(10, 12))),
-                                                entry(6, new Shard(6, "leader 4", new HashRange(13, 13))));
+                                                entry(1L, new Shard(1L, "leader 4", new HashRange(1, 3))),
+                                                entry(2L, new Shard(2L, "leader 4", new HashRange(7, 9))),
+                                                entry(3L, new Shard(3L, "leader 2", new HashRange(4, 5))),
+                                                entry(7L, new Shard(7L, "leader 3", new HashRange(6, 6))),
+                                                entry(4L, new Shard(4L, "leader 2", new HashRange(10, 12))),
+                                                entry(6L, new Shard(6L, "leader 4", new HashRange(13, 13))));
                                 assertThat(a).isUnmodifiable();
                             });
         }
@@ -119,7 +119,7 @@ public class ShardManagerTest {
 
             @Test
             void getAll() {
-                assertThat(assignments.getAll()).containsOnly(1);
+                assertThat(assignments.getAll()).containsOnly(1L);
                 var inorder = inOrder(rLock);
                 inorder.verify(rLock).lock();
                 inorder.verify(rLock).unlock();
@@ -127,7 +127,7 @@ public class ShardManagerTest {
 
             @Test
             void leader() {
-                assertThat(assignments.leader(1)).isEqualTo("leader 1");
+                assertThat(assignments.leader(1L)).isEqualTo("leader 1");
                 var inorder = inOrder(rLock);
                 inorder.verify(rLock).lock();
                 inorder.verify(rLock).unlock();
@@ -136,7 +136,7 @@ public class ShardManagerTest {
             @Test
             void leaderFail() {
                 assignments = new ShardManager.Assignments(lock, s -> k -> false);
-                assertThatThrownBy(() -> assignments.leader(1)).isInstanceOf(IllegalStateException.class);
+                assertThatThrownBy(() -> assignments.leader(1L)).isInstanceOf(IllegalStateException.class);
                 var inorder = inOrder(rLock);
                 inorder.verify(rLock).lock();
                 inorder.verify(rLock).unlock();
