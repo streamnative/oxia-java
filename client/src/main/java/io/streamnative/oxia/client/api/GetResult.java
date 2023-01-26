@@ -30,6 +30,6 @@ public class GetResult {
 
     public static @NonNull GetResult fromProto(@NonNull GetResponse response) {
         return new GetResult(
-                response.getPayload().toByteArray(), Version.fromProto(response.getStat()));
+                response.getValue().toByteArray(), Version.fromProto(response.getVersion()));
     }
 }

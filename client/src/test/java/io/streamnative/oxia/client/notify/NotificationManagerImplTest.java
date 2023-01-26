@@ -15,9 +15,9 @@
  */
 package io.streamnative.oxia.client.notify;
 
-import static io.streamnative.oxia.proto.NotificationType.KeyCreated;
-import static io.streamnative.oxia.proto.NotificationType.KeyDeleted;
-import static io.streamnative.oxia.proto.NotificationType.KeyModified;
+import static io.streamnative.oxia.proto.NotificationType.KEY_CREATED;
+import static io.streamnative.oxia.proto.NotificationType.KEY_DELETED;
+import static io.streamnative.oxia.proto.NotificationType.KEY_MODIFIED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.awaitility.Awaitility.await;
@@ -184,22 +184,22 @@ class NotificationManagerImplTest {
 
     static io.streamnative.oxia.proto.Notification created(long version) {
         return io.streamnative.oxia.proto.Notification.newBuilder()
-                .setType(KeyCreated)
-                .setVersion(version)
+                .setType(KEY_CREATED)
+                .setVersionId(version)
                 .build();
     }
 
     static io.streamnative.oxia.proto.Notification deleted(long version) {
         return io.streamnative.oxia.proto.Notification.newBuilder()
-                .setType(KeyDeleted)
-                .setVersion(version)
+                .setType(KEY_DELETED)
+                .setVersionId(version)
                 .build();
     }
 
     static io.streamnative.oxia.proto.Notification modification(long version) {
         return io.streamnative.oxia.proto.Notification.newBuilder()
-                .setType(KeyModified)
-                .setVersion(version)
+                .setType(KEY_MODIFIED)
+                .setVersionId(version)
                 .build();
     }
 

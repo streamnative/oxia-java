@@ -26,6 +26,6 @@ import lombok.NonNull;
  */
 public record PutResult(@NonNull Version version) {
     public static @NonNull PutResult fromProto(@NonNull PutResponse response) {
-        return new PutResult(Version.fromProto(response.getStat()));
+        return new PutResult(Version.fromProto(response.getVersion()));
     }
 }

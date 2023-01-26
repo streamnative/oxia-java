@@ -104,14 +104,14 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 long expectedVersionId)
                 implements WriteOperation<PutResult> {
             PutRequest toProto() {
-                var builder = PutRequest.newBuilder().setKey(key).setPayload(ByteString.copyFrom(payload));
-                setOptionalExpectedVersionId(expectedVersionId, builder::setExpectedVersion);
+                var builder = PutRequest.newBuilder().setKey(key).setValue(ByteString.copyFrom(payload));
+                setOptionalExpectedVersionId(expectedVersionId, builder::setExpectedVersionId);
                 return builder.build();
             }
 
             void complete(@NonNull PutResponse response) {
                 switch (response.getStatus()) {
-                    case UNEXPECTED_VERSION -> fail(new UnexpectedVersionIdException(expectedVersionId));
+                    case UNEXPECTED_VERSION_ID -> fail(new UnexpectedVersionIdException(expectedVersionId));
                     case OK -> callback.complete(PutResult.fromProto(response));
                     default -> fail(new IllegalStateException("GRPC.Status: " + response.getStatus().name()));
                 }
@@ -151,13 +151,13 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 implements WriteOperation<Boolean> {
             DeleteRequest toProto() {
                 var builder = DeleteRequest.newBuilder().setKey(key);
-                setOptionalExpectedVersionId(expectedVersionId, builder::setExpectedVersion);
+                setOptionalExpectedVersionId(expectedVersionId, builder::setExpectedVersionId);
                 return builder.build();
             }
 
             void complete(@NonNull DeleteResponse response) {
                 switch (response.getStatus()) {
-                    case UNEXPECTED_VERSION -> fail(new UnexpectedVersionIdException(expectedVersionId));
+                    case UNEXPECTED_VERSION_ID -> fail(new UnexpectedVersionIdException(expectedVersionId));
                     case KEY_NOT_FOUND -> callback.complete(false);
                     case OK -> callback.complete(true);
                     default -> fail(new IllegalStateException("GRPC.Status: " + response.getStatus().name()));

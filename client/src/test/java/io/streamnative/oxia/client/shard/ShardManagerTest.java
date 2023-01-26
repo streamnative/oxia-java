@@ -26,7 +26,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.streamnative.oxia.client.grpc.Receiver;
-import io.streamnative.oxia.proto.ShardAssignmentsResponse;
+import io.streamnative.oxia.proto.ShardAssignments;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -158,11 +158,10 @@ public class ShardManagerTest {
         @Test
         void observerOnNext() {
             @SuppressWarnings("unchecked")
-            Consumer<ShardAssignmentsResponse> consumer =
-                    (Consumer<ShardAssignmentsResponse>) mock(Consumer.class);
+            Consumer<ShardAssignments> consumer = (Consumer<ShardAssignments>) mock(Consumer.class);
             var terminal = new CompletableFuture<Void>();
             var observer = new ShardManager.ShardAssignmentsObserver(terminal, consumer);
-            var response = ShardAssignmentsResponse.getDefaultInstance();
+            var response = ShardAssignments.getDefaultInstance();
             observer.onNext(response);
             verify(consumer).accept(response);
             assertThat(terminal).isNotCompleted();
