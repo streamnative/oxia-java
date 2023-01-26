@@ -19,4 +19,5 @@ Common build actions:
 | Skip Checkstyle standards check | `mvn clean verify -Dcheckstyle.skip`     |
 | Skip Spotless formatting check  | `mvn clean verify -Dspotless.check.skip` |
 | Format code                     | `mvn spotless:apply`                     |
+| Generate license headers        | `mvn license:format`                     |
 
