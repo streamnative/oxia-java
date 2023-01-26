@@ -28,8 +28,9 @@ public class Xxh332HashTest {
 
     private static Stream<Arguments> hashArgs() {
         return Stream.of(
-                Arguments.of("oxia metadata service", 5404817113047210190L),
-                Arguments.of("a", 970730967732026843L));
+                Arguments.of("foo", 125730186L),
+                Arguments.of("bar", 2687685474L),
+                Arguments.of("baz", 862947621L));
     }
 
     @ParameterizedTest
