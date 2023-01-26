@@ -186,7 +186,6 @@ class AsyncOxiaClientImplTest {
                             assertThat(o.callback()).isNotCompleted();
                         });
 
-        result.complete(null);
         opCaptor1.getValue().callback().complete(null);
         opCaptor2.getValue().callback().complete(null);
         opCaptor3.getValue().callback().complete(null);
@@ -255,11 +254,10 @@ class AsyncOxiaClientImplTest {
                             assertThat(o.callback()).isNotCompleted();
                         });
 
-        result.complete(null);
-        opCaptor1.getValue().callback().complete(null);
-        opCaptor2.getValue().callback().complete(null);
-        opCaptor3.getValue().callback().complete(null);
-        assertThat(result).isCompleted();
+        opCaptor1.getValue().callback().complete(List.of("a"));
+        opCaptor2.getValue().callback().complete(List.of("b"));
+        opCaptor3.getValue().callback().complete(List.of("c"));
+        assertThat(result).isCompletedWithValueMatching(l -> l.containsAll(List.of("a", "b", "c")));
     }
 
     @Test
