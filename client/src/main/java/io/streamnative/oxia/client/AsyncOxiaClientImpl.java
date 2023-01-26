@@ -58,7 +58,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                                 config.notificationCallback());
 
         BlockingStubByShardId blockingStubByShardId =
-                new BlockingStubByShardId(shardManager, channelManager.getBlockingStubFactory());
+                new BlockingStubByShardId(shardManager, channelManager.getBlockingStubFactory(), config);
         readBatchManager = BatchManager.newReadBatchManager(config, blockingStubByShardId);
         writeBatchManager = BatchManager.newWriteBatchManager(config, blockingStubByShardId);
         shardManager.start().join();

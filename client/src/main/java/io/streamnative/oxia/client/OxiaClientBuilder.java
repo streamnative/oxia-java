@@ -40,6 +40,7 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
     @NonNull private Duration batchLinger = DefaultBatchLinger;
     private int maxRequestsPerBatch = DefaultMaxRequestsPerBatch;
     private int operationQueueCapacity = DefaultOperationQueueCapacity;
+    private boolean standalone = false;
 
     @Override
     public @NonNull OxiaClientBuilder notificationCallback(
@@ -76,6 +77,11 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
         return this;
     }
 
+    public OxiaClientBuilder standalone() {
+        standalone = true;
+        return this;
+    }
+
     public @NonNull AsyncOxiaClient asyncClient() throws ExecutionException, InterruptedException {
         var config =
                 new ClientConfig(
@@ -84,7 +90,8 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
                         requestTimeout,
                         batchLinger,
                         maxRequestsPerBatch,
-                        operationQueueCapacity);
+                        operationQueueCapacity,
+                        standalone);
         return new AsyncOxiaClientImpl(config);
     }
 

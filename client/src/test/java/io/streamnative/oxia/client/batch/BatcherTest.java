@@ -22,8 +22,8 @@ import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -60,7 +60,8 @@ class BatcherTest {
     @Mock Batch batch;
     long shardId = 1L;
     ClientConfig config =
-            new ClientConfig("address", n -> {}, Duration.ofMillis(100), Duration.ofMillis(1000), 10, 5);
+            new ClientConfig(
+                    "address", n -> {}, Duration.ofMillis(100), Duration.ofMillis(1000), 10, 5, false);
 
     BlockingQueue<Operation<?>> queue = new ArrayBlockingQueue<>(config.operationQueueCapacity());
     ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
@@ -160,12 +161,11 @@ class BatcherTest {
     }
 
     @Test
-    void interrupt() throws Exception {
+    void interrupt(@Mock BlockingQueue<Operation<?>> queue) throws Exception {
         var callback = new CompletableFuture<GetResult>();
         Operation<?> op = new GetOperation(callback, "key");
-        queue = mock(BlockingQueue.class);
         when(queue.offer(op, config.requestTimeout().toMillis(), MILLISECONDS)).thenReturn(true);
-        when(queue.poll()).thenReturn((Operation) op);
+        doReturn(op).when(queue).poll();
         when(queue.poll(anyLong(), eq(MILLISECONDS))).thenThrow(new InterruptedException());
         batcher = new Batcher(config, shardId, batchFactory, queue, clock);
         when(batchFactory.apply(shardId)).thenReturn(batch);
@@ -187,7 +187,7 @@ class BatcherTest {
     }
 
     @Test
-    void addTimeout() throws Exception {
+    void addTimeout() {
         var callback = new CompletableFuture<GetResult>();
         Operation<?> op = new GetOperation(callback, "key");
         IntStream.range(0, config.operationQueueCapacity()).forEach(i -> batcher.add(op));
@@ -198,12 +198,11 @@ class BatcherTest {
     }
 
     @Test
-    void unboundedPollAtStart() throws Exception {
+    void unboundedPollAtStart(@Mock BlockingQueue<Operation<?>> queue) throws Exception {
         var callback = new CompletableFuture<GetResult>();
         Operation<?> op = new GetOperation(callback, "key");
-        queue = mock(BlockingQueue.class);
         when(queue.offer(op, config.requestTimeout().toMillis(), MILLISECONDS)).thenReturn(true);
-        when(queue.poll()).thenReturn((Operation) op);
+        doReturn(op).when(queue).poll();
         batcher = new Batcher(config, shardId, batchFactory, queue, clock);
         when(batchFactory.apply(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(1);
