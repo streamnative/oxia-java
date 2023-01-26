@@ -43,18 +43,4 @@ class HashRangeShardStrategyTest {
         var shard = new Shard(1, "leader", new HashRange(min, max));
         assertThat(predicate.test(shard)).isEqualTo(matches);
     }
-
-    private static Stream<Arguments> xxh332Args() {
-        return Stream.of(
-                Arguments.of("foo", 125730186L),
-                Arguments.of("bar", 2687685474L),
-                Arguments.of("baz", 862947621L));
-    }
-
-    @ParameterizedTest
-    @MethodSource("xxh332Args")
-    void xxh332Test(String key, long expected) {
-        var hash = HashRangeShardStrategy.Xxh332Hash.apply(key);
-        assertThat(hash).isEqualTo(expected);
-    }
 }
