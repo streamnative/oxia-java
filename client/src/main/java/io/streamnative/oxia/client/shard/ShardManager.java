@@ -205,7 +205,7 @@ public class ShardManager implements AutoCloseable {
                                 });
                 // Start the stream
                 var client = stubFactory.apply(serviceAddress);
-                client.shardAssignments(ShardAssignmentsRequest.getDefaultInstance(), observer);
+                client.getShardAssignments(ShardAssignmentsRequest.getDefaultInstance(), observer);
             } catch (Exception e) {
                 terminal.completeExceptionally(e);
             }

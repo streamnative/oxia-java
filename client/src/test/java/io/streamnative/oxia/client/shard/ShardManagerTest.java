@@ -111,7 +111,8 @@ public class ShardManagerTest {
             @Test
             void getFail() {
                 assignments = new ShardManager.Assignments(lock, s -> k -> false);
-                assertThatThrownBy(() -> assignments.get("key")).isInstanceOf(IllegalStateException.class);
+                assertThatThrownBy(() -> assignments.get("key"))
+                        .isInstanceOf(NoShardAvailableException.class);
                 var inorder = inOrder(rLock);
                 inorder.verify(rLock).lock();
                 inorder.verify(rLock).unlock();
@@ -136,7 +137,8 @@ public class ShardManagerTest {
             @Test
             void leaderFail() {
                 assignments = new ShardManager.Assignments(lock, s -> k -> false);
-                assertThatThrownBy(() -> assignments.leader(1L)).isInstanceOf(IllegalStateException.class);
+                assertThatThrownBy(() -> assignments.leader(1L))
+                        .isInstanceOf(NoShardAvailableException.class);
                 var inorder = inOrder(rLock);
                 inorder.verify(rLock).lock();
                 inorder.verify(rLock).unlock();

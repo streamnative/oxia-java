@@ -36,7 +36,7 @@ public class ModelFactory {
                 .build();
     }
 
-    static @NonNull ShardAssignmentsResponse newShardAssignmentResponse(
+    static @NonNull ShardAssignments newShardAssignments(
             long id, int min, int max, @NonNull String leader) {
         return ShardAssignments.newBuilder()
                 .addAssignments(newShardAssignment(id, min, max, leader))
