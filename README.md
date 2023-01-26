@@ -1,6 +1,13 @@
-# Oxia Client Java
+# Oxia Java
 
 [![Build](https://github.com/streamnative/oxia-client-java/actions/workflows/pr-build-and-test.yml/badge.svg)](https://github.com/streamnative/oxia-client-java/actions/workflows/pr-build-and-test.yml)
+
+## Overview
+
+This project comprises JDK language compatible modules for the [Oxia][oxia] service. Currently, it provides:
+
+- [Client](client/) for the Oxia service
+- [Testcontainter](testcontainers/) for local integration testing with an Oxia service.
 
 ## Build
 
@@ -20,4 +27,6 @@ Common build actions:
 | Skip Spotless formatting check  | `mvn clean verify -Dspotless.check.skip` |
 | Format code                     | `mvn spotless:apply`                     |
 | Generate license headers        | `mvn license:format`                     |
+
+[oxia]: https://github.com/streamnative/oxia
 
