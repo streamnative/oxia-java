@@ -59,7 +59,7 @@ class ShardManagerGrpcTest {
                             new OxiaClientImplBase() {
                                 @Override
                                 @SneakyThrows
-                                public void shardAssignments(
+                                public void getShardAssignments(
                                         ShardAssignmentsRequest request, StreamObserver<ShardAssignments> observer) {
                                     shardAssignmentsCount.incrementAndGet();
                                     responseSender.execute(
