@@ -24,12 +24,12 @@ import lombok.NonNull;
 public interface AsyncOxiaClient extends AutoCloseable {
 
     /**
-     * Conditionally associates a payload with a key if the server's versionId of the record is as
+     * Conditionally associates a value with a key if the server's versionId of the record is as
      * specified, at the instant when the put is applied. The put will not be applied if the server's
      * versionId of the record does not match the expectation set in the call.
      *
-     * @param key The key with which the payload should be associated.
-     * @param payload The payload to associate with the key.
+     * @param key The key with which the value should be associated.
+     * @param value The value to associate with the key.
      * @param expectedVersionId The versionId of the record that this put operation is scoped to.
      * @return The result of the put at the specified key. Supplied via a future that returns the
      *     {@link PutResult}. The future will complete exceptionally with an {@link
@@ -38,18 +38,18 @@ public interface AsyncOxiaClient extends AutoCloseable {
      */
     @NonNull
     CompletableFuture<PutResult> put(
-            @NonNull String key, byte @NonNull [] payload, long expectedVersionId);
+            @NonNull String key, byte @NonNull [] value, long expectedVersionId);
 
     /**
-     * Associates a payload with a key.
+     * Associates a value with a key.
      *
-     * @param key The key with which the payload should be associated.
-     * @param payload The payload to associate with the key.
+     * @param key The key with which the value should be associated.
+     * @param value The value to associate with the key.
      * @return The result of the put at the specified key. Supplied via a future that returns the
      *     {@link PutResult}.
      */
     @NonNull
-    CompletableFuture<PutResult> put(@NonNull String key, byte @NonNull [] payload);
+    CompletableFuture<PutResult> put(@NonNull String key, byte @NonNull [] value);
 
     /**
      * Conditionally deletes the record associated with the key if the record exists, and the server's
@@ -93,7 +93,7 @@ public interface AsyncOxiaClient extends AutoCloseable {
             @NonNull String minKeyInclusive, @NonNull String maxKeyExclusive);
 
     /**
-     * Returns the record associated with the specified key. The returned value includes the payload,
+     * Returns the record associated with the specified key. The returned value includes the value,
      * and other metadata.
      *
      * @param key The key associated with the record to be fetched.

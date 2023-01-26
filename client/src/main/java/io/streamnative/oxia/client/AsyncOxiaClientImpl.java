@@ -48,7 +48,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     private final BatchManager readBatchManager;
     private final BatchManager writeBatchManager;
 
-    AsyncOxiaClientImpl(ClientConfig config) {
+    AsyncOxiaClientImpl(ClientConfig config) throws ExecutionException, InterruptedException {
         channelManager = new ChannelManager(config);
         shardManager = new ShardManager(config.serviceAddress(), channelManager.getStubFactory());
         notificationManager =
@@ -63,24 +63,26 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                 s -> channelManager.getBlockingStubFactory().apply(shardManager.leader(s));
         readBatchManager = BatchManager.newReadBatchManager(config, stubByShardId);
         writeBatchManager = BatchManager.newWriteBatchManager(config, stubByShardId);
+        shardManager.start().get();
+        notificationManager.start();
     }
 
     @Override
     public @NonNull CompletableFuture<PutResult> put(
-            @NonNull String key, byte @NonNull [] payload, long expectedVersionId) {
+            @NonNull String key, byte @NonNull [] value, long expectedVersionId) {
         var shardId = shardManager.get(key);
         var callback = new CompletableFuture<PutResult>();
         writeBatchManager
                 .getBatcher(shardId)
-                .add(new PutOperation(callback, key, payload, expectedVersionId));
+                .add(new PutOperation(callback, key, value, expectedVersionId));
         return callback;
     }
 
     @Override
-    public @NonNull CompletableFuture<PutResult> put(@NonNull String key, byte @NonNull [] payload) {
+    public @NonNull CompletableFuture<PutResult> put(@NonNull String key, byte @NonNull [] value) {
         var shardId = shardManager.get(key);
         var callback = new CompletableFuture<PutResult>();
-        writeBatchManager.getBatcher(shardId).add(new PutOperation(callback, key, payload));
+        writeBatchManager.getBatcher(shardId).add(new PutOperation(callback, key, value));
         return callback;
     }
 

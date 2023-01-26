@@ -99,11 +99,11 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
         record PutOperation(
                 @NonNull CompletableFuture<PutResult> callback,
                 @NonNull String key,
-                byte @NonNull [] payload,
+                byte @NonNull [] value,
                 long expectedVersionId)
                 implements WriteOperation<PutResult> {
             PutRequest toProto() {
-                var builder = PutRequest.newBuilder().setKey(key).setValue(ByteString.copyFrom(payload));
+                var builder = PutRequest.newBuilder().setKey(key).setValue(ByteString.copyFrom(value));
                 setOptionalExpectedVersionId(expectedVersionId, builder::setExpectedVersionId);
                 return builder.build();
             }
@@ -134,13 +134,13 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 PutOperation that = (PutOperation) o;
                 return expectedVersionId == that.expectedVersionId
                         && key.equals(that.key)
-                        && Arrays.equals(payload, that.payload);
+                        && Arrays.equals(value, that.value);
             }
 
             @Override
             public int hashCode() {
                 int result = Objects.hash(key, expectedVersionId);
-                result = 31 * result + Arrays.hashCode(payload);
+                result = 31 * result + Arrays.hashCode(value);
                 return result;
             }
         }

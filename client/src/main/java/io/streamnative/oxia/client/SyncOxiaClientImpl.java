@@ -35,9 +35,9 @@ class SyncOxiaClientImpl implements SyncOxiaClient {
     @SneakyThrows
     @Override
     public @NonNull PutResult put(
-            @NonNull String key, byte @NonNull [] payload, long expectedVersionId) {
+            @NonNull String key, byte @NonNull [] value, long expectedVersionId) {
         try {
-            return asyncClient.put(key, payload, expectedVersionId).get();
+            return asyncClient.put(key, value, expectedVersionId).get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
@@ -48,9 +48,9 @@ class SyncOxiaClientImpl implements SyncOxiaClient {
 
     @SneakyThrows
     @Override
-    public @NonNull PutResult put(@NonNull String key, byte @NonNull [] payload) {
+    public @NonNull PutResult put(@NonNull String key, byte @NonNull [] value) {
         try {
-            return asyncClient.put(key, payload).get();
+            return asyncClient.put(key, value).get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);

@@ -145,7 +145,7 @@ class OperationTest {
                     .satisfies(
                             r -> {
                                 assertThat(r.getKey()).isEqualTo(op.key());
-                                assertThat(r.getValue().toByteArray()).isEqualTo(op.payload());
+                                assertThat(r.getValue().toByteArray()).isEqualTo(op.value());
                                 assertThat(r.hasExpectedVersionId()).isFalse();
                             });
         }
@@ -158,7 +158,7 @@ class OperationTest {
                     .satisfies(
                             r -> {
                                 assertThat(r.getKey()).isEqualTo(op.key());
-                                assertThat(r.getValue().toByteArray()).isEqualTo(op.payload());
+                                assertThat(r.getValue().toByteArray()).isEqualTo(op.value());
                                 assertThat(r.getExpectedVersionId()).isEqualTo(1L);
                             });
         }
