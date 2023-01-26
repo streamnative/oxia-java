@@ -39,7 +39,7 @@ public class ChannelManager implements Function<String, ManagedChannel>, AutoClo
     @Getter private final @NonNull StubFactory stubFactory;
     @Getter private final @NonNull BlockingStubFactory blockingStubFactory;
 
-    public ChannelManager(ClientConfig config) {
+    public ChannelManager(@NonNull ClientConfig config) {
         this.config = config;
         stubFactory = new StubFactory(this);
         blockingStubFactory = new BlockingStubFactory(this);
