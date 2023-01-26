@@ -137,7 +137,6 @@ class NotificationManagerImplTest {
             notificationManager.start();
             responses.add(addDefaultNotification());
             await("consumption of notifications")
-                    .timeout(Duration.FIVE_MINUTES)
                     .untilAsserted(
                             () -> {
                                 verify(notificationConsumer).accept(new Notification.KeyCreated("key1", 1L));
