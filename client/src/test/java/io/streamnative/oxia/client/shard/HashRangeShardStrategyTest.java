@@ -15,12 +15,18 @@
  */
 package io.streamnative.oxia.client.shard;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Random;
+import java.util.function.Function;
 import java.util.stream.Stream;
+
+import net.openhft.hashing.LongHashFunction;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.testcontainers.shaded.org.apache.commons.lang3.RandomUtils;
 
 class HashRangeShardStrategyTest {
 
@@ -42,5 +48,20 @@ class HashRangeShardStrategyTest {
         var predicate = strategy.acceptsKeyPredicate("key");
         var shard = new Shard(1, "leader", new HashRange(min, max));
         assertThat(predicate.test(shard)).isEqualTo(matches);
+    }
+
+    private static Stream<Arguments> xxh332Args() {
+        return Stream.of(
+                Arguments.of("foo", 125730186L),
+                Arguments.of("bar", 2687685474L),
+                Arguments.of("baz", 862947621L)
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("xxh332Args")
+    void xxh332Test(String key, long expected) {
+        var hash = HashRangeShardStrategy.Xxh332Hash.apply(key);
+        assertThat(hash).isEqualTo(expected);
     }
 }

@@ -15,6 +15,7 @@
  */
 package io.streamnative.oxia.client.shard;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -35,7 +36,8 @@ class HashRangeShardStrategy implements ShardStrategy {
                 shard.hashRange().minInclusive() <= hash && hash <= shard.hashRange().maxInclusive();
     }
 
-    static final Function<String, Long> Xxh332Hash = s -> LongHashFunction.xx3().hashChars(s);
+    static final Function<String, Long> Xxh332Hash =
+            s -> LongHashFunction.xx3().hashBytes(s.getBytes(UTF_8)) & 0x00000000FFFFFFFFL;
 
     static final ShardStrategy Xxh332HashRangeShardStrategy = new HashRangeShardStrategy(Xxh332Hash);
 }
