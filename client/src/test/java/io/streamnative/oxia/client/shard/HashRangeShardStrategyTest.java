@@ -15,18 +15,12 @@
  */
 package io.streamnative.oxia.client.shard;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Random;
-import java.util.function.Function;
 import java.util.stream.Stream;
-
-import net.openhft.hashing.LongHashFunction;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.testcontainers.shaded.org.apache.commons.lang3.RandomUtils;
 
 class HashRangeShardStrategyTest {
 
@@ -54,8 +48,7 @@ class HashRangeShardStrategyTest {
         return Stream.of(
                 Arguments.of("foo", 125730186L),
                 Arguments.of("bar", 2687685474L),
-                Arguments.of("baz", 862947621L)
-        );
+                Arguments.of("baz", 862947621L));
     }
 
     @ParameterizedTest
