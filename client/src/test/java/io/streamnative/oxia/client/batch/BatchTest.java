@@ -20,7 +20,7 @@ import static io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientImplBase;
 import static io.streamnative.oxia.proto.OxiaClientGrpc.newBlockingStub;
 import static io.streamnative.oxia.proto.Status.KEY_NOT_FOUND;
 import static io.streamnative.oxia.proto.Status.OK;
-import static io.streamnative.oxia.proto.Status.UNEXPECTED_VERSION;
+import static io.streamnative.oxia.proto.Status.UNEXPECTED_VERSION_ID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.AdditionalAnswers.delegatesTo;
@@ -180,7 +180,7 @@ class BatchTest {
                     o ->
                             o.onNext(
                                     WriteResponse.newBuilder()
-                                            .addPuts(PutResponse.newBuilder().setStatus(UNEXPECTED_VERSION).build())
+                                            .addPuts(PutResponse.newBuilder().setStatus(UNEXPECTED_VERSION_ID).build())
                                             .addDeletes(DeleteResponse.newBuilder().setStatus(KEY_NOT_FOUND).build())
                                             .addDeleteRanges(DeleteRangeResponse.newBuilder().setStatus(OK).build())
                                             .build()));

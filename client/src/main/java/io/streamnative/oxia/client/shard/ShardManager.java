@@ -28,8 +28,8 @@ import io.grpc.stub.StreamObserver;
 import io.streamnative.oxia.client.grpc.ReceiveWithRecovery;
 import io.streamnative.oxia.client.grpc.Receiver;
 import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientStub;
+import io.streamnative.oxia.proto.ShardAssignments;
 import io.streamnative.oxia.proto.ShardAssignmentsRequest;
-import io.streamnative.oxia.proto.ShardAssignmentsResponse;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -207,7 +207,7 @@ public class ShardManager implements AutoCloseable {
                                 });
                 // Start the stream
                 var client = clientSupplier.apply(serviceAddress);
-                client.shardAssignments(ShardAssignmentsRequest.getDefaultInstance(), observer);
+                client.getShardAssignments(ShardAssignmentsRequest.getDefaultInstance(), observer);
             } catch (Exception e) {
                 terminal.completeExceptionally(e);
             }
@@ -225,12 +225,12 @@ public class ShardManager implements AutoCloseable {
 
     @RequiredArgsConstructor(access = PACKAGE)
     @VisibleForTesting
-    static class ShardAssignmentsObserver implements StreamObserver<ShardAssignmentsResponse> {
+    static class ShardAssignmentsObserver implements StreamObserver<ShardAssignments> {
         private final CompletableFuture<Void> streamTerminal;
-        private final Consumer<ShardAssignmentsResponse> shardAssignmentsConsumer;
+        private final Consumer<ShardAssignments> shardAssignmentsConsumer;
 
         @Override
-        public void onNext(ShardAssignmentsResponse shardAssignments) {
+        public void onNext(ShardAssignments shardAssignments) {
             shardAssignmentsConsumer.accept(shardAssignments);
         }
 

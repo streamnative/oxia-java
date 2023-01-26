@@ -18,7 +18,7 @@ package io.streamnative.oxia.client.shard;
 
 import io.streamnative.oxia.proto.Int32HashRange;
 import io.streamnative.oxia.proto.ShardAssignment;
-import io.streamnative.oxia.proto.ShardAssignmentsResponse;
+import io.streamnative.oxia.proto.ShardAssignments;
 import lombok.NonNull;
 
 public class ModelFactory {
@@ -35,9 +35,9 @@ public class ModelFactory {
                 .build();
     }
 
-    static @NonNull ShardAssignmentsResponse newShardAssignmentResponse(
+    static @NonNull ShardAssignments newShardAssignments(
             int id, int min, int max, @NonNull String leader) {
-        return ShardAssignmentsResponse.newBuilder()
+        return ShardAssignments.newBuilder()
                 .addAssignments(newShardAssignment(id, min, max, leader))
                 .build();
     }

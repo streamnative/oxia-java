@@ -18,7 +18,7 @@ package io.streamnative.oxia.client.shard;
 import static lombok.AccessLevel.PACKAGE;
 
 import io.streamnative.oxia.proto.ShardAssignment;
-import io.streamnative.oxia.proto.ShardAssignmentsResponse;
+import io.streamnative.oxia.proto.ShardAssignments;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -44,7 +44,7 @@ class StaticShardStrategy implements ShardStrategy {
     }
 
     public @NonNull StaticShardStrategy assign(
-            @NonNull String key, @NonNull ShardAssignmentsResponse response) {
+            @NonNull String key, @NonNull ShardAssignments response) {
         if (response.getAssignmentsCount() != 1) {
             throw new IllegalArgumentException();
         }

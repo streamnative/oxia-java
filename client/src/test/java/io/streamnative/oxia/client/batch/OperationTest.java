@@ -17,7 +17,7 @@ package io.streamnative.oxia.client.batch;
 
 import static io.streamnative.oxia.proto.Status.KEY_NOT_FOUND;
 import static io.streamnative.oxia.proto.Status.OK;
-import static io.streamnative.oxia.proto.Status.UNEXPECTED_VERSION;
+import static io.streamnative.oxia.proto.Status.UNEXPECTED_VERSION_ID;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -27,7 +27,6 @@ import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.KeyNotFoundException;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
-import io.streamnative.oxia.client.api.Version;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.ListOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
@@ -38,7 +37,7 @@ import io.streamnative.oxia.proto.DeleteResponse;
 import io.streamnative.oxia.proto.GetResponse;
 import io.streamnative.oxia.proto.ListResponse;
 import io.streamnative.oxia.proto.PutResponse;
-import io.streamnative.oxia.proto.Stat;
+import io.streamnative.oxia.proto.Version;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -85,10 +84,10 @@ class OperationTest {
             var response =
                     GetResponse.newBuilder()
                             .setStatus(OK)
-                            .setPayload(ByteString.copyFrom(payload))
-                            .setStat(
-                                    Stat.newBuilder()
-                                            .setVersion(1L)
+                            .setValue(ByteString.copyFrom(payload))
+                            .setVersion(
+                                    Version.newBuilder()
+                                            .setVersionId(1L)
                                             .setCreatedTimestamp(2L)
                                             .setModifiedTimestamp(3L)
                                             .build())
@@ -96,7 +95,10 @@ class OperationTest {
             op.complete(response);
             assertThat(callback)
                     .isCompletedWithValueMatching(
-                            r -> r.equals(new GetResult(payload, new Version(1L, 2L, 3L))));
+                            r ->
+                                    r.equals(
+                                            new GetResult(
+                                                    payload, new io.streamnative.oxia.client.api.Version(1L, 2L, 3L))));
         }
 
         @Test
@@ -151,8 +153,8 @@ class OperationTest {
                     .satisfies(
                             r -> {
                                 assertThat(r.getKey()).isEqualTo(op.key());
-                                assertThat(r.getPayload().toByteArray()).isEqualTo(op.payload());
-                                assertThat(r.hasExpectedVersion()).isFalse();
+                                assertThat(r.getValue().toByteArray()).isEqualTo(op.payload());
+                                assertThat(r.hasExpectedVersionId()).isFalse();
                             });
         }
 
@@ -164,14 +166,14 @@ class OperationTest {
                     .satisfies(
                             r -> {
                                 assertThat(r.getKey()).isEqualTo(op.key());
-                                assertThat(r.getPayload().toByteArray()).isEqualTo(op.payload());
-                                assertThat(r.getExpectedVersion()).isEqualTo(1L);
+                                assertThat(r.getValue().toByteArray()).isEqualTo(op.payload());
+                                assertThat(r.getExpectedVersionId()).isEqualTo(1L);
                             });
         }
 
         @Test
         void completeUnexpectedVersion() {
-            var response = PutResponse.newBuilder().setStatus(UNEXPECTED_VERSION).build();
+            var response = PutResponse.newBuilder().setStatus(UNEXPECTED_VERSION_ID).build();
             op.complete(response);
             assertThat(callback).isCompletedExceptionally();
             assertThatThrownBy(callback::get)
@@ -190,16 +192,18 @@ class OperationTest {
             var response =
                     PutResponse.newBuilder()
                             .setStatus(OK)
-                            .setStat(
-                                    Stat.newBuilder()
-                                            .setVersion(1L)
+                            .setVersion(
+                                    Version.newBuilder()
+                                            .setVersionId(1L)
                                             .setCreatedTimestamp(2L)
                                             .setModifiedTimestamp(3L)
                                             .build())
                             .build();
             op.complete(response);
             assertThat(callback)
-                    .isCompletedWithValueMatching(r -> r.equals(new PutResult(new Version(1L, 2L, 3L))));
+                    .isCompletedWithValueMatching(
+                            r ->
+                                    r.equals(new PutResult(new io.streamnative.oxia.client.api.Version(1L, 2L, 3L))));
         }
 
         @Test
@@ -232,7 +236,7 @@ class OperationTest {
                     .satisfies(
                             r -> {
                                 assertThat(r.getKey()).isEqualTo(op.key());
-                                assertThat(r.hasExpectedVersion()).isFalse();
+                                assertThat(r.hasExpectedVersionId()).isFalse();
                             });
         }
 
@@ -244,13 +248,13 @@ class OperationTest {
                     .satisfies(
                             r -> {
                                 assertThat(r.getKey()).isEqualTo(op.key());
-                                assertThat(r.getExpectedVersion()).isEqualTo(1L);
+                                assertThat(r.getExpectedVersionId()).isEqualTo(1L);
                             });
         }
 
         @Test
         void completeUnexpectedVersion() {
-            var response = DeleteResponse.newBuilder().setStatus(UNEXPECTED_VERSION).build();
+            var response = DeleteResponse.newBuilder().setStatus(UNEXPECTED_VERSION_ID).build();
             op.complete(response);
             assertThat(callback).isCompletedExceptionally();
             assertThatThrownBy(callback::get)

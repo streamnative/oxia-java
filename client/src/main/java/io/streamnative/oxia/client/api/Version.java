@@ -57,8 +57,8 @@ public record Version(long versionId, long createdTimestamp, long modifiedTimest
         }
     }
 
-    public static @NonNull Version fromProto(@NonNull io.streamnative.oxia.proto.Stat response) {
+    public static @NonNull Version fromProto(@NonNull io.streamnative.oxia.proto.Version version) {
         return new Version(
-                response.getVersion(), response.getCreatedTimestamp(), response.getModifiedTimestamp());
+                version.getVersionId(), version.getCreatedTimestamp(), version.getModifiedTimestamp());
     }
 }

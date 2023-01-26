@@ -20,7 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.protobuf.ByteString;
 import io.streamnative.oxia.proto.GetResponse;
-import io.streamnative.oxia.proto.Stat;
+import io.streamnative.oxia.proto.Version;
 import org.junit.jupiter.api.Test;
 
 class GetResultTest {
@@ -31,14 +31,14 @@ class GetResultTest {
         assertThat(
                         GetResult.fromProto(
                                 GetResponse.newBuilder()
-                                        .setPayload(ByteString.copyFrom(payload))
-                                        .setStat(
-                                                Stat.newBuilder()
-                                                        .setVersion(1L)
+                                        .setValue(ByteString.copyFrom(payload))
+                                        .setVersion(
+                                                Version.newBuilder()
+                                                        .setVersionId(1L)
                                                         .setCreatedTimestamp(2L)
                                                         .setModifiedTimestamp(3L)
                                                         .build())
                                         .build()))
-                .isEqualTo(new GetResult(payload, new Version(1L, 2L, 3L)));
+                .isEqualTo(new GetResult(payload, new io.streamnative.oxia.client.api.Version(1L, 2L, 3L)));
     }
 }

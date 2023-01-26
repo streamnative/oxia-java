@@ -15,7 +15,7 @@
  */
 package io.streamnative.oxia.client.shard;
 
-import static io.streamnative.oxia.client.shard.ModelFactory.newShardAssignmentResponse;
+import static io.streamnative.oxia.client.shard.ModelFactory.newShardAssignments;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
@@ -30,8 +30,8 @@ import io.grpc.stub.StreamObserver;
 import io.streamnative.oxia.proto.OxiaClientGrpc;
 import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientImplBase;
 import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientStub;
+import io.streamnative.oxia.proto.ShardAssignments;
 import io.streamnative.oxia.proto.ShardAssignmentsRequest;
-import io.streamnative.oxia.proto.ShardAssignmentsResponse;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
@@ -60,8 +60,7 @@ class ShardManagerGrpcTest {
                                 @Override
                                 @SneakyThrows
                                 public void shardAssignments(
-                                        ShardAssignmentsRequest request,
-                                        StreamObserver<ShardAssignmentsResponse> observer) {
+                                        ShardAssignmentsRequest request, StreamObserver<ShardAssignments> observer) {
                                     shardAssignmentsCount.incrementAndGet();
                                     responseSender.execute(
                                             () -> {
@@ -121,7 +120,7 @@ class ShardManagerGrpcTest {
             var bootstrap = shardManager.start();
             assertThat(bootstrap).isNotCompleted();
             assertThat(shardManager.getAll()).isEmpty();
-            responses.add(assignments(newShardAssignmentResponse(1, 2, 3, "leader 1")));
+            responses.add(assignments(newShardAssignments(1, 2, 3, "leader 1")));
             await("bootstrapping").until(bootstrap::isDone);
             assertThat(bootstrap).isNotCompletedExceptionally();
             assertThat(shardManager.getAll()).containsOnly(1);
@@ -131,8 +130,8 @@ class ShardManagerGrpcTest {
 
     @Test
     public void update() throws Exception {
-        var s1v1 = newShardAssignmentResponse(1, 2, 5, "leader 1");
-        var s1v2 = newShardAssignmentResponse(1, 2, 3, "leader 2");
+        var s1v1 = newShardAssignments(1, 2, 5, "leader 1");
+        var s1v2 = newShardAssignments(1, 2, 3, "leader 2");
         var strategy = new StaticShardStrategy().assign("key1", s1v1).assign("key2", s1v1);
         try (var shardManager = new ShardManager(strategy, "address", clientByShardId)) {
             responses.add(assignments(s1v1));
@@ -157,8 +156,8 @@ class ShardManagerGrpcTest {
 
     @Test
     public void overlap() throws Exception {
-        var s1 = newShardAssignmentResponse(1, 1, 3, "leader 1");
-        var s2 = newShardAssignmentResponse(2, 2, 4, "leader 2");
+        var s1 = newShardAssignments(1, 1, 3, "leader 1");
+        var s2 = newShardAssignments(2, 2, 4, "leader 2");
         var strategy = new StaticShardStrategy().assign("key1", s1);
         try (var shardManager = new ShardManager(strategy, "address", clientByShardId)) {
             responses.add(assignments(s1));
@@ -221,14 +220,14 @@ class ShardManagerGrpcTest {
             INSTANCE;
         }
 
-        record Assignments(ShardAssignmentsResponse response) implements StreamResponse {}
+        record Assignments(ShardAssignments response) implements StreamResponse {}
     }
 
     static StreamResponse.Assignments assignments(int id, int min, int max, String leader) {
-        return new StreamResponse.Assignments(newShardAssignmentResponse(id, min, max, leader));
+        return new StreamResponse.Assignments(newShardAssignments(id, min, max, leader));
     }
 
-    static StreamResponse.Assignments assignments(ShardAssignmentsResponse r) {
+    static StreamResponse.Assignments assignments(ShardAssignments r) {
         return new StreamResponse.Assignments(r);
     }
 
