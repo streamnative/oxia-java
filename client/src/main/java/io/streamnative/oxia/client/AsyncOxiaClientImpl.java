@@ -30,12 +30,10 @@ import io.streamnative.oxia.client.grpc.ChannelManager;
 import io.streamnative.oxia.client.notify.NotificationManager;
 import io.streamnative.oxia.client.notify.NotificationManagerImpl;
 import io.streamnative.oxia.client.shard.ShardManager;
-import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientBlockingStub;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.function.Function;
 import lombok.AccessLevel;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -59,8 +57,8 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                                 channelManager.getStubFactory(),
                                 config.notificationCallback());
 
-        Function<Long, OxiaClientBlockingStub> blockingStubByShardId =
-                s -> channelManager.getBlockingStubFactory().apply(shardManager.leader(s));
+        BlockingStubByShardId blockingStubByShardId =
+                new BlockingStubByShardId(shardManager, channelManager.getBlockingStubFactory());
         readBatchManager = BatchManager.newReadBatchManager(config, blockingStubByShardId);
         writeBatchManager = BatchManager.newWriteBatchManager(config, blockingStubByShardId);
         shardManager.start().join();
