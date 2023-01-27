@@ -131,8 +131,8 @@ public class NotificationManagerImpl implements NotificationManager {
                                 var notice = e.getValue();
                                 return switch (notice.getType()) {
                                     case KEY_CREATED -> new KeyCreated(key, notice.getVersionId());
-                                    case KEY_DELETED -> new KeyDeleted(key, notice.getVersionId());
                                     case KEY_MODIFIED -> new KeyModified(key, notice.getVersionId());
+                                    case KEY_DELETED -> new KeyDeleted(key);
                                     default -> null;
                                 };
                             })

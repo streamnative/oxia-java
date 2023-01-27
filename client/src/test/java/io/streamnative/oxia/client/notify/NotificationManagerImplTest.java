@@ -139,7 +139,7 @@ class NotificationManagerImplTest {
                     .untilAsserted(
                             () -> {
                                 verify(notificationConsumer).accept(new Notification.KeyCreated("key1", 1L));
-                                verify(notificationConsumer).accept(new Notification.KeyDeleted("key2", 2L));
+                                verify(notificationConsumer).accept(new Notification.KeyDeleted("key2"));
                                 verify(notificationConsumer).accept(new Notification.KeyModified("key3", 3L));
                             });
         }

@@ -51,9 +51,5 @@ public sealed interface Notification
      * @param key The key of the deleted record.
      * @param version The versionId of the deleted record.
      */
-    record KeyDeleted(@NonNull String key, long version) implements Notification {
-        public KeyDeleted {
-            Version.requireValidVersionId(version);
-        }
-    }
+    record KeyDeleted(@NonNull String key) implements Notification {}
 }
