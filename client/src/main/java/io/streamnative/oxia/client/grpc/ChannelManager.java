@@ -16,13 +16,11 @@
 package io.streamnative.oxia.client.grpc;
 
 import static io.streamnative.oxia.proto.OxiaClientGrpc.newBlockingStub;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static lombok.AccessLevel.PACKAGE;
 
 import io.grpc.Channel;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
-import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.proto.OxiaClientGrpc;
 import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientBlockingStub;
 import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientStub;
@@ -35,13 +33,11 @@ import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
 public class ChannelManager implements Function<String, Channel>, AutoCloseable {
-    @NonNull ClientConfig config;
     private final ConcurrentMap<String, ManagedChannel> channels = new ConcurrentHashMap<>();
     @Getter private final @NonNull StubFactory stubFactory;
     @Getter private final @NonNull BlockingStubFactory blockingStubFactory;
 
-    public ChannelManager(@NonNull ClientConfig config) {
-        this.config = config;
+    public ChannelManager() {
         stubFactory = new StubFactory(this);
         blockingStubFactory = new BlockingStubFactory(this);
     }
@@ -59,7 +55,6 @@ public class ChannelManager implements Function<String, Channel>, AutoCloseable 
                 a ->
                         ManagedChannelBuilder.forAddress(serviceAddress.host(), serviceAddress.port())
                                 .usePlaintext()
-                                .keepAliveTimeout(config.requestTimeout().toMillis(), MILLISECONDS)
                                 .build());
     }
 

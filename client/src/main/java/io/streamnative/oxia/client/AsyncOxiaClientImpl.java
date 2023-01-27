@@ -47,7 +47,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     private final BatchManager writeBatchManager;
 
     AsyncOxiaClientImpl(ClientConfig config) {
-        channelManager = new ChannelManager(config);
+        channelManager = new ChannelManager();
         shardManager = new ShardManager(config.serviceAddress(), channelManager.getStubFactory());
         notificationManager =
                 config.notificationCallback() == null
