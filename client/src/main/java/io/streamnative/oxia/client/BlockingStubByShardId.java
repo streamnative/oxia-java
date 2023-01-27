@@ -13,16 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.streamnative.oxia.client.shard;
+package io.streamnative.oxia.client;
 
 
-import lombok.Getter;
+import io.streamnative.oxia.client.shard.ShardManager;
+import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientBlockingStub;
+import java.util.function.Function;
+import lombok.NonNull;
 
-public class UnreachableShardException extends RuntimeException {
-    @Getter private final long shardId;
-
-    public UnreachableShardException(long shardId) {
-        super("Unreachable shard: " + shardId);
-        this.shardId = shardId;
+record BlockingStubByShardId(
+        @NonNull ShardManager shardManager,
+        @NonNull Function<String, OxiaClientBlockingStub> blockingStubFactory)
+        implements Function<Long, OxiaClientBlockingStub> {
+    @Override
+    public @NonNull OxiaClientBlockingStub apply(@NonNull Long shardId) {
+        return blockingStubFactory.apply(shardManager.leader(shardId));
     }
 }

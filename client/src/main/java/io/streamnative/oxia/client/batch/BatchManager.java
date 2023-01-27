@@ -23,7 +23,6 @@ import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientBlockingStub;
 import java.time.Clock;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
@@ -72,16 +71,14 @@ public class BatchManager implements AutoCloseable {
     }
 
     public static @NonNull BatchManager newReadBatchManager(
-            @NonNull ClientConfig config,
-            @NonNull Function<Long, Optional<OxiaClientBlockingStub>> clientByShardId) {
+            @NonNull ClientConfig config, @NonNull Function<Long, OxiaClientBlockingStub> stubByShardId) {
         return new BatchManager(
-                Batcher.newReadBatcherFactory(config, clientByShardId, Clock.systemUTC()));
+                Batcher.newReadBatcherFactory(config, stubByShardId, Clock.systemUTC()));
     }
 
     public static @NonNull BatchManager newWriteBatchManager(
-            @NonNull ClientConfig config,
-            @NonNull Function<Long, Optional<OxiaClientBlockingStub>> clientByShardId) {
+            @NonNull ClientConfig config, @NonNull Function<Long, OxiaClientBlockingStub> stubByShardId) {
         return new BatchManager(
-                Batcher.newReadBatcherFactory(config, clientByShardId, Clock.systemUTC()));
+                Batcher.newReadBatcherFactory(config, stubByShardId, Clock.systemUTC()));
     }
 }

@@ -43,7 +43,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import org.awaitility.Duration;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -137,7 +136,6 @@ class NotificationManagerImplTest {
             notificationManager.start();
             responses.add(addDefaultNotification());
             await("consumption of notifications")
-                    .timeout(Duration.FIVE_MINUTES)
                     .untilAsserted(
                             () -> {
                                 verify(notificationConsumer).accept(new Notification.KeyCreated("key1", 1L));

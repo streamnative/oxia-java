@@ -13,23 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.streamnative.oxia.client.api;
+package io.streamnative.oxia.client.grpc;
 
 
-import io.streamnative.oxia.proto.GetResponse;
 import lombok.NonNull;
-import lombok.Value;
+import lombok.SneakyThrows;
 
-/** The result of a client get request. */
-@Value
-public class GetResult {
-    /** The value associated with the key specified in the call. */
-    byte @NonNull [] value;
-    /** Metadata for the record associated with the key specified in the call. */
-    @NonNull Version version;
+record ServiceAddress(@NonNull String serviceAddress) {
 
-    public static @NonNull GetResult fromProto(@NonNull GetResponse response) {
-        return new GetResult(
-                response.getValue().toByteArray(), Version.fromProto(response.getVersion()));
+    public @NonNull String host() {
+        return serviceAddress.split(":")[0];
+    }
+
+    @SneakyThrows
+    public int port() {
+        return Integer.parseInt(serviceAddress.split(":")[1]);
     }
 }

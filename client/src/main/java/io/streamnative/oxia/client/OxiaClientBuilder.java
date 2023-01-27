@@ -21,6 +21,7 @@ import io.streamnative.oxia.client.api.ClientBuilder;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.SyncOxiaClient;
 import java.time.Duration;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -75,7 +76,7 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
         return this;
     }
 
-    public @NonNull AsyncOxiaClient asyncClient() {
+    public @NonNull AsyncOxiaClient asyncClient() throws ExecutionException, InterruptedException {
         var config =
                 new ClientConfig(
                         serviceAddress,
@@ -87,7 +88,7 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
         return new AsyncOxiaClientImpl(config);
     }
 
-    public @NonNull SyncOxiaClient syncClient() {
+    public @NonNull SyncOxiaClient syncClient() throws ExecutionException, InterruptedException {
         return new SyncOxiaClientImpl(asyncClient());
     }
 }

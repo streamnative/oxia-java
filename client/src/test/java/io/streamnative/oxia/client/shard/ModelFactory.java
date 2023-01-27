@@ -15,6 +15,7 @@
  */
 package io.streamnative.oxia.client.shard;
 
+import static io.streamnative.oxia.client.ProtoUtil.longToUint32;
 
 import io.streamnative.oxia.proto.Int32HashRange;
 import io.streamnative.oxia.proto.ShardAssignment;
@@ -27,16 +28,16 @@ public class ModelFactory {
     }
 
     static @NonNull ShardAssignment newShardAssignment(
-            int id, int min, int max, @NonNull String leader) {
+            long id, int min, int max, @NonNull String leader) {
         return ShardAssignment.newBuilder()
-                .setShardId(id)
+                .setShardId(longToUint32(id))
                 .setLeader(leader)
                 .setInt32HashRange(newHashRange(min, max))
                 .build();
     }
 
     static @NonNull ShardAssignments newShardAssignments(
-            int id, int min, int max, @NonNull String leader) {
+            long id, int min, int max, @NonNull String leader) {
         return ShardAssignments.newBuilder()
                 .addAssignments(newShardAssignment(id, min, max, leader))
                 .build();

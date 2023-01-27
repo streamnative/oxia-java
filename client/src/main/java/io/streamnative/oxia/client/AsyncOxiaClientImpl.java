@@ -26,6 +26,7 @@ import io.streamnative.oxia.client.batch.Operation.ReadOperation.ListOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
+import io.streamnative.oxia.client.grpc.ChannelManager;
 import io.streamnative.oxia.client.notify.NotificationManager;
 import io.streamnative.oxia.client.notify.NotificationManagerImpl;
 import io.streamnative.oxia.client.shard.ShardManager;
@@ -39,38 +40,47 @@ import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 class AsyncOxiaClientImpl implements AsyncOxiaClient {
+    private final ChannelManager channelManager;
     private final ShardManager shardManager;
     private final NotificationManager notificationManager;
     private final BatchManager readBatchManager;
     private final BatchManager writeBatchManager;
 
     AsyncOxiaClientImpl(ClientConfig config) {
-        shardManager = new ShardManager(config.serviceAddress(), null);
+        channelManager = new ChannelManager();
+        shardManager = new ShardManager(config.serviceAddress(), channelManager.getStubFactory());
         notificationManager =
                 config.notificationCallback() == null
                         ? NotificationManagerImpl.NullObject
                         : new NotificationManagerImpl(
-                                config.serviceAddress(), null, config.notificationCallback());
-        readBatchManager = BatchManager.newReadBatchManager(config, null);
-        writeBatchManager = BatchManager.newWriteBatchManager(config, null);
+                                config.serviceAddress(),
+                                channelManager.getStubFactory(),
+                                config.notificationCallback());
+
+        BlockingStubByShardId blockingStubByShardId =
+                new BlockingStubByShardId(shardManager, channelManager.getBlockingStubFactory());
+        readBatchManager = BatchManager.newReadBatchManager(config, blockingStubByShardId);
+        writeBatchManager = BatchManager.newWriteBatchManager(config, blockingStubByShardId);
+        shardManager.start().join();
+        notificationManager.start();
     }
 
     @Override
     public @NonNull CompletableFuture<PutResult> put(
-            @NonNull String key, byte @NonNull [] payload, long expectedVersionId) {
+            @NonNull String key, byte @NonNull [] value, long expectedVersionId) {
         var shardId = shardManager.get(key);
         var callback = new CompletableFuture<PutResult>();
         writeBatchManager
                 .getBatcher(shardId)
-                .add(new PutOperation(callback, key, payload, expectedVersionId));
+                .add(new PutOperation(callback, key, value, expectedVersionId));
         return callback;
     }
 
     @Override
-    public @NonNull CompletableFuture<PutResult> put(@NonNull String key, byte @NonNull [] payload) {
+    public @NonNull CompletableFuture<PutResult> put(@NonNull String key, byte @NonNull [] value) {
         var shardId = shardManager.get(key);
         var callback = new CompletableFuture<PutResult>();
-        writeBatchManager.getBatcher(shardId).add(new PutOperation(callback, key, payload));
+        writeBatchManager.getBatcher(shardId).add(new PutOperation(callback, key, value));
         return callback;
     }
 
@@ -154,5 +164,6 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         writeBatchManager.close();
         notificationManager.close();
         shardManager.close();
+        channelManager.close();
     }
 }

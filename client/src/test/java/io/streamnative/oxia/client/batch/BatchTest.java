@@ -35,7 +35,6 @@ import io.grpc.inprocess.InProcessServerBuilder;
 import io.grpc.stub.StreamObserver;
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.api.GetResult;
-import io.streamnative.oxia.client.api.KeyNotFoundException;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
 import io.streamnative.oxia.client.batch.Batch.ReadBatch;
@@ -45,7 +44,7 @@ import io.streamnative.oxia.client.batch.Operation.ReadOperation.ListOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
-import io.streamnative.oxia.client.shard.UnreachableShardException;
+import io.streamnative.oxia.client.shard.NoShardAvailableException;
 import io.streamnative.oxia.proto.DeleteRangeResponse;
 import io.streamnative.oxia.proto.DeleteResponse;
 import io.streamnative.oxia.proto.GetResponse;
@@ -59,7 +58,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -75,7 +74,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class BatchTest {
 
-    Function<Long, Optional<OxiaClientBlockingStub>> clientByShardId;
+    Function<Long, OxiaClientBlockingStub> clientByShardId;
     long shardId = 1L;
     long startTime = 2L;
 
@@ -113,7 +112,7 @@ class BatchTest {
                         .build()
                         .start();
         channel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
-        clientByShardId = s -> Optional.of(newBlockingStub(channel));
+        clientByShardId = s -> newBlockingStub(channel);
     }
 
     @AfterEach
@@ -220,7 +219,13 @@ class BatchTest {
 
         @Test
         public void completeFailNoClient() {
-            batch = new WriteBatch(s -> Optional.empty(), shardId, startTime);
+            batch =
+                    new WriteBatch(
+                            s -> {
+                                throw new NoShardAvailableException(s);
+                            },
+                            shardId,
+                            startTime);
 
             batch.add(put);
             batch.add(delete);
@@ -232,24 +237,24 @@ class BatchTest {
             assertThatThrownBy(putCallable::get)
                     .satisfies(
                             e -> {
-                                assertThat(e).hasCauseExactlyInstanceOf(UnreachableShardException.class);
-                                assertThat(((UnreachableShardException) e.getCause()).getShardId())
+                                assertThat(e).hasCauseExactlyInstanceOf(NoShardAvailableException.class);
+                                assertThat(((NoShardAvailableException) e.getCause()).getShardId())
                                         .isEqualTo(shardId);
                             });
             assertThat(deleteCallable).isCompletedExceptionally();
             assertThatThrownBy(putCallable::get)
                     .satisfies(
                             e -> {
-                                assertThat(e).hasCauseExactlyInstanceOf(UnreachableShardException.class);
-                                assertThat(((UnreachableShardException) e.getCause()).getShardId())
+                                assertThat(e).hasCauseExactlyInstanceOf(NoShardAvailableException.class);
+                                assertThat(((NoShardAvailableException) e.getCause()).getShardId())
                                         .isEqualTo(shardId);
                             });
             assertThat(deleteRangeCallable).isCompletedExceptionally();
             assertThatThrownBy(putCallable::get)
                     .satisfies(
                             e -> {
-                                assertThat(e).hasCauseExactlyInstanceOf(UnreachableShardException.class);
-                                assertThat(((UnreachableShardException) e.getCause()).getShardId())
+                                assertThat(e).hasCauseExactlyInstanceOf(NoShardAvailableException.class);
+                                assertThat(((NoShardAvailableException) e.getCause()).getShardId())
                                         .isEqualTo(shardId);
                             });
         }
@@ -325,7 +330,7 @@ class BatchTest {
 
             batch.complete();
 
-            assertThatThrownBy(getCallable::get).hasCauseExactlyInstanceOf(KeyNotFoundException.class);
+            assertThat(getCallable).isCompletedWithValueMatching(Objects::isNull);
             assertThat(listCallable).isCompletedWithValueMatching(r -> r.equals(List.of("a", "b", "c")));
         }
 
@@ -347,7 +352,13 @@ class BatchTest {
 
         @Test
         public void completeFailNoClient() {
-            batch = new ReadBatch(s -> Optional.empty(), shardId, startTime);
+            batch =
+                    new ReadBatch(
+                            s -> {
+                                throw new NoShardAvailableException(s);
+                            },
+                            shardId,
+                            startTime);
 
             batch.add(get);
             batch.add(list);
@@ -358,16 +369,16 @@ class BatchTest {
             assertThatThrownBy(getCallable::get)
                     .satisfies(
                             e -> {
-                                assertThat(e).hasCauseExactlyInstanceOf(UnreachableShardException.class);
-                                assertThat(((UnreachableShardException) e.getCause()).getShardId())
+                                assertThat(e).hasCauseExactlyInstanceOf(NoShardAvailableException.class);
+                                assertThat(((NoShardAvailableException) e.getCause()).getShardId())
                                         .isEqualTo(shardId);
                             });
             assertThat(listCallable).isCompletedExceptionally();
             assertThatThrownBy(listCallable::get)
                     .satisfies(
                             e -> {
-                                assertThat(e).hasCauseExactlyInstanceOf(UnreachableShardException.class);
-                                assertThat(((UnreachableShardException) e.getCause()).getShardId())
+                                assertThat(e).hasCauseExactlyInstanceOf(NoShardAvailableException.class);
+                                assertThat(((NoShardAvailableException) e.getCause()).getShardId())
                                         .isEqualTo(shardId);
                             });
         }

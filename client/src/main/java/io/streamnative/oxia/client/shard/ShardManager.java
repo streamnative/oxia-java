@@ -51,21 +51,21 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor(access = PACKAGE)
 @Slf4j
 public class ShardManager implements AutoCloseable {
-    private final Receiver receiver;
-    private final Assignments assignments;
+    private final @NonNull Receiver receiver;
+    private final @NonNull Assignments assignments;
 
-    public ShardManager(String serviceAddress, Function<String, OxiaClientStub> clientSupplier) {
-        this(Xxh332HashRangeShardStrategy, serviceAddress, clientSupplier);
+    public ShardManager(
+            @NonNull String serviceAddress, @NonNull Function<String, OxiaClientStub> stubFactory) {
+        this(Xxh332HashRangeShardStrategy, serviceAddress, stubFactory);
     }
 
     @VisibleForTesting
     ShardManager(
-            ShardStrategy strategy,
-            String serviceAddress,
-            Function<String, OxiaClientStub> clientSupplier) {
+            @NonNull ShardStrategy strategy,
+            @NonNull String serviceAddress,
+            @NonNull Function<String, OxiaClientStub> stubFactory) {
         assignments = new Assignments(strategy);
-        receiver =
-                new ReceiveWithRecovery(new GrpcReceiver(serviceAddress, clientSupplier, assignments));
+        receiver = new ReceiveWithRecovery(new GrpcReceiver(serviceAddress, stubFactory, assignments));
     }
 
     public CompletableFuture<Void> start() {
@@ -73,15 +73,15 @@ public class ShardManager implements AutoCloseable {
         return receiver.bootstrap();
     }
 
-    public int get(String key) {
+    public long get(String key) {
         return assignments.get(key);
     }
 
-    public List<Integer> getAll() {
+    public List<Long> getAll() {
         return assignments.getAll();
     }
 
-    public String leader(int shardId) {
+    public String leader(long shardId) {
         return assignments.leader(shardId);
     }
 
@@ -94,7 +94,7 @@ public class ShardManager implements AutoCloseable {
     static class Assignments {
         private final Lock rLock;
         private final Lock wLock;
-        private Map<Integer, Shard> shards = new HashMap<>();
+        private Map<Long, Shard> shards = new HashMap<>();
         private final ShardStrategy shardStrategy;
 
         Assignments(ShardStrategy shardStrategy) {
@@ -107,20 +107,18 @@ public class ShardManager implements AutoCloseable {
             wLock = lock.writeLock();
         }
 
-        public int get(String key) {
+        public long get(String key) {
             try {
                 rLock.lock();
                 var test = shardStrategy.acceptsKeyPredicate(key);
                 var shard = shards.values().stream().filter(test).findAny();
-                return shard
-                        .map(Shard::id)
-                        .orElseThrow(() -> new IllegalStateException("shard not found for key: " + key));
+                return shard.map(Shard::id).orElseThrow(() -> new NoShardAvailableException(key));
             } finally {
                 rLock.unlock();
             }
         }
 
-        public List<Integer> getAll() {
+        public List<Long> getAll() {
             try {
                 rLock.lock();
                 return shards.keySet().stream().toList();
@@ -129,12 +127,12 @@ public class ShardManager implements AutoCloseable {
             }
         }
 
-        public String leader(int shardId) {
+        public String leader(long shardId) {
             try {
                 rLock.lock();
                 return Optional.ofNullable(shards.get(shardId))
                         .map(Shard::leader)
-                        .orElseThrow(() -> new IllegalStateException("shard not found for id: " + shardId));
+                        .orElseThrow(() -> new NoShardAvailableException(shardId));
             } finally {
                 rLock.unlock();
             }
@@ -150,7 +148,7 @@ public class ShardManager implements AutoCloseable {
         }
 
         @VisibleForTesting
-        static Map<Integer, Shard> applyUpdates(Map<Integer, Shard> assignments, List<Shard> updates) {
+        static Map<Long, Shard> applyUpdates(Map<Long, Shard> assignments, List<Shard> updates) {
             var toDelete = new ArrayList<>();
             updates.forEach(
                     update ->
@@ -174,19 +172,19 @@ public class ShardManager implements AutoCloseable {
     @RequiredArgsConstructor(access = PACKAGE)
     @VisibleForTesting
     static class GrpcReceiver implements Receiver {
-        private final String serviceAddress;
-        private final Function<String, OxiaClientStub> clientSupplier;
-        private final Assignments assignments;
-        private final CompletableFuture<Void> bootstrap;
-        private final Supplier<CompletableFuture<Void>> streamTerminalSupplier;
+        private final @NonNull String serviceAddress;
+        private final @NonNull Function<String, OxiaClientStub> stubFactory;
+        private final @NonNull Assignments assignments;
+        private final @NonNull CompletableFuture<Void> bootstrap;
+        private final @NonNull Supplier<CompletableFuture<Void>> streamTerminalSupplier;
 
         GrpcReceiver(
                 @NonNull String serviceAddress,
-                @NonNull Function<String, OxiaClientStub> clientSupplier,
+                @NonNull Function<String, OxiaClientStub> stubFactory,
                 @NonNull Assignments assignments) {
             this(
                     serviceAddress,
-                    clientSupplier,
+                    stubFactory,
                     assignments,
                     new CompletableFuture<>(),
                     CompletableFuture::new);
@@ -206,7 +204,7 @@ public class ShardManager implements AutoCloseable {
                                     bootstrap.complete(null);
                                 });
                 // Start the stream
-                var client = clientSupplier.apply(serviceAddress);
+                var client = stubFactory.apply(serviceAddress);
                 client.getShardAssignments(ShardAssignmentsRequest.getDefaultInstance(), observer);
             } catch (Exception e) {
                 terminal.completeExceptionally(e);

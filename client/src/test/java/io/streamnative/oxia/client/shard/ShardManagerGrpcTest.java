@@ -120,34 +120,34 @@ class ShardManagerGrpcTest {
             var bootstrap = shardManager.start();
             assertThat(bootstrap).isNotCompleted();
             assertThat(shardManager.getAll()).isEmpty();
-            responses.add(assignments(newShardAssignments(1, 2, 3, "leader 1")));
+            responses.add(assignments(newShardAssignments(1L, 2, 3, "leader 1")));
             await("bootstrapping").until(bootstrap::isDone);
             assertThat(bootstrap).isNotCompletedExceptionally();
-            assertThat(shardManager.getAll()).containsOnly(1);
+            assertThat(shardManager.getAll()).containsOnly(1L);
             assertThat(shardManager.leader(1)).isEqualTo("leader 1");
         }
     }
 
     @Test
     public void update() throws Exception {
-        var s1v1 = newShardAssignments(1, 2, 5, "leader 1");
-        var s1v2 = newShardAssignments(1, 2, 3, "leader 2");
+        var s1v1 = newShardAssignments(1L, 2, 5, "leader 1");
+        var s1v2 = newShardAssignments(1L, 2, 3, "leader 2");
         var strategy = new StaticShardStrategy().assign("key1", s1v1).assign("key2", s1v1);
         try (var shardManager = new ShardManager(strategy, "address", clientByShardId)) {
             responses.add(assignments(s1v1));
             shardManager.start().get();
-            assertThat(shardManager.get("key1")).isEqualTo(1);
-            assertThat(shardManager.get("key2")).isEqualTo(1);
+            assertThat(shardManager.get("key1")).isEqualTo(1L);
+            assertThat(shardManager.get("key2")).isEqualTo(1L);
             assertThat(shardManager.leader(1)).isEqualTo("leader 1");
             strategy.assign("key1", s1v2);
             responses.add(assignments(s1v2));
             await("application of update")
                     .untilAsserted(
                             () -> {
-                                assertThat(shardManager.get("key1")).isEqualTo(1);
+                                assertThat(shardManager.get("key1")).isEqualTo(1L);
                                 assertThatThrownBy(() -> shardManager.get("key2"))
-                                        .isInstanceOf(IllegalStateException.class);
-                                assertThat(shardManager.leader(1)).isEqualTo("leader 2");
+                                        .isInstanceOf(NoShardAvailableException.class);
+                                assertThat(shardManager.leader(1L)).isEqualTo("leader 2");
                             });
             // s1v1 mapped to both k1,k2 -- but s1v2 will only map to k1 -- therefore s1 must have been
             // updated to s1v2
@@ -156,13 +156,13 @@ class ShardManagerGrpcTest {
 
     @Test
     public void overlap() throws Exception {
-        var s1 = newShardAssignments(1, 1, 3, "leader 1");
-        var s2 = newShardAssignments(2, 2, 4, "leader 2");
+        var s1 = newShardAssignments(1L, 1, 3, "leader 1");
+        var s2 = newShardAssignments(2L, 2, 4, "leader 2");
         var strategy = new StaticShardStrategy().assign("key1", s1);
         try (var shardManager = new ShardManager(strategy, "address", clientByShardId)) {
             responses.add(assignments(s1));
             shardManager.start().get();
-            assertThat(shardManager.get("key1")).isEqualTo(1);
+            assertThat(shardManager.get("key1")).isEqualTo(1L);
             assertThat(shardManager.leader(1)).isEqualTo("leader 1");
             strategy.assign("key2", s2);
             responses.add(assignments(s2));
@@ -170,11 +170,11 @@ class ShardManagerGrpcTest {
                     .untilAsserted(
                             () -> {
                                 assertThatThrownBy(() -> shardManager.get("key1"))
-                                        .isInstanceOf(IllegalStateException.class);
-                                assertThatThrownBy(() -> shardManager.leader(1))
-                                        .isInstanceOf(IllegalStateException.class);
-                                assertThat(shardManager.get("key2")).isEqualTo(2);
-                                assertThat(shardManager.leader(2)).isEqualTo("leader 2");
+                                        .isInstanceOf(NoShardAvailableException.class);
+                                assertThatThrownBy(() -> shardManager.leader(1L))
+                                        .isInstanceOf(NoShardAvailableException.class);
+                                assertThat(shardManager.get("key2")).isEqualTo(2L);
+                                assertThat(shardManager.leader(2L)).isEqualTo("leader 2");
                             }
                             // s1 no longer exists -- it was removed by overlapping s2 -- and thus k1 can no
                             // longer map to it
@@ -201,14 +201,14 @@ class ShardManagerGrpcTest {
         try (var shardManager = new ShardManager("address", clientByShardId)) {
             var bootstrapped = shardManager.start();
             await("next request").untilAsserted(() -> assertThat(shardAssignmentsCount).hasValue(1));
-            responses.add(assignments(1, 2, 3, "leader 1"));
+            responses.add(assignments(1L, 2, 3, "leader 1"));
             bootstrapped.get();
-            assertThat(shardManager.leader(1)).isEqualTo("leader 1");
+            assertThat(shardManager.leader(1L)).isEqualTo("leader 1");
             responses.add(completed());
             await("next request").untilAsserted(() -> assertThat(shardAssignmentsCount).hasValue(2));
-            responses.add(assignments(1, 2, 3, "leader 2"));
+            responses.add(assignments(1L, 2, 3, "leader 2"));
             await("recovering to leader 2")
-                    .untilAsserted(() -> assertThat(shardManager.leader(1)).isEqualTo("leader 2"));
+                    .untilAsserted(() -> assertThat(shardManager.leader(1L)).isEqualTo("leader 2"));
         }
     }
 
@@ -223,7 +223,7 @@ class ShardManagerGrpcTest {
         record Assignments(ShardAssignments response) implements StreamResponse {}
     }
 
-    static StreamResponse.Assignments assignments(int id, int min, int max, String leader) {
+    static StreamResponse.Assignments assignments(long id, int min, int max, String leader) {
         return new StreamResponse.Assignments(newShardAssignments(id, min, max, leader));
     }
 

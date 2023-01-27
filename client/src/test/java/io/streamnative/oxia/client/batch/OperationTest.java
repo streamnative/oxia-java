@@ -24,7 +24,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.protobuf.ByteString;
 import io.streamnative.oxia.client.api.GetResult;
-import io.streamnative.oxia.client.api.KeyNotFoundException;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
@@ -39,6 +38,7 @@ import io.streamnative.oxia.proto.ListResponse;
 import io.streamnative.oxia.proto.PutResponse;
 import io.streamnative.oxia.proto.Version;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.DisplayName;
@@ -67,15 +67,7 @@ class OperationTest {
         void completeKeyNotFound() {
             var response = GetResponse.newBuilder().setStatus(KEY_NOT_FOUND).build();
             op.complete(response);
-            assertThat(callback).isCompletedExceptionally();
-            assertThatThrownBy(callback::get)
-                    .satisfies(
-                            e -> {
-                                assertThat(e).isInstanceOf(ExecutionException.class);
-                                assertThat(e.getCause())
-                                        .isInstanceOf(KeyNotFoundException.class)
-                                        .hasMessage("key not found: key");
-                            });
+            assertThat(callback).isCompletedWithValueMatching(Objects::isNull);
         }
 
         @Test
@@ -153,7 +145,7 @@ class OperationTest {
                     .satisfies(
                             r -> {
                                 assertThat(r.getKey()).isEqualTo(op.key());
-                                assertThat(r.getValue().toByteArray()).isEqualTo(op.payload());
+                                assertThat(r.getValue().toByteArray()).isEqualTo(op.value());
                                 assertThat(r.hasExpectedVersionId()).isFalse();
                             });
         }
@@ -166,7 +158,7 @@ class OperationTest {
                     .satisfies(
                             r -> {
                                 assertThat(r.getKey()).isEqualTo(op.key());
-                                assertThat(r.getValue().toByteArray()).isEqualTo(op.payload());
+                                assertThat(r.getValue().toByteArray()).isEqualTo(op.value());
                                 assertThat(r.getExpectedVersionId()).isEqualTo(1L);
                             });
         }

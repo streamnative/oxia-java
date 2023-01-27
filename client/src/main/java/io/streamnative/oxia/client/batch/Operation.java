@@ -29,7 +29,6 @@ import static java.util.stream.Collectors.toList;
 
 import com.google.protobuf.ByteString;
 import io.streamnative.oxia.client.api.GetResult;
-import io.streamnative.oxia.client.api.KeyNotFoundException;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
 import io.streamnative.oxia.proto.DeleteRangeRequest;
@@ -66,7 +65,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
 
             void complete(@NonNull GetResponse response) {
                 switch (response.getStatus()) {
-                    case KEY_NOT_FOUND -> fail(new KeyNotFoundException(key));
+                    case KEY_NOT_FOUND -> callback.complete(null);
                     case OK -> callback.complete(GetResult.fromProto(response));
                     default -> fail(new IllegalStateException("GRPC.Status: " + response.getStatus().name()));
                 }
@@ -100,11 +99,11 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
         record PutOperation(
                 @NonNull CompletableFuture<PutResult> callback,
                 @NonNull String key,
-                byte @NonNull [] payload,
+                byte @NonNull [] value,
                 long expectedVersionId)
                 implements WriteOperation<PutResult> {
             PutRequest toProto() {
-                var builder = PutRequest.newBuilder().setKey(key).setValue(ByteString.copyFrom(payload));
+                var builder = PutRequest.newBuilder().setKey(key).setValue(ByteString.copyFrom(value));
                 setOptionalExpectedVersionId(expectedVersionId, builder::setExpectedVersionId);
                 return builder.build();
             }
@@ -135,13 +134,13 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 PutOperation that = (PutOperation) o;
                 return expectedVersionId == that.expectedVersionId
                         && key.equals(that.key)
-                        && Arrays.equals(payload, that.payload);
+                        && Arrays.equals(value, that.value);
             }
 
             @Override
             public int hashCode() {
                 int result = Objects.hash(key, expectedVersionId);
-                result = 31 * result + Arrays.hashCode(payload);
+                result = 31 * result + Arrays.hashCode(value);
                 return result;
             }
         }
