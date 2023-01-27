@@ -94,12 +94,12 @@ public class OxiaClientIT {
 
         // put with unexpected version
         var bVersion = client.get("b").join().getVersion().versionId();
-        assertThatThrownBy(() -> client.put("b", "b2".getBytes(UTF_8), bVersion + 1L))
+        assertThatThrownBy(() -> client.put("b", "b2".getBytes(UTF_8), bVersion + 1L).join())
                 .isInstanceOf(UnexpectedVersionIdException.class);
 
         // delete with unexpected version
         var cVersion = client.get("c").join().getVersion().versionId();
-        assertThatThrownBy(() -> client.delete("c", cVersion + 1L))
+        assertThatThrownBy(() -> client.delete("c", cVersion + 1L).join())
                 .isInstanceOf(UnexpectedVersionIdException.class);
 
         // list all keys
