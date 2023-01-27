@@ -22,14 +22,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.testcontainers.OxiaContainer;
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-@Slf4j
 @Testcontainers
 public class OxiaClientIT {
     @Container private static final OxiaContainer oxia = new OxiaContainer(DEFAULT_IMAGE_NAME);
