@@ -60,7 +60,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
         record GetOperation(@NonNull CompletableFuture<GetResult> callback, @NonNull String key)
                 implements ReadOperation<GetResult> {
             GetRequest toProto() {
-                return GetRequest.newBuilder().setKey(key).build();
+                return GetRequest.newBuilder().setKey(key).setIncludeValue(true).build();
             }
 
             void complete(@NonNull GetResponse response) {
