@@ -23,10 +23,17 @@ import lombok.NonNull;
 
 record BlockingStubByShardId(
         @NonNull ShardManager shardManager,
-        @NonNull Function<String, OxiaClientBlockingStub> blockingStubFactory)
+        @NonNull Function<String, OxiaClientBlockingStub> blockingStubFactory,
+        @NonNull ClientConfig config)
         implements Function<Long, OxiaClientBlockingStub> {
     @Override
     public @NonNull OxiaClientBlockingStub apply(@NonNull Long shardId) {
-        return blockingStubFactory.apply(shardManager.leader(shardId));
+        String leader;
+        if (config.standalone()) {
+            leader = config.serviceAddress();
+        } else {
+            leader = shardManager.leader(shardId);
+        }
+        return blockingStubFactory.apply(leader);
     }
 }

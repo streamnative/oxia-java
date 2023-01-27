@@ -111,6 +111,12 @@
                 <version>${mockito.junit.jupiter.version}</version>
                 <scope>test</scope>
             </dependency>
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-simple</artifactId>
+                <version>${slf4j.version}</version>
+                <scope>test</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -198,10 +204,17 @@
                 <artifactId>license-maven-plugin</artifactId>
                 <version>${license.plugin.version}</version>
                 <configuration>
-                    <header>etc/APACHE-2.txt</header>
                     <mapping>
                         <proto>DOUBLESLASH_STYLE</proto>
                     </mapping>
+                    <licenseSets>
+                        <licenseSet>
+                            <header>etc/APACHE-2.txt</header>
+                            <excludes>
+                                <exclude>NOTICE</exclude>
+                            </excludes>
+                        </licenseSet>
+                    </licenseSets>
                 </configuration>
                 <dependencies>
                     <dependency>

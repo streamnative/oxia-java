@@ -15,6 +15,7 @@
  */
 package io.streamnative.oxia.client;
 
+import static java.time.Duration.ZERO;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -37,14 +38,25 @@ class BlockingStubByShardIdTest {
     @Test
     void apply() {
         when(shardManager.leader(1L)).thenReturn("a");
-        new BlockingStubByShardId(shardManager, factory).apply(1L);
+        new BlockingStubByShardId(shardManager, factory, clientConfig(false)).apply(1L);
         verify(factory).apply("a");
     }
 
     @Test
     void noLeader() {
         when(shardManager.leader(1L)).thenThrow(new NoShardAvailableException(1L));
-        assertThatThrownBy(() -> new BlockingStubByShardId(shardManager, factory).apply(1L))
+        assertThatThrownBy(
+                        () -> new BlockingStubByShardId(shardManager, factory, clientConfig(false)).apply(1L))
                 .isInstanceOf(NoShardAvailableException.class);
+    }
+
+    @Test
+    void standalone() {
+        new BlockingStubByShardId(shardManager, factory, clientConfig(true)).apply(1L);
+        verify(factory).apply("clientConfigServerAddress");
+    }
+
+    private ClientConfig clientConfig(boolean standalone) {
+        return new ClientConfig("clientConfigServerAddress", null, ZERO, ZERO, 0, 0, standalone);
     }
 }

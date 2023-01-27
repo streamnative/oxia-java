@@ -18,6 +18,7 @@ package io.streamnative.oxia.client.grpc;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -58,9 +59,9 @@ class RecoveryTests {
 
     @Test
     void retry() throws Exception {
-        //noinspection unchecked
-        when(receiver.receive())
-                .thenReturn(terminalError, terminalError, terminalComplete, terminalBlocking);
+        doReturn(terminalError, terminalError, terminalComplete, terminalBlocking)
+                .when(receiver)
+                .receive();
         when(retryIntervalFn.apply(anyLong())).thenReturn(1L);
         var terminated = recovery.receive();
         await().untilAsserted(() -> assertThat(retryCounter).hasValue(4));

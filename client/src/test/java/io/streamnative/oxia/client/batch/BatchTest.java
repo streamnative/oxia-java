@@ -21,6 +21,7 @@ import static io.streamnative.oxia.proto.OxiaClientGrpc.newBlockingStub;
 import static io.streamnative.oxia.proto.Status.KEY_NOT_FOUND;
 import static io.streamnative.oxia.proto.Status.OK;
 import static io.streamnative.oxia.proto.Status.UNEXPECTED_VERSION_ID;
+import static java.time.Duration.ZERO;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.AdditionalAnswers.delegatesTo;
@@ -55,7 +56,6 @@ import io.streamnative.oxia.proto.ReadResponse;
 import io.streamnative.oxia.proto.WriteRequest;
 import io.streamnative.oxia.proto.WriteResponse;
 import java.time.Clock;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -400,7 +400,7 @@ class BatchTest {
 
         @Mock Clock clock;
 
-        ClientConfig config = new ClientConfig("address", n -> {}, Duration.ZERO, Duration.ZERO, 1, 1);
+        ClientConfig config = new ClientConfig("address", n -> {}, ZERO, ZERO, 1, 1, false);
 
         @BeforeEach
         void mocking() {
