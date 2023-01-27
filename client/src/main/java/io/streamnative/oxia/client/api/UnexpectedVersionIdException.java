@@ -17,6 +17,7 @@ package io.streamnative.oxia.client.api;
 
 
 import lombok.Getter;
+import lombok.NonNull;
 
 /** The versionId at the server did not that match supplied in the call. */
 public class UnexpectedVersionIdException extends OxiaException {
@@ -29,7 +30,7 @@ public class UnexpectedVersionIdException extends OxiaException {
      * @param key The key to which the call was scoped.
      * @param version The record versionId to which the call was scoped.
      */
-    public UnexpectedVersionIdException(String key, long version) {
+    public UnexpectedVersionIdException(@NonNull String key, long version) {
         super("key '" + key + "' has unexpected versionId: " + version);
         this.version = version;
         this.key = key;
