@@ -15,6 +15,7 @@
  */
 package io.streamnative.oxia.client.batch;
 
+import static io.streamnative.oxia.client.api.AsyncOxiaClient.VersionIdNotExists;
 import static io.streamnative.oxia.proto.Status.KEY_NOT_FOUND;
 import static io.streamnative.oxia.proto.Status.OK;
 import static io.streamnative.oxia.proto.Status.UNEXPECTED_VERSION_ID;
@@ -24,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.protobuf.ByteString;
 import io.streamnative.oxia.client.api.GetResult;
+import io.streamnative.oxia.client.api.KeyAlreadyExistsException;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
@@ -164,6 +166,19 @@ class OperationTest {
         }
 
         @Test
+        void toProtoNoExistingVersion() {
+            var op = new PutOperation(callback, "key", payload, VersionIdNotExists);
+            var request = op.toProto();
+            assertThat(request)
+                    .satisfies(
+                            r -> {
+                                assertThat(r.getKey()).isEqualTo(op.key());
+                                assertThat(r.getValue().toByteArray()).isEqualTo(op.value());
+                                assertThat(r.getExpectedVersionId()).isEqualTo(VersionIdNotExists);
+                            });
+        }
+
+        @Test
         void completeUnexpectedVersion() {
             var response = PutResponse.newBuilder().setStatus(UNEXPECTED_VERSION_ID).build();
             op.complete(response);
@@ -174,13 +189,28 @@ class OperationTest {
                                 assertThat(e).isInstanceOf(ExecutionException.class);
                                 assertThat(e.getCause())
                                         .isInstanceOf(UnexpectedVersionIdException.class)
-                                        .hasMessage("unexpected versionId: 10");
+                                        .hasMessage("key 'key' has unexpected versionId: 10");
+                            });
+        }
+
+        @Test
+        void completeKeyAlreadyExists() {
+            var op = new PutOperation(callback, "key", payload, VersionIdNotExists);
+            var response = PutResponse.newBuilder().setStatus(UNEXPECTED_VERSION_ID).build();
+            op.complete(response);
+            assertThat(callback).isCompletedExceptionally();
+            assertThatThrownBy(callback::get)
+                    .satisfies(
+                            e -> {
+                                assertThat(e).isInstanceOf(ExecutionException.class);
+                                assertThat(e.getCause())
+                                        .isInstanceOf(KeyAlreadyExistsException.class)
+                                        .hasMessage("key already exists: key");
                             });
         }
 
         @Test
         void completeOk() {
-            var payload = "hello".getBytes(UTF_8);
             var response =
                     PutResponse.newBuilder()
                             .setStatus(OK)
@@ -255,7 +285,7 @@ class OperationTest {
                                 assertThat(e).isInstanceOf(ExecutionException.class);
                                 assertThat(e.getCause())
                                         .isInstanceOf(UnexpectedVersionIdException.class)
-                                        .hasMessage("unexpected versionId: 10");
+                                        .hasMessage("key 'key' has unexpected versionId: 10");
                             });
         }
 

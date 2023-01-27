@@ -13,27 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.streamnative.oxia.client;
+package io.streamnative.oxia.client.api;
 
 
-import java.nio.ByteBuffer;
-import java.util.function.Consumer;
+import lombok.Getter;
 import lombok.NonNull;
 
-public class ProtoUtil {
+/** The key already exists at the server. */
+public class KeyAlreadyExistsException extends OxiaException {
+    @Getter private final String key;
 
-    public static int longToUint32(long value) {
-        return ByteBuffer.allocate(8).putLong(value).position(4).getInt();
-    }
-
-    public static long uint32ToLong(int unit32AsInt) {
-        return ByteBuffer.allocate(8).putInt(0).putInt(unit32AsInt).flip().getLong();
-    }
-
-    public static void setOptionalExpectedVersionId(
-            Long expectedVersionId, @NonNull Consumer<Long> setterFn) {
-        if (expectedVersionId != null) {
-            setterFn.accept(expectedVersionId);
-        }
+    /**
+     * Creates an instance of the exception.
+     *
+     * @param key The key to which the call was scoped.
+     */
+    public KeyAlreadyExistsException(@NonNull String key) {
+        super("key already exists: " + key);
+        this.key = key;
     }
 }

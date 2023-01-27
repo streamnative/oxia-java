@@ -15,7 +15,7 @@
  */
 package io.streamnative.oxia.client.api;
 
-import static io.streamnative.oxia.client.ProtoUtil.VersionIdNotExists;
+import static io.streamnative.oxia.client.api.AsyncOxiaClient.VersionIdNotExists;
 
 import lombok.NonNull;
 
@@ -35,8 +35,8 @@ public record Version(long versionId, long createdTimestamp, long modifiedTimest
     }
 
     /**
-     * Checks that the versionId value is either {@link
-     * io.streamnative.oxia.client.ProtoUtil#VersionIdNotExists} or positive.
+     * Checks that the versionId value is either {@link AsyncOxiaClient#VersionIdNotExists} or
+     * positive.
      *
      * @param versionId The versionId to validate.
      */
