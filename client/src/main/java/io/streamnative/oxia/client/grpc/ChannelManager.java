@@ -19,6 +19,7 @@ import static io.streamnative.oxia.proto.OxiaClientGrpc.newBlockingStub;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static lombok.AccessLevel.PACKAGE;
 
+import io.grpc.Channel;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.streamnative.oxia.client.ClientConfig;
@@ -33,7 +34,7 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
-public class ChannelManager implements Function<String, ManagedChannel>, AutoCloseable {
+public class ChannelManager implements Function<String, Channel>, AutoCloseable {
     @NonNull ClientConfig config;
     private final ConcurrentMap<String, ManagedChannel> channels = new ConcurrentHashMap<>();
     @Getter private final @NonNull StubFactory stubFactory;
@@ -51,7 +52,7 @@ public class ChannelManager implements Function<String, ManagedChannel>, AutoClo
     }
 
     @Override
-    public @NonNull ManagedChannel apply(@NonNull String address) {
+    public @NonNull Channel apply(@NonNull String address) {
         var serviceAddress = new ServiceAddress(address);
         return channels.computeIfAbsent(
                 address,
