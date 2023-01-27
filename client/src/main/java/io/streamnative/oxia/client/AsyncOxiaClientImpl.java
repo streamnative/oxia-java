@@ -48,7 +48,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     private final BatchManager readBatchManager;
     private final BatchManager writeBatchManager;
 
-    AsyncOxiaClientImpl(ClientConfig config) throws ExecutionException, InterruptedException {
+    AsyncOxiaClientImpl(ClientConfig config) {
         channelManager = new ChannelManager(config);
         shardManager = new ShardManager(config.serviceAddress(), channelManager.getStubFactory());
         notificationManager =
@@ -63,7 +63,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                 s -> channelManager.getBlockingStubFactory().apply(shardManager.leader(s));
         readBatchManager = BatchManager.newReadBatchManager(config, stubByShardId);
         writeBatchManager = BatchManager.newWriteBatchManager(config, stubByShardId);
-        shardManager.start().get();
+        shardManager.start().join();
         notificationManager.start();
     }
 
