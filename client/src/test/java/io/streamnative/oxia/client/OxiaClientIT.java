@@ -21,6 +21,7 @@ import static java.util.concurrent.CompletableFuture.allOf;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
+
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.Notification.KeyCreated;
@@ -75,7 +76,9 @@ public class OxiaClientIT {
 
         // verify notification for 'a'
         long finalAVersion = aVersion;
-        await().untilAsserted(() -> assertThat(notifications).contains(new KeyCreated("a", finalAVersion)));
+        await()
+                .untilAsserted(
+                        () -> assertThat(notifications).contains(new KeyCreated("a", finalAVersion)));
 
         // update 'a' with expected version
         client.put("a", "a2".getBytes(UTF_8), aVersion).join();
@@ -85,7 +88,9 @@ public class OxiaClientIT {
 
         // verify notification for 'a' update
         long finalA2Version = aVersion;
-        await().untilAsserted(() -> assertThat(notifications).contains(new KeyModified("a", finalA2Version)));
+        await()
+                .untilAsserted(
+                        () -> assertThat(notifications).contains(new KeyModified("a", finalA2Version)));
 
         // put with unexpected version
         var bVersion = client.get("b").join().getVersion().versionId();
@@ -108,7 +113,9 @@ public class OxiaClientIT {
 
         // verify notification for 'a' update
         long finalADVersion = aVersion;
-        await().untilAsserted(() -> assertThat(notifications).contains(new KeyDeleted("a", finalADVersion)));
+        await()
+                .untilAsserted(
+                        () -> assertThat(notifications).contains(new KeyDeleted("a", finalADVersion)));
 
         // delete 'b'
         client.delete("b").join();
