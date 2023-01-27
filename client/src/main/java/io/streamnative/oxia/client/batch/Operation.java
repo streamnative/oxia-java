@@ -15,7 +15,7 @@
  */
 package io.streamnative.oxia.client.batch;
 
-import static io.streamnative.oxia.client.ProtoUtil.VersionIdNotExists;
+import static io.streamnative.oxia.client.ProtoUtil.VersionIdNotSpecified;
 import static io.streamnative.oxia.client.ProtoUtil.setOptionalExpectedVersionId;
 import static io.streamnative.oxia.client.batch.Operation.ReadOperation;
 import static io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
@@ -120,7 +120,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                     @NonNull CompletableFuture<PutResult> callback,
                     @NonNull String key,
                     byte @NonNull [] payload) {
-                this(callback, key, payload, VersionIdNotExists);
+                this(callback, key, payload, VersionIdNotSpecified);
             }
 
             @Override
@@ -164,7 +164,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
             }
 
             public DeleteOperation(@NonNull CompletableFuture<Boolean> callback, @NonNull String key) {
-                this(callback, key, VersionIdNotExists);
+                this(callback, key, VersionIdNotSpecified);
             }
         }
 

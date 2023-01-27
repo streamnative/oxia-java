@@ -15,7 +15,7 @@
  */
 package io.streamnative.oxia.client.api;
 
-import static io.streamnative.oxia.client.ProtoUtil.VersionIdNotExists;
+import static io.streamnative.oxia.client.ProtoUtil.VersionIdNotSpecified;
 
 import lombok.NonNull;
 
@@ -36,12 +36,12 @@ public record Version(long versionId, long createdTimestamp, long modifiedTimest
 
     /**
      * Checks that the versionId value is either {@link
-     * io.streamnative.oxia.client.ProtoUtil#VersionIdNotExists} or positive.
+     * io.streamnative.oxia.client.ProtoUtil#VersionIdNotSpecified} or positive.
      *
      * @param versionId The versionId to validate.
      */
     public static void requireValidVersionId(long versionId) {
-        if (versionId < VersionIdNotExists) {
+        if (versionId < VersionIdNotSpecified) {
             throw new IllegalArgumentException("Invalid versionId: " + versionId);
         }
     }
