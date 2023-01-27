@@ -15,7 +15,7 @@
  */
 package io.streamnative.oxia.client.api;
 
-import static io.streamnative.oxia.client.api.AsyncOxiaClient.VersionIdNotExists;
+import static io.streamnative.oxia.client.api.AsyncOxiaClient.KeyNotExistsVersionId;
 
 import lombok.NonNull;
 
@@ -35,13 +35,13 @@ public record Version(long versionId, long createdTimestamp, long modifiedTimest
     }
 
     /**
-     * Checks that the versionId value is either {@link AsyncOxiaClient#VersionIdNotExists} or
+     * Checks that the versionId value is either {@link AsyncOxiaClient#KeyNotExistsVersionId} or
      * positive.
      *
      * @param versionId The versionId to validate.
      */
     public static void requireValidVersionId(long versionId) {
-        if (versionId < VersionIdNotExists) {
+        if (versionId < KeyNotExistsVersionId) {
             throw new IllegalArgumentException("Invalid versionId: " + versionId);
         }
     }

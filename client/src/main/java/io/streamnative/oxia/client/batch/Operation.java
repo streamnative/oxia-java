@@ -16,7 +16,7 @@
 package io.streamnative.oxia.client.batch;
 
 import static io.streamnative.oxia.client.ProtoUtil.setOptionalExpectedVersionId;
-import static io.streamnative.oxia.client.api.AsyncOxiaClient.VersionIdNotExists;
+import static io.streamnative.oxia.client.api.AsyncOxiaClient.KeyNotExistsVersionId;
 import static io.streamnative.oxia.client.batch.Operation.ReadOperation;
 import static io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import static io.streamnative.oxia.client.batch.Operation.ReadOperation.ListOperation;
@@ -112,7 +112,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
             void complete(@NonNull PutResponse response) {
                 switch (response.getStatus()) {
                     case UNEXPECTED_VERSION_ID -> {
-                        if (expectedVersionId == VersionIdNotExists) {
+                        if (expectedVersionId == KeyNotExistsVersionId) {
                             fail(new KeyAlreadyExistsException(key));
                         } else {
                             fail(new UnexpectedVersionIdException(key, expectedVersionId));

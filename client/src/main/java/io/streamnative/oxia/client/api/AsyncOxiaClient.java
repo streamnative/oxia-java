@@ -23,7 +23,7 @@ import lombok.NonNull;
 /** Asynchronous client for the Oxia service. */
 public interface AsyncOxiaClient extends AutoCloseable {
 
-    long VersionIdNotExists = -1;
+    long KeyNotExistsVersionId = -1;
 
     /**
      * Conditionally associates a value with a key if the server's versionId of the record is as
