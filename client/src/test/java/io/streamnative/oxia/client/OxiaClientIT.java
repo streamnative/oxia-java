@@ -57,7 +57,7 @@ public class OxiaClientIT {
         var d = client.put("d", "d".getBytes(UTF_8));
         allOf(a, b, c, d).join();
 
-        assertThatThrownBy(() -> client.put("a", "a".getBytes(UTF_8), KeyNotExistsVersionId))
+        assertThatThrownBy(() -> client.put("a", "a".getBytes(UTF_8), KeyNotExistsVersionId).join())
                 .hasCauseInstanceOf(KeyAlreadyExistsException.class);
         // verify 'a' is present
         var getResult = client.get("a").join();
