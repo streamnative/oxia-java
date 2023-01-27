@@ -49,7 +49,6 @@ public sealed interface Notification
      * The record associated with the key has been deleted.
      *
      * @param key The key of the deleted record.
-     * @param version The versionId of the deleted record.
      */
     record KeyDeleted(@NonNull String key) implements Notification {}
 }
