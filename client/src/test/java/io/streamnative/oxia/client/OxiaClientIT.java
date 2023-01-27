@@ -21,7 +21,6 @@ import static java.util.concurrent.CompletableFuture.allOf;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
-
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.Notification.KeyCreated;
@@ -95,12 +94,12 @@ public class OxiaClientIT {
         // put with unexpected version
         var bVersion = client.get("b").join().getVersion().versionId();
         assertThatThrownBy(() -> client.put("b", "b2".getBytes(UTF_8), bVersion + 1L).join())
-                .isInstanceOf(UnexpectedVersionIdException.class);
+                .hasCauseInstanceOf(UnexpectedVersionIdException.class);
 
         // delete with unexpected version
         var cVersion = client.get("c").join().getVersion().versionId();
         assertThatThrownBy(() -> client.delete("c", cVersion + 1L).join())
-                .isInstanceOf(UnexpectedVersionIdException.class);
+                .hasCauseInstanceOf(UnexpectedVersionIdException.class);
 
         // list all keys
         var listResult = client.list("a", "e").join();
