@@ -110,10 +110,10 @@ public class Batcher implements Runnable, AutoCloseable {
         return s -> new Batcher(config, s, new Batch.ReadBatchFactory(stubByShardId, config, clock));
     }
 
-    static @NonNull Function<Long, Batcher> writeReadBatcherFactory(
+    static @NonNull Function<Long, Batcher> newWriteBatcherFactory(
             @NonNull ClientConfig config,
             @NonNull Function<Long, OxiaClientBlockingStub> stubByShardId,
             Clock clock) {
-        return s -> new Batcher(config, s, new Batch.ReadBatchFactory(stubByShardId, config, clock));
+        return s -> new Batcher(config, s, new Batch.WriteBatchFactory(stubByShardId, config, clock));
     }
 }
