@@ -112,10 +112,7 @@ public class OxiaClientIT {
         assertThat(getResult).isNull();
 
         // verify notification for 'a' update
-        long finalADVersion = aVersion;
-        await()
-                .untilAsserted(
-                        () -> assertThat(notifications).contains(new KeyDeleted("a", finalADVersion)));
+        await().untilAsserted(() -> assertThat(notifications).contains(new KeyDeleted("a")));
 
         // delete 'b'
         client.delete("b").join();
