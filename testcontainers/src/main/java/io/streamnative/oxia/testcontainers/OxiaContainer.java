@@ -19,11 +19,12 @@ import static java.time.temporal.ChronoUnit.SECONDS;
 
 import java.time.Duration;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
+import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
 
 public class OxiaContainer extends GenericContainer<OxiaContainer> {
 
+    private static final String DEFAULT_NETWORK_ALIAS = "localhost";
     public static final int OXIA_PORT = 6648;
     public static final int METRICS_PORT = 8080;
 
@@ -31,14 +32,21 @@ public class OxiaContainer extends GenericContainer<OxiaContainer> {
             DockerImageName.parse("streamnative/oxia:main");
 
     public OxiaContainer(DockerImageName imageName) {
+        this(imageName, DEFAULT_NETWORK_ALIAS);
+    }
+
+    @SuppressWarnings("resource")
+    public OxiaContainer(DockerImageName imageName, String networkAlias) {
         super(imageName);
-        this.withExposedPorts(OXIA_PORT, METRICS_PORT).withCommand("oxia", "standalone");
-        this.waitStrategy =
-                new HttpWaitStrategy()
+        addExposedPorts(OXIA_PORT, METRICS_PORT);
+        setCommand("oxia", "standalone", "--advertised-address", networkAlias);
+        withNetworkAliases(networkAlias);
+        waitingFor(
+                Wait.forHttp("/metrics")
                         .forPort(METRICS_PORT)
                         .forStatusCode(200)
                         .forPath("/metrics")
-                        .withStartupTimeout(Duration.of(30, SECONDS));
+                        .withStartupTimeout(Duration.of(30, SECONDS)));
     }
 
     public String getServiceAddress() {
