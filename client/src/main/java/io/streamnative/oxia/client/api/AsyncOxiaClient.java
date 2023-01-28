@@ -23,6 +23,8 @@ import lombok.NonNull;
 /** Asynchronous client for the Oxia service. */
 public interface AsyncOxiaClient extends AutoCloseable {
 
+    long KeyNotExistsVersionId = -1;
+
     /**
      * Conditionally associates a value with a key if the server's versionId of the record is as
      * specified, at the instant when the put is applied. The put will not be applied if the server's

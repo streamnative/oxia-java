@@ -19,20 +19,17 @@ package io.streamnative.oxia.client.api;
 import lombok.Getter;
 import lombok.NonNull;
 
-/** The versionId at the server did not that match supplied in the call. */
-public class UnexpectedVersionIdException extends OxiaException {
-    @Getter private final long version;
+/** The key already exists at the server. */
+public class KeyAlreadyExistsException extends OxiaException {
     @Getter private final String key;
 
     /**
      * Creates an instance of the exception.
      *
      * @param key The key to which the call was scoped.
-     * @param version The record versionId to which the call was scoped.
      */
-    public UnexpectedVersionIdException(@NonNull String key, long version) {
-        super("key '" + key + "' has unexpected versionId: " + version);
-        this.version = version;
+    public KeyAlreadyExistsException(@NonNull String key) {
+        super("key already exists: " + key);
         this.key = key;
     }
 }

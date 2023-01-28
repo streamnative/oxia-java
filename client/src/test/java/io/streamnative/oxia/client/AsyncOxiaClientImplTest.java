@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client;
 
-import static io.streamnative.oxia.client.ProtoUtil.VersionIdNotExists;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doNothing;
@@ -75,7 +74,7 @@ class AsyncOxiaClientImplTest {
                 .satisfies(
                         o -> {
                             assertThat(o.key()).isEqualTo(key);
-                            assertThat(o.expectedVersionId()).isEqualTo(VersionIdNotExists);
+                            assertThat(o.expectedVersionId()).isNull();
                             assertThat(o.value()).isEqualTo(value);
                             assertThat(o.callback()).isSameAs(result);
                         });
@@ -117,7 +116,7 @@ class AsyncOxiaClientImplTest {
                 .satisfies(
                         o -> {
                             assertThat(o.key()).isEqualTo(key);
-                            assertThat(o.expectedVersionId()).isEqualTo(VersionIdNotExists);
+                            assertThat(o.expectedVersionId()).isNull();
                             assertThat(o.callback()).isSameAs(result);
                         });
     }
