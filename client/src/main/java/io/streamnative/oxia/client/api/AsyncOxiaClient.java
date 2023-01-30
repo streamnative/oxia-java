@@ -81,7 +81,7 @@ public interface AsyncOxiaClient extends AutoCloseable {
 
     /**
      * Deletes any records with keys within the specified range. For more information on how keys are
-     * sorted, * check the relevant section in the * <a
+     * sorted, check the relevant section in the <a
      * href="https://github.com/streamnative/oxia/blob/main/docs/oxia-key-sorting.md">Oxia
      * documentation</a>.
      *
