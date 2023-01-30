@@ -21,7 +21,6 @@ import java.util.function.Consumer;
 import lombok.NonNull;
 
 public class ProtoUtil {
-    public static final long VersionIdNotExists = -1;
 
     public static int longToUint32(long value) {
         return ByteBuffer.allocate(8).putLong(value).position(4).getInt();
@@ -32,8 +31,8 @@ public class ProtoUtil {
     }
 
     public static void setOptionalExpectedVersionId(
-            long expectedVersionId, @NonNull Consumer<Long> setterFn) {
-        if (expectedVersionId > VersionIdNotExists) {
+            Long expectedVersionId, @NonNull Consumer<Long> setterFn) {
+        if (expectedVersionId != null) {
             setterFn.accept(expectedVersionId);
         }
     }

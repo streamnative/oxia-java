@@ -15,6 +15,7 @@
  */
 package io.streamnative.oxia.client;
 
+import static io.streamnative.oxia.client.api.AsyncOxiaClient.KeyNotExistsVersionId;
 import static io.streamnative.oxia.testcontainers.OxiaContainer.DEFAULT_IMAGE_NAME;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.concurrent.CompletableFuture.allOf;
@@ -23,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
+import io.streamnative.oxia.client.api.KeyAlreadyExistsException;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.Notification.KeyCreated;
 import io.streamnative.oxia.client.api.Notification.KeyDeleted;
@@ -63,12 +65,14 @@ public class OxiaClientIT {
 
     @Test
     void test() {
-        var a = client.put("a", "a".getBytes(UTF_8));
-        var b = client.put("b", "b".getBytes(UTF_8));
+        var a = client.put("a", "a".getBytes(UTF_8), KeyNotExistsVersionId);
+        var b = client.put("b", "b".getBytes(UTF_8), KeyNotExistsVersionId);
         var c = client.put("c", "c".getBytes(UTF_8));
         var d = client.put("d", "d".getBytes(UTF_8));
         allOf(a, b, c, d).join();
 
+        assertThatThrownBy(() -> client.put("a", "a".getBytes(UTF_8), KeyNotExistsVersionId).join())
+                .hasCauseInstanceOf(KeyAlreadyExistsException.class);
         // verify 'a' is present
         var getResult = client.get("a").join();
         assertThat(getResult.getValue()).isEqualTo("a".getBytes(UTF_8));
