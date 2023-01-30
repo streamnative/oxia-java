@@ -69,9 +69,10 @@ public interface SyncOxiaClient extends AutoCloseable {
     boolean delete(@NonNull String key);
 
     /**
-     * Deletes any records with keys within the specified range. TODO describe the ordering of keys
-     * within the range, but for now see: <a
-     * href="https://github.com/streamnative/oxia/blob/main/server/kv/kv_pebble.go#L468-L499">GitHub</a>.
+     * Deletes any records with keys within the specified range. For more information on how keys are
+     * sorted, check the relevant section in the <a
+     * href="https://github.com/streamnative/oxia/blob/main/docs/oxia-key-sorting.md">Oxia
+     * documentation</a>.
      *
      * @param minKeyInclusive The key that declares start of the range, and is <b>included</b> from
      *     the range.
@@ -90,9 +91,10 @@ public interface SyncOxiaClient extends AutoCloseable {
     GetResult get(@NonNull String key);
 
     /**
-     * Lists any existing keys within the specified range. TODO describe the ordering of keys within
-     * the range, but for now see: <a
-     * href="https://github.com/streamnative/oxia/blob/main/server/kv/kv_pebble.go#L468-L499">GitHub</a>.
+     * Lists any existing keys within the specified range. For more information on how keys are
+     * sorted, check the relevant section in the <a
+     * href="https://github.com/streamnative/oxia/blob/main/docs/oxia-key-sorting.md">Oxia
+     * documentation</a>.
      *
      * @param minKeyInclusive The key that declares start of the range, and is <b>included</b> from
      *     the range.
