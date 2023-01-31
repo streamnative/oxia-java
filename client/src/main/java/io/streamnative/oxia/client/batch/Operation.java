@@ -107,7 +107,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
             public PutOperation {
                 if (expectedVersionId != null && expectedVersionId < KeyNotExists) {
                     throw new IllegalArgumentException(
-                            "expectedVersionId must be >= -1 (KeyNotExistsVersionId), was: " + expectedVersionId);
+                            "expectedVersionId must be >= -1 (KeyNotExists), was: " + expectedVersionId);
                 }
             }
 
