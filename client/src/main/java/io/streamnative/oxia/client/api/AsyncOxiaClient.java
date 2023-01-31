@@ -21,12 +21,14 @@ import java.util.concurrent.CompletableFuture;
 import lombok.NonNull;
 
 /** Asynchronous client for the Oxia service. */
-public interface AsyncOxiaClient extends OxiaClient {
+public interface AsyncOxiaClient extends AutoCloseable {
 
     /**
      * Conditionally associates a value with a key if the server's versionId of the record is as
      * specified, at the instant when the put is applied. The put will not be applied if the server's
-     * versionId of the record does not match the expectation set in the call.
+     * versionId of the record does not match the expectation set in the call. If you wish the put to
+     * succeed only if the key does not already exist on the server, then pass the {@link
+     * Version#KeyNotExistsVersionId} value.
      *
      * @param key The key with which the value should be associated.
      * @param value The value to associate with the key.

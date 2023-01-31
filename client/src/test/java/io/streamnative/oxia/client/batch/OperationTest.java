@@ -15,7 +15,7 @@
  */
 package io.streamnative.oxia.client.batch;
 
-import static io.streamnative.oxia.client.api.AsyncOxiaClient.KeyNotExistsVersionId;
+import static io.streamnative.oxia.client.api.Version.KeyNotExistsVersionId;
 import static io.streamnative.oxia.proto.Status.KEY_NOT_FOUND;
 import static io.streamnative.oxia.proto.Status.OK;
 import static io.streamnative.oxia.proto.Status.UNEXPECTED_VERSION_ID;

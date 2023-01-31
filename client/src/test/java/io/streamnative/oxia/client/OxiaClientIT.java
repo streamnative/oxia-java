@@ -15,7 +15,7 @@
  */
 package io.streamnative.oxia.client;
 
-import static io.streamnative.oxia.client.api.AsyncOxiaClient.KeyNotExistsVersionId;
+import static io.streamnative.oxia.client.api.Version.KeyNotExistsVersionId;
 import static io.streamnative.oxia.testcontainers.OxiaContainer.DEFAULT_IMAGE_NAME;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.concurrent.CompletableFuture.allOf;

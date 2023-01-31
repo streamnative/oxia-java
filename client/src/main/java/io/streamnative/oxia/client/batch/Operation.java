@@ -16,7 +16,7 @@
 package io.streamnative.oxia.client.batch;
 
 import static io.streamnative.oxia.client.ProtoUtil.setOptionalExpectedVersionId;
-import static io.streamnative.oxia.client.api.AsyncOxiaClient.KeyNotExistsVersionId;
+import static io.streamnative.oxia.client.api.Version.KeyNotExistsVersionId;
 import static io.streamnative.oxia.client.batch.Operation.ReadOperation;
 import static io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import static io.streamnative.oxia.client.batch.Operation.ReadOperation.ListOperation;
@@ -103,6 +103,14 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 byte @NonNull [] value,
                 Long expectedVersionId)
                 implements WriteOperation<PutResult> {
+
+            public PutOperation {
+                if (expectedVersionId != null && expectedVersionId < KeyNotExistsVersionId) {
+                    throw new IllegalArgumentException(
+                            "expectedVersionId must be >= -1 (KeyNotExistsVersionId), was: " + expectedVersionId);
+                }
+            }
+
             PutRequest toProto() {
                 var builder = PutRequest.newBuilder().setKey(key).setValue(ByteString.copyFrom(value));
                 setOptionalExpectedVersionId(expectedVersionId, builder::setExpectedVersionId);
@@ -155,6 +163,14 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
         record DeleteOperation(
                 @NonNull CompletableFuture<Boolean> callback, @NonNull String key, Long expectedVersionId)
                 implements WriteOperation<Boolean> {
+
+            public DeleteOperation {
+                if (expectedVersionId != null && expectedVersionId < 0) {
+                    throw new IllegalArgumentException(
+                            "expectedVersionId must be >= 0, was: " + expectedVersionId);
+                }
+            }
+
             DeleteRequest toProto() {
                 var builder = DeleteRequest.newBuilder().setKey(key);
                 setOptionalExpectedVersionId(expectedVersionId, builder::setExpectedVersionId);
