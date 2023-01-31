@@ -36,12 +36,12 @@ public record Version(long versionId, long createdTimestamp, long modifiedTimest
     }
 
     /**
-     * Checks that the versionId value is either {@link #KeyNotExistsVersionId} or positive.
+     * Checks that the versionId value is either non-negative
      *
      * @param versionId The versionId to validate.
      */
     public static void requireValidVersionId(long versionId) {
-        if (versionId < KeyNotExistsVersionId) {
+        if (versionId < 0) {
             throw new IllegalArgumentException("Invalid versionId: " + versionId);
         }
     }
