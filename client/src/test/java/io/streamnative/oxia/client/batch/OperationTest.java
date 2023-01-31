@@ -15,7 +15,7 @@
  */
 package io.streamnative.oxia.client.batch;
 
-import static io.streamnative.oxia.client.api.Version.KeyNotExistsVersionId;
+import static io.streamnative.oxia.client.api.Version.KeyNotExists;
 import static io.streamnative.oxia.proto.Status.KEY_NOT_FOUND;
 import static io.streamnative.oxia.proto.Status.OK;
 import static io.streamnative.oxia.proto.Status.UNEXPECTED_VERSION_ID;
@@ -143,7 +143,7 @@ class OperationTest {
         @Test
         void constructInvalidExpectedVersionId() {
             assertThatNoException()
-                    .isThrownBy(() -> new PutOperation(callback, "key", payload, KeyNotExistsVersionId));
+                    .isThrownBy(() -> new PutOperation(callback, "key", payload, KeyNotExists));
             assertThatNoException().isThrownBy(() -> new PutOperation(callback, "key", payload, 0L));
             assertThatThrownBy(() -> new PutOperation(callback, "key", payload, -2L))
                     .isInstanceOf(IllegalArgumentException.class);
@@ -177,14 +177,14 @@ class OperationTest {
 
         @Test
         void toProtoNoExistingVersion() {
-            var op = new PutOperation(callback, "key", payload, KeyNotExistsVersionId);
+            var op = new PutOperation(callback, "key", payload, KeyNotExists);
             var request = op.toProto();
             assertThat(request)
                     .satisfies(
                             r -> {
                                 assertThat(r.getKey()).isEqualTo(op.key());
                                 assertThat(r.getValue().toByteArray()).isEqualTo(op.value());
-                                assertThat(r.getExpectedVersionId()).isEqualTo(KeyNotExistsVersionId);
+                                assertThat(r.getExpectedVersionId()).isEqualTo(KeyNotExists);
                             });
         }
 
@@ -205,7 +205,7 @@ class OperationTest {
 
         @Test
         void completeKeyAlreadyExists() {
-            var op = new PutOperation(callback, "key", payload, KeyNotExistsVersionId);
+            var op = new PutOperation(callback, "key", payload, KeyNotExists);
             var response = PutResponse.newBuilder().setStatus(UNEXPECTED_VERSION_ID).build();
             op.complete(response);
             assertThat(callback).isCompletedExceptionally();
@@ -263,7 +263,7 @@ class OperationTest {
         @Test
         void constructInvalidExpectedVersionId() {
             assertThatNoException().isThrownBy(() -> new DeleteOperation(callback, "key", 0L));
-            assertThatThrownBy(() -> new DeleteOperation(callback, "key", KeyNotExistsVersionId))
+            assertThatThrownBy(() -> new DeleteOperation(callback, "key", KeyNotExists))
                     .isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> new DeleteOperation(callback, "key", -2L))
                     .isInstanceOf(IllegalArgumentException.class);

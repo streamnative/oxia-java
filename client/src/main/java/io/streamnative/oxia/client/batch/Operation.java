@@ -16,7 +16,7 @@
 package io.streamnative.oxia.client.batch;
 
 import static io.streamnative.oxia.client.ProtoUtil.setOptionalExpectedVersionId;
-import static io.streamnative.oxia.client.api.Version.KeyNotExistsVersionId;
+import static io.streamnative.oxia.client.api.Version.KeyNotExists;
 import static io.streamnative.oxia.client.batch.Operation.ReadOperation;
 import static io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import static io.streamnative.oxia.client.batch.Operation.ReadOperation.ListOperation;
@@ -105,7 +105,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 implements WriteOperation<PutResult> {
 
             public PutOperation {
-                if (expectedVersionId != null && expectedVersionId < KeyNotExistsVersionId) {
+                if (expectedVersionId != null && expectedVersionId < KeyNotExists) {
                     throw new IllegalArgumentException(
                             "expectedVersionId must be >= -1 (KeyNotExistsVersionId), was: " + expectedVersionId);
                 }
@@ -120,7 +120,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
             void complete(@NonNull PutResponse response) {
                 switch (response.getStatus()) {
                     case UNEXPECTED_VERSION_ID -> {
-                        if (expectedVersionId == KeyNotExistsVersionId) {
+                        if (expectedVersionId == KeyNotExists) {
                             fail(new KeyAlreadyExistsException(key));
                         } else {
                             fail(new UnexpectedVersionIdException(key, expectedVersionId));

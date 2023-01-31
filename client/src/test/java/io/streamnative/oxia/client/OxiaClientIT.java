@@ -15,7 +15,7 @@
  */
 package io.streamnative.oxia.client;
 
-import static io.streamnative.oxia.client.api.Version.KeyNotExistsVersionId;
+import static io.streamnative.oxia.client.api.Version.KeyNotExists;
 import static io.streamnative.oxia.testcontainers.OxiaContainer.DEFAULT_IMAGE_NAME;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.concurrent.CompletableFuture.allOf;
@@ -65,13 +65,13 @@ public class OxiaClientIT {
 
     @Test
     void test() {
-        var a = client.put("a", "a".getBytes(UTF_8), KeyNotExistsVersionId);
-        var b = client.put("b", "b".getBytes(UTF_8), KeyNotExistsVersionId);
+        var a = client.put("a", "a".getBytes(UTF_8), KeyNotExists);
+        var b = client.put("b", "b".getBytes(UTF_8), KeyNotExists);
         var c = client.put("c", "c".getBytes(UTF_8));
         var d = client.put("d", "d".getBytes(UTF_8));
         allOf(a, b, c, d).join();
 
-        assertThatThrownBy(() -> client.put("a", "a".getBytes(UTF_8), KeyNotExistsVersionId).join())
+        assertThatThrownBy(() -> client.put("a", "a".getBytes(UTF_8), KeyNotExists).join())
                 .hasCauseInstanceOf(KeyAlreadyExistsException.class);
         // verify 'a' is present
         var getResult = client.get("a").join();

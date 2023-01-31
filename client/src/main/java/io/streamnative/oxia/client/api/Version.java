@@ -26,7 +26,7 @@ import lombok.NonNull;
  * @param modifiedTimestamp The instant at which the record was last updated. In epoch milliseconds.
  */
 public record Version(long versionId, long createdTimestamp, long modifiedTimestamp) {
-    public static final long KeyNotExistsVersionId = -1;
+    public static final long KeyNotExists = -1;
 
     /** Represents the state where a versionId of a record (and thus the record) does not exist. */
     public Version {
