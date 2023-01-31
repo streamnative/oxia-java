@@ -18,7 +18,7 @@ See the included [integration test][it] for executable examples.
 var client = new OxiaClientBuilder("localhost:6648").asyncClient();
 var value = client.get("key").join().getValue();
 // This Put is unconditional
-var version = client.put("key","hello".getBytes()).join().getVersion();   
+var version = client.put("key", "hello".getBytes()).join().getVersion();   
 ```
 
 ### Put — conditional on key absence
@@ -58,7 +58,7 @@ try {
   var deleted = client.delete(
     "key", expectedVersionId
   ).join();
-} catch(UnexpectedVersionIdException e) {
+} catch (UnexpectedVersionIdException e) {
   ...
 }
 ```
