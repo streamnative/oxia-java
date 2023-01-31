@@ -36,7 +36,7 @@ public record Version(long versionId, long createdTimestamp, long modifiedTimest
     }
 
     /**
-     * Checks that the versionId value is either non-negative
+     * Checks that the versionId value is non-negative.
      *
      * @param versionId The versionId to validate.
      */
