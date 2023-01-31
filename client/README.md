@@ -26,7 +26,7 @@ var version = client.put("key", "hello".getBytes()).join().getVersion();
 ```java
 try {
   var result = client.put(
-        "key", value, OxiaClient.KeyNotExistsVersionId
+        "key", value, OxiaClient.KeyNotExists
   ).join();
 } catch (KeyAlreadyExistsException e) {
   ...
