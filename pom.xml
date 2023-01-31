@@ -153,12 +153,6 @@
                             <spacesPerTab>4</spacesPerTab>
                         </indent>
                     </java>
-                    <markdown>
-                        <includes>
-                            <include>**/*.md</include>
-                        </includes>
-                        <flexmark/>
-                    </markdown>
                     <formats>
                         <format>
                             <includes>

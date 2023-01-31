@@ -20,7 +20,7 @@ import java.util.List;
 import lombok.NonNull;
 
 /** Synchronous client for the Oxia service. */
-public interface SyncOxiaClient extends AutoCloseable {
+public interface SyncOxiaClient extends OxiaClient {
 
     /**
      * Conditionally associates a value with a key if the server's versionId of the record is as
