@@ -82,7 +82,7 @@ A stream of record change notifications that can be consumed.
 ```java
 var client = new OxiaClientBuilder("localhost:6648")
   .notificationCallback(
-    notification - >System.out.println("Received notification: " + notification)
+    notification -> System.out.println("Received notification: " + notification)
   ).asyncClient();
 ```
 
