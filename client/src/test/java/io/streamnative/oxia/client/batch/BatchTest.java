@@ -41,7 +41,6 @@ import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
 import io.streamnative.oxia.client.batch.Batch.ReadBatch;
 import io.streamnative.oxia.client.batch.Batch.WriteBatch;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
-import io.streamnative.oxia.client.batch.Operation.ReadOperation.ListOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
@@ -49,7 +48,6 @@ import io.streamnative.oxia.client.shard.NoShardAvailableException;
 import io.streamnative.oxia.proto.DeleteRangeResponse;
 import io.streamnative.oxia.proto.DeleteResponse;
 import io.streamnative.oxia.proto.GetResponse;
-import io.streamnative.oxia.proto.ListResponse;
 import io.streamnative.oxia.proto.PutResponse;
 import io.streamnative.oxia.proto.ReadRequest;
 import io.streamnative.oxia.proto.ReadResponse;
@@ -276,10 +274,7 @@ class BatchTest {
 
         ReadBatch batch;
         CompletableFuture<GetResult> getCallable = new CompletableFuture<>();
-        CompletableFuture<List<String>> listCallable = new CompletableFuture<>();
-
         GetOperation get = new GetOperation(getCallable, "");
-        ListOperation list = new ListOperation(listCallable, "a", "b");
 
         @BeforeEach
         void setup() {
@@ -290,48 +285,35 @@ class BatchTest {
         public void size() {
             batch.add(get);
             assertThat(batch.size()).isEqualTo(1);
-            batch.add(list);
-            assertThat(batch.size()).isEqualTo(2);
         }
 
         @Test
         public void add() {
             batch.add(get);
-            batch.add(list);
             assertThat(batch.gets).containsOnly(get);
-            assertThat(batch.lists).containsOnly(list);
         }
 
         @Test
         public void toProto() {
             batch.add(get);
-            batch.add(list);
             var request = batch.toProto();
             assertThat(request)
                     .satisfies(
                             r -> {
                                 assertThat(r.getGetsList()).containsOnly(get.toProto());
-                                assertThat(r.getListsList()).containsOnly(list.toProto());
                             });
         }
 
         @Test
         public void completeOk() {
             var getResponse = GetResponse.newBuilder().setStatus(KEY_NOT_FOUND).build();
-            var listResponse = ListResponse.newBuilder().addAllKeys(List.of("a", "b", "c")).build();
-            readResponses.add(
-                    o ->
-                            o.onNext(
-                                    ReadResponse.newBuilder().addGets(getResponse).addLists(listResponse).build()));
+            readResponses.add(o -> o.onNext(ReadResponse.newBuilder().addGets(getResponse).build()));
             readResponses.add(StreamObserver::onCompleted);
 
             batch.add(get);
-            batch.add(list);
-
             batch.complete();
 
             assertThat(getCallable).isCompletedWithValueMatching(Objects::isNull);
-            assertThat(listCallable).isCompletedWithValueMatching(r -> r.equals(List.of("a", "b", "c")));
         }
 
         @Test
@@ -340,14 +322,10 @@ class BatchTest {
             readResponses.add(o -> o.onError(batchError));
 
             batch.add(get);
-            batch.add(list);
-
             batch.complete();
 
             assertThat(getCallable).isCompletedExceptionally();
             assertThatThrownBy(getCallable::get).hasCauseInstanceOf(StatusRuntimeException.class);
-            assertThat(listCallable).isCompletedExceptionally();
-            assertThatThrownBy(listCallable::get).hasCauseInstanceOf(StatusRuntimeException.class);
         }
 
         @Test
@@ -361,20 +339,10 @@ class BatchTest {
                             startTime);
 
             batch.add(get);
-            batch.add(list);
-
             batch.complete();
 
             assertThat(getCallable).isCompletedExceptionally();
             assertThatThrownBy(getCallable::get)
-                    .satisfies(
-                            e -> {
-                                assertThat(e).hasCauseExactlyInstanceOf(NoShardAvailableException.class);
-                                assertThat(((NoShardAvailableException) e.getCause()).getShardId())
-                                        .isEqualTo(shardId);
-                            });
-            assertThat(listCallable).isCompletedExceptionally();
-            assertThatThrownBy(listCallable::get)
                     .satisfies(
                             e -> {
                                 assertThat(e).hasCauseExactlyInstanceOf(NoShardAvailableException.class);

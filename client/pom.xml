@@ -35,6 +35,8 @@
         <grpc-test.version>1.2.2</grpc-test.version>
         <javax.annotation.version>1.3.2</javax.annotation.version>
         <protobuf.version>3.21.7</protobuf.version>
+        <reactor.version>3.5.2</reactor.version>
+        <reactor-grpc.version>1.2.3</reactor-grpc.version>
         <zah.version>0.16</zah.version>
     </properties>
 
@@ -52,6 +54,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.salesforce.servicelibs</groupId>
+            <artifactId>reactor-grpc-stub</artifactId>
+            <version>${reactor-grpc.version}</version>
+        </dependency>
+        <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-okhttp</artifactId>
         </dependency>
@@ -64,6 +71,11 @@
             <artifactId>grpc-stub</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-core</artifactId>
+            <version>${reactor.version}</version>
+        </dependency>
+        <dependency>
             <groupId>javax.annotation</groupId>
             <artifactId>javax.annotation-api</artifactId>
             <version>${javax.annotation.version}</version>
@@ -74,17 +86,13 @@
             <version>${zah.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-        </dependency>
-        <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-core</artifactId>
-            <scope>test</scope>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>io.streamnative.oxia</groupId>
@@ -160,6 +168,15 @@
                     <pluginId>grpc-java</pluginId>
                     <pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:${os.detected.classifier}</pluginArtifact>
                     <protocExecutable>protoc</protocExecutable>
+                    <protocPlugins>
+                        <protocPlugin>
+                            <id>reactor-grpc</id>
+                            <groupId>com.salesforce.servicelibs</groupId>
+                            <artifactId>reactor-grpc</artifactId>
+                            <version>${reactor-grpc.version}</version>
+                            <mainClass>com.salesforce.reactorgrpc.ReactorGrpcGenerator</mainClass>
+                        </protocPlugin>
+                    </protocPlugins>
                 </configuration>
                 <executions>
                     <execution>

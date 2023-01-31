@@ -23,7 +23,6 @@ import static lombok.AccessLevel.PRIVATE;
 import com.google.common.annotations.VisibleForTesting;
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
-import io.streamnative.oxia.client.batch.Operation.ReadOperation.ListOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
@@ -111,13 +110,10 @@ public interface Batch {
 
     final class ReadBatch extends BatchBase implements Batch {
         @VisibleForTesting final List<GetOperation> gets = new ArrayList<>();
-        @VisibleForTesting final List<ListOperation> lists = new ArrayList<>();
 
         public void add(@NonNull Operation<?> operation) {
             if (operation instanceof GetOperation g) {
                 gets.add(g);
-            } else if (operation instanceof ListOperation l) {
-                lists.add(l);
             }
         }
 
@@ -130,7 +126,7 @@ public interface Batch {
 
         @Override
         public int size() {
-            return gets.size() + lists.size();
+            return gets.size();
         }
 
         @Override
@@ -140,12 +136,8 @@ public interface Batch {
                 for (var i = 0; i < gets.size(); i++) {
                     gets.get(i).complete(response.getGets(i));
                 }
-                for (var i = 0; i < lists.size(); i++) {
-                    lists.get(i).complete(response.getLists(i));
-                }
             } catch (Throwable batchError) {
                 gets.forEach(g -> g.fail(batchError));
-                lists.forEach(l -> l.fail(batchError));
             }
         }
 
@@ -154,7 +146,6 @@ public interface Batch {
             return ReadRequest.newBuilder()
                     .setShardId(longToUint32(getShardId()))
                     .addAllGets(gets.stream().map(GetOperation::toProto).collect(toList()))
-                    .addAllLists(lists.stream().map(ListOperation::toProto).collect(toList()))
                     .build();
         }
     }

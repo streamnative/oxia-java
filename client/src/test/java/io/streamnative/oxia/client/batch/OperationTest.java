@@ -30,17 +30,14 @@ import io.streamnative.oxia.client.api.KeyAlreadyExistsException;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
-import io.streamnative.oxia.client.batch.Operation.ReadOperation.ListOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
 import io.streamnative.oxia.proto.DeleteRangeResponse;
 import io.streamnative.oxia.proto.DeleteResponse;
 import io.streamnative.oxia.proto.GetResponse;
-import io.streamnative.oxia.proto.ListResponse;
 import io.streamnative.oxia.proto.PutResponse;
 import io.streamnative.oxia.proto.Version;
-import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -107,27 +104,6 @@ class OperationTest {
                                         .isInstanceOf(IllegalStateException.class)
                                         .hasMessage("GRPC.Status: UNRECOGNIZED");
                             });
-        }
-    }
-
-    @Nested
-    @DisplayName("Tests of list operation")
-    class ListOperationTests {
-        CompletableFuture<List<String>> callback = new CompletableFuture<>();
-        ListOperation op = new ListOperation(callback, "a", "b");
-
-        @Test
-        void toProto() {
-            var request = op.toProto();
-            assertThat(request.getStartInclusive()).isEqualTo(op.minKeyInclusive());
-            assertThat(request.getEndExclusive()).isEqualTo(op.maxKeyInclusive());
-        }
-
-        @Test
-        void completeOk() {
-            var response = ListResponse.newBuilder().addAllKeys(List.of("a", "b", "c")).build();
-            op.complete(response);
-            assertThat(callback).isCompletedWithValueMatching(r -> r.equals(List.of("a", "b", "c")));
         }
     }
 

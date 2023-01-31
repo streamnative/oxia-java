@@ -19,13 +19,10 @@ import static io.streamnative.oxia.client.ProtoUtil.setOptionalExpectedVersionId
 import static io.streamnative.oxia.client.api.Version.KeyNotExists;
 import static io.streamnative.oxia.client.batch.Operation.ReadOperation;
 import static io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
-import static io.streamnative.oxia.client.batch.Operation.ReadOperation.ListOperation;
 import static io.streamnative.oxia.client.batch.Operation.WriteOperation;
 import static io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import static io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import static io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
-import static java.util.Collections.unmodifiableList;
-import static java.util.stream.Collectors.toList;
 
 import com.google.protobuf.ByteString;
 import io.streamnative.oxia.client.api.GetResult;
@@ -38,13 +35,10 @@ import io.streamnative.oxia.proto.DeleteRequest;
 import io.streamnative.oxia.proto.DeleteResponse;
 import io.streamnative.oxia.proto.GetRequest;
 import io.streamnative.oxia.proto.GetResponse;
-import io.streamnative.oxia.proto.ListRequest;
-import io.streamnative.oxia.proto.ListResponse;
 import io.streamnative.oxia.proto.PutRequest;
 import io.streamnative.oxia.proto.PutResponse;
 import io.streamnative.oxia.proto.Status;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import lombok.NonNull;
@@ -57,7 +51,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
         callback().completeExceptionally(t);
     }
 
-    sealed interface ReadOperation<R> extends Operation<R> permits GetOperation, ListOperation {
+    sealed interface ReadOperation<R> extends Operation<R> permits GetOperation {
         record GetOperation(@NonNull CompletableFuture<GetResult> callback, @NonNull String key)
                 implements ReadOperation<GetResult> {
             GetRequest toProto() {
@@ -70,27 +64,6 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                     case OK -> callback.complete(GetResult.fromProto(response));
                     default -> fail(new IllegalStateException("GRPC.Status: " + response.getStatus().name()));
                 }
-            }
-        }
-
-        record ListOperation(
-                @NonNull CompletableFuture<List<String>> callback,
-                @NonNull String minKeyInclusive,
-                @NonNull String maxKeyInclusive)
-                implements ReadOperation<List<String>> {
-            ListRequest toProto() {
-                return ListRequest.newBuilder()
-                        .setStartInclusive(minKeyInclusive)
-                        .setEndExclusive(maxKeyInclusive)
-                        .build();
-            }
-
-            void complete(@NonNull ListResponse response) {
-                callback.complete(
-                        unmodifiableList(
-                                response.getKeysList().asByteStringList().stream()
-                                        .map(ByteString::toStringUtf8)
-                                        .collect(toList())));
             }
         }
     }
