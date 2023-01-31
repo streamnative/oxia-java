@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client.api;
 
-import static io.streamnative.oxia.client.api.AsyncOxiaClient.KeyNotExistsVersionId;
 
 import lombok.NonNull;
 
@@ -27,6 +26,8 @@ import lombok.NonNull;
  * @param modifiedTimestamp The instant at which the record was last updated. In epoch milliseconds.
  */
 public record Version(long versionId, long createdTimestamp, long modifiedTimestamp) {
+    public static final long KeyNotExists = -1;
+
     /** Represents the state where a versionId of a record (and thus the record) does not exist. */
     public Version {
         requireValidVersionId(versionId);
@@ -35,13 +36,12 @@ public record Version(long versionId, long createdTimestamp, long modifiedTimest
     }
 
     /**
-     * Checks that the versionId value is either {@link AsyncOxiaClient#KeyNotExistsVersionId} or
-     * positive.
+     * Checks that the versionId value is non-negative.
      *
      * @param versionId The versionId to validate.
      */
     public static void requireValidVersionId(long versionId) {
-        if (versionId < KeyNotExistsVersionId) {
+        if (versionId < 0) {
             throw new IllegalArgumentException("Invalid versionId: " + versionId);
         }
     }

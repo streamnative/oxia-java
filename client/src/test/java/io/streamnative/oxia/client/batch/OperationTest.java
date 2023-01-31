@@ -15,12 +15,13 @@
  */
 package io.streamnative.oxia.client.batch;
 
-import static io.streamnative.oxia.client.api.AsyncOxiaClient.KeyNotExistsVersionId;
+import static io.streamnative.oxia.client.api.Version.KeyNotExists;
 import static io.streamnative.oxia.proto.Status.KEY_NOT_FOUND;
 import static io.streamnative.oxia.proto.Status.OK;
 import static io.streamnative.oxia.proto.Status.UNEXPECTED_VERSION_ID;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.protobuf.ByteString;
@@ -140,6 +141,15 @@ class OperationTest {
         PutOperation op = new PutOperation(callback, "key", payload, 10L);
 
         @Test
+        void constructInvalidExpectedVersionId() {
+            assertThatNoException()
+                    .isThrownBy(() -> new PutOperation(callback, "key", payload, KeyNotExists));
+            assertThatNoException().isThrownBy(() -> new PutOperation(callback, "key", payload, 0L));
+            assertThatThrownBy(() -> new PutOperation(callback, "key", payload, -2L))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        @Test
         void toProtoNoExpectedVersion() {
             var op = new PutOperation(callback, "key", payload);
             var request = op.toProto();
@@ -167,14 +177,14 @@ class OperationTest {
 
         @Test
         void toProtoNoExistingVersion() {
-            var op = new PutOperation(callback, "key", payload, KeyNotExistsVersionId);
+            var op = new PutOperation(callback, "key", payload, KeyNotExists);
             var request = op.toProto();
             assertThat(request)
                     .satisfies(
                             r -> {
                                 assertThat(r.getKey()).isEqualTo(op.key());
                                 assertThat(r.getValue().toByteArray()).isEqualTo(op.value());
-                                assertThat(r.getExpectedVersionId()).isEqualTo(KeyNotExistsVersionId);
+                                assertThat(r.getExpectedVersionId()).isEqualTo(KeyNotExists);
                             });
         }
 
@@ -195,7 +205,7 @@ class OperationTest {
 
         @Test
         void completeKeyAlreadyExists() {
-            var op = new PutOperation(callback, "key", payload, KeyNotExistsVersionId);
+            var op = new PutOperation(callback, "key", payload, KeyNotExists);
             var response = PutResponse.newBuilder().setStatus(UNEXPECTED_VERSION_ID).build();
             op.complete(response);
             assertThat(callback).isCompletedExceptionally();
@@ -249,6 +259,15 @@ class OperationTest {
     class DeleteOperationTests {
         CompletableFuture<Boolean> callback = new CompletableFuture<>();
         DeleteOperation op = new DeleteOperation(callback, "key", 10L);
+
+        @Test
+        void constructInvalidExpectedVersionId() {
+            assertThatNoException().isThrownBy(() -> new DeleteOperation(callback, "key", 0L));
+            assertThatThrownBy(() -> new DeleteOperation(callback, "key", KeyNotExists))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> new DeleteOperation(callback, "key", -2L))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
 
         @Test
         void toProtoNoExpectedVersion() {
