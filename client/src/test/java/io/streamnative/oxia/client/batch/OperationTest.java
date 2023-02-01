@@ -197,7 +197,7 @@ class OperationTest {
                                 assertThat(e).isInstanceOf(ExecutionException.class);
                                 assertThat(e.getCause())
                                         .isInstanceOf(UnexpectedVersionIdException.class)
-                                        .hasMessage("key 'key' has unexpected versionId: 10");
+                                        .hasMessage("key 'key' has unexpected versionId (expected 10)");
                             });
         }
 
@@ -302,7 +302,7 @@ class OperationTest {
                                 assertThat(e).isInstanceOf(ExecutionException.class);
                                 assertThat(e.getCause())
                                         .isInstanceOf(UnexpectedVersionIdException.class)
-                                        .hasMessage("key 'key' has unexpected versionId: 10");
+                                        .hasMessage("key 'key' has unexpected versionId (expected 10)");
                             });
         }
 
