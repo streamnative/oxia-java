@@ -57,6 +57,7 @@ class BlockingStubByShardIdTest {
     }
 
     private ClientConfig clientConfig(boolean standalone) {
-        return new ClientConfig("clientConfigServerAddress", null, ZERO, ZERO, 0, 0, standalone);
+        return new ClientConfig(
+                "clientConfigServerAddress", null, ZERO, ZERO, 0, 1024 * 1024, 0, standalone);
     }
 }
