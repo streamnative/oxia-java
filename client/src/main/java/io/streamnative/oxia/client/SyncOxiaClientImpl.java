@@ -17,7 +17,9 @@ package io.streamnative.oxia.client;
 
 
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
+import io.streamnative.oxia.client.api.DeleteOptions;
 import io.streamnative.oxia.client.api.GetResult;
+import io.streamnative.oxia.client.api.PutOptions;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.SyncOxiaClient;
 import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
@@ -34,10 +36,9 @@ class SyncOxiaClientImpl implements SyncOxiaClient {
 
     @SneakyThrows
     @Override
-    public @NonNull PutResult put(
-            @NonNull String key, byte @NonNull [] value, long expectedVersionId) {
+    public @NonNull PutResult put(@NonNull String key, byte @NonNull [] value, PutOptions options) {
         try {
-            return asyncClient.put(key, value, expectedVersionId).get();
+            return asyncClient.put(key, value, options).get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
@@ -48,36 +49,10 @@ class SyncOxiaClientImpl implements SyncOxiaClient {
 
     @SneakyThrows
     @Override
-    public @NonNull PutResult put(@NonNull String key, byte @NonNull [] value) {
-        try {
-            return asyncClient.put(key, value).get();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException(e);
-        } catch (ExecutionException e) {
-            throw e.getCause();
-        }
-    }
-
-    @SneakyThrows
-    @Override
-    public boolean delete(@NonNull String key, long expectedVersionId)
+    public boolean delete(@NonNull String key, DeleteOptions options)
             throws UnexpectedVersionIdException {
         try {
-            return asyncClient.delete(key, expectedVersionId).get();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException(e);
-        } catch (ExecutionException e) {
-            throw e.getCause();
-        }
-    }
-
-    @SneakyThrows
-    @Override
-    public boolean delete(@NonNull String key) {
-        try {
-            return asyncClient.delete(key).get();
+            return asyncClient.delete(key, options).get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);

@@ -15,6 +15,7 @@
  */
 package io.streamnative.oxia.client;
 
+import static io.streamnative.oxia.client.api.PutOptions.expectedVersionId;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doNothing;
@@ -22,6 +23,8 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.streamnative.oxia.client.api.DeleteOptions;
+import io.streamnative.oxia.client.api.PutOptions;
 import io.streamnative.oxia.client.batch.BatchManager;
 import io.streamnative.oxia.client.batch.Batcher;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
@@ -68,7 +71,7 @@ class AsyncOxiaClientImplTest {
         when(shardManager.get(key)).thenReturn(shardId);
         when(writeBatchManager.getBatcher(shardId)).thenReturn(batcher);
         doNothing().when(batcher).add(opCaptor.capture());
-        var result = client.put(key, value);
+        var result = client.put(key, value, PutOptions.none());
         assertThat(result).isNotCompleted();
         assertThat(opCaptor.getValue())
                 .satisfies(
@@ -90,7 +93,7 @@ class AsyncOxiaClientImplTest {
         when(shardManager.get(key)).thenReturn(shardId);
         when(writeBatchManager.getBatcher(shardId)).thenReturn(batcher);
         doNothing().when(batcher).add(opCaptor.capture());
-        var result = client.put(key, value, expectedVersionId);
+        var result = client.put(key, value, expectedVersionId(expectedVersionId));
         assertThat(result).isNotCompleted();
         assertThat(opCaptor.getValue())
                 .satisfies(
@@ -110,7 +113,7 @@ class AsyncOxiaClientImplTest {
         when(shardManager.get(key)).thenReturn(shardId);
         when(writeBatchManager.getBatcher(shardId)).thenReturn(batcher);
         doNothing().when(batcher).add(opCaptor.capture());
-        var result = client.delete(key);
+        var result = client.delete(key, DeleteOptions.none());
         assertThat(result).isNotCompleted();
         assertThat(opCaptor.getValue())
                 .satisfies(
@@ -130,7 +133,7 @@ class AsyncOxiaClientImplTest {
         when(shardManager.get(key)).thenReturn(shardId);
         when(writeBatchManager.getBatcher(shardId)).thenReturn(batcher);
         doNothing().when(batcher).add(opCaptor.capture());
-        var result = client.delete(key, expectedVersionId);
+        var result = client.delete(key, DeleteOptions.expectedVersionId(expectedVersionId));
         assertThat(result).isNotCompleted();
         assertThat(opCaptor.getValue())
                 .satisfies(

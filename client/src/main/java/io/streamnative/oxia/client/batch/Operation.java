@@ -131,13 +131,6 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 }
             }
 
-            public PutOperation(
-                    @NonNull CompletableFuture<PutResult> callback,
-                    @NonNull String key,
-                    byte @NonNull [] payload) {
-                this(callback, key, payload, null);
-            }
-
             @Override
             public boolean equals(Object o) {
                 if (this == o) {
@@ -147,9 +140,9 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                     return false;
                 }
                 PutOperation that = (PutOperation) o;
-                return Objects.equals(expectedVersionId, that.expectedVersionId)
-                        && key.equals(that.key)
-                        && Arrays.equals(value, that.value);
+                return key.equals(that.key)
+                        && Arrays.equals(value, that.value)
+                        && Objects.equals(expectedVersionId, that.expectedVersionId);
             }
 
             @Override

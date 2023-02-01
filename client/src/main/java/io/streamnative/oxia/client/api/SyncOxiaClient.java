@@ -31,22 +31,13 @@ public interface SyncOxiaClient extends AutoCloseable {
      *
      * @param key The key with which the value should be associated.
      * @param value The value to associate with the key.
-     * @param expectedVersion The versionId of the record that this put operation is scoped to.
+     * @param options Set {@link PutOptions options} for the put.
      * @return The result of the put at the specified key.
      * @throws UnexpectedVersionIdException The versionId at the server did not that match supplied in
      *     the call.
      */
-    PutResult put(@NonNull String key, byte @NonNull [] value, long expectedVersion)
+    PutResult put(@NonNull String key, byte @NonNull [] value, PutOptions options)
             throws UnexpectedVersionIdException;
-
-    /**
-     * Associates a value with a key.
-     *
-     * @param key The key with which the value should be associated.
-     * @param value The value to associate with the key.
-     * @return The result of the put at the specified key.
-     */
-    PutResult put(@NonNull String key, byte @NonNull [] value);
 
     /**
      * Conditionally deletes the record associated with the key if the record exists, and the server's
@@ -55,20 +46,13 @@ public interface SyncOxiaClient extends AutoCloseable {
      * in the call.
      *
      * @param key Deletes the record with the specified key.
-     * @param expectedVersion The versionId of the record that this delete operation is scoped to.
+     * @param options Set {@link DeleteOptions options} for the delete.
      * @return True if the key was actually present on the server, false otherwise.
      * @throws UnexpectedVersionIdException The versionId at the server did not that match supplied in
      *     the call.
      */
-    boolean delete(@NonNull String key, long expectedVersion) throws UnexpectedVersionIdException;
-
-    /**
-     * Deletes the record associated with the key if the record exists.
-     *
-     * @param key Deletes the record with the specified key.
-     * @return True if the key was actually present on the server, false otherwise.
-     */
-    boolean delete(@NonNull String key);
+    boolean delete(@NonNull String key, @NonNull DeleteOptions options)
+            throws UnexpectedVersionIdException;
 
     /**
      * Deletes any records with keys within the specified range. For more information on how keys are

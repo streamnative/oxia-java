@@ -32,7 +32,7 @@ public interface AsyncOxiaClient extends AutoCloseable {
      *
      * @param key The key with which the value should be associated.
      * @param value The value to associate with the key.
-     * @param expectedVersionId The versionId of the record that this put operation is scoped to.
+     * @param options Set {@link PutOptions options} for the put.
      * @return The result of the put at the specified key. Supplied via a future that returns the
      *     {@link PutResult}. The future will complete exceptionally with an {@link
      *     UnexpectedVersionIdException} if the versionId at the server did not that match supplied in
@@ -40,18 +40,7 @@ public interface AsyncOxiaClient extends AutoCloseable {
      */
     @NonNull
     CompletableFuture<PutResult> put(
-            @NonNull String key, byte @NonNull [] value, long expectedVersionId);
-
-    /**
-     * Associates a value with a key.
-     *
-     * @param key The key with which the value should be associated.
-     * @param value The value to associate with the key.
-     * @return The result of the put at the specified key. Supplied via a future that returns the
-     *     {@link PutResult}.
-     */
-    @NonNull
-    CompletableFuture<PutResult> put(@NonNull String key, byte @NonNull [] value);
+            @NonNull String key, byte @NonNull [] value, @NonNull PutOptions options);
 
     /**
      * Conditionally deletes the record associated with the key if the record exists, and the server's
@@ -60,24 +49,14 @@ public interface AsyncOxiaClient extends AutoCloseable {
      * in the call.
      *
      * @param key Deletes the record with the specified key.
-     * @param expectedVersionId The versionId of the record that this delete operation is scoped to.
+     * @param options Set {@link DeleteOptions options} for the delete.
      * @return A future that completes when the delete call has returned. The future can return a flag
      *     that will be true if the key was actually present on the server, false otherwise. The
      *     future will complete exceptionally with an {@link UnexpectedVersionIdException} the
      *     versionId at the server did not that match supplied in the call.
      */
     @NonNull
-    CompletableFuture<Boolean> delete(@NonNull String key, long expectedVersionId);
-
-    /**
-     * Deletes the record associated with the key if the record exists.
-     *
-     * @param key Deletes the record with the specified key.
-     * @return A future that completes when the delete call has returned. The future can return a flag
-     *     that will be true if the key was actually present on the server, false otherwise.
-     */
-    @NonNull
-    CompletableFuture<Boolean> delete(@NonNull String key);
+    CompletableFuture<Boolean> delete(@NonNull String key, @NonNull DeleteOptions options);
 
     /**
      * Deletes any records with keys within the specified range. For more information on how keys are
