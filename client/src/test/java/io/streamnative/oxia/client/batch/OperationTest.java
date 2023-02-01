@@ -151,7 +151,7 @@ class OperationTest {
 
         @Test
         void toProtoNoExpectedVersion() {
-            var op = new PutOperation(callback, "key", payload);
+            var op = new PutOperation(callback, "key", payload, null);
             var request = op.toProto();
             assertThat(request)
                     .satisfies(
