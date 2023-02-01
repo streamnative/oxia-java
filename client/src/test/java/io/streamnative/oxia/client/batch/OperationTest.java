@@ -91,10 +91,10 @@ class OperationTest {
             op.complete(response);
             assertThat(callback)
                     .isCompletedWithValueMatching(
-                            r ->
-                                    r.equals(
-                                            new GetResult(
-                                                    payload, new io.streamnative.oxia.client.api.Version(1L, 2L, 3L, 4L))));
+                            r -> {
+                                var v = new io.streamnative.oxia.client.api.Version(1L, 2L, 3L, 4L);
+                                return r.equals(new GetResult(payload, v));
+                            });
         }
 
         @Test
@@ -236,9 +236,10 @@ class OperationTest {
             op.complete(response);
             assertThat(callback)
                     .isCompletedWithValueMatching(
-                            r ->
-                                    r.equals(
-                                            new PutResult(new io.streamnative.oxia.client.api.Version(1L, 2L, 3L, 4L))));
+                            r -> {
+                                var v = new io.streamnative.oxia.client.api.Version(1L, 2L, 3L, 4L);
+                                return r.equals(new PutResult(v));
+                            });
         }
 
         @Test
