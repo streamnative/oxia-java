@@ -97,6 +97,7 @@ var client = new OxiaClientBuilder("localhost:6648")
 | `serviceAddress`         |             - | Address of Oxia cluster — `<host>:<port>`                    |
 | `batchLinger`            |           5ms | Max time to wait for new operations before closing batch.    |
 | `maxRequestsPerBatch`    |          1000 | Max number of operations in a batch.                         |
+| `maxBatchSizeBytes`      |           1MB | Max size of batch in bytes.                                  |
 | `operationQueueCapacity` |          1000 | Number of operations that can be buffered prior to batching. |
 
 [oxia]: https://github.com/streamnative/oxia
