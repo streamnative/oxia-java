@@ -24,8 +24,10 @@ import lombok.NonNull;
  * @param versionId The current versionId of the record.
  * @param createdTimestamp The instant at which the record was created. In epoch milliseconds.
  * @param modifiedTimestamp The instant at which the record was last updated. In epoch milliseconds.
+ * @param modificationsCount The number of modifications since the record was last created.
  */
-public record Version(long versionId, long createdTimestamp, long modifiedTimestamp) {
+public record Version(
+        long versionId, long createdTimestamp, long modifiedTimestamp, long modificationsCount) {
     public static final long KeyNotExists = -1;
 
     /** Represents the state where a versionId of a record (and thus the record) does not exist. */
@@ -33,6 +35,7 @@ public record Version(long versionId, long createdTimestamp, long modifiedTimest
         requireValidVersionId(versionId);
         requireValidTimestamp(createdTimestamp);
         requireValidTimestamp(modifiedTimestamp);
+        requireValidModificationsCount(modificationsCount);
     }
 
     /**
@@ -57,8 +60,22 @@ public record Version(long versionId, long createdTimestamp, long modifiedTimest
         }
     }
 
+    /**
+     * Checks that the modificationsCount value is non-negative.
+     *
+     * @param modificationsCount The modificationsCount to validate.
+     */
+    public static void requireValidModificationsCount(long modificationsCount) {
+        if (modificationsCount < 0) {
+            throw new IllegalArgumentException("Invalid modificationsCount: " + modificationsCount);
+        }
+    }
+
     public static @NonNull Version fromProto(@NonNull io.streamnative.oxia.proto.Version version) {
         return new Version(
-                version.getVersionId(), version.getCreatedTimestamp(), version.getModifiedTimestamp());
+                version.getVersionId(),
+                version.getCreatedTimestamp(),
+                version.getModifiedTimestamp(),
+                version.getModificationsCount());
     }
 }
