@@ -4,7 +4,8 @@
 
 ## Overview
 
-This project comprises JDK language compatible modules for the [Oxia][oxia] service. Currently, it provides:
+This project comprises JDK language compatible modules for the [Oxia][oxia] service. It provides
+the following capabilities:
 
 - [Client](client/) for the Oxia service
 - [Testcontainer](testcontainers/) for local integration testing with an Oxia service.
