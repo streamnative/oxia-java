@@ -19,6 +19,7 @@ import static java.util.stream.Collectors.toList;
 
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.GetResult;
+import io.streamnative.oxia.client.api.PutOptions;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.batch.BatchManager;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
@@ -73,20 +74,12 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
     @Override
     public @NonNull CompletableFuture<PutResult> put(
-            @NonNull String key, byte @NonNull [] value, long expectedVersionId) {
+            @NonNull String key, byte @NonNull [] value, @NonNull PutOptions options) {
         var shardId = shardManager.get(key);
         var callback = new CompletableFuture<PutResult>();
         writeBatchManager
                 .getBatcher(shardId)
-                .add(new PutOperation(callback, key, value, expectedVersionId));
-        return callback;
-    }
-
-    @Override
-    public @NonNull CompletableFuture<PutResult> put(@NonNull String key, byte @NonNull [] value) {
-        var shardId = shardManager.get(key);
-        var callback = new CompletableFuture<PutResult>();
-        writeBatchManager.getBatcher(shardId).add(new PutOperation(callback, key, value));
+                .add(new PutOperation(callback, key, value, options.expectedVersionId()));
         return callback;
     }
 

@@ -18,6 +18,7 @@ package io.streamnative.oxia.client;
 
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.GetResult;
+import io.streamnative.oxia.client.api.PutOptions;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.SyncOxiaClient;
 import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
@@ -34,23 +35,9 @@ class SyncOxiaClientImpl implements SyncOxiaClient {
 
     @SneakyThrows
     @Override
-    public @NonNull PutResult put(
-            @NonNull String key, byte @NonNull [] value, long expectedVersionId) {
+    public @NonNull PutResult put(@NonNull String key, byte @NonNull [] value, PutOptions options) {
         try {
-            return asyncClient.put(key, value, expectedVersionId).get();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException(e);
-        } catch (ExecutionException e) {
-            throw e.getCause();
-        }
-    }
-
-    @SneakyThrows
-    @Override
-    public @NonNull PutResult put(@NonNull String key, byte @NonNull [] value) {
-        try {
-            return asyncClient.put(key, value).get();
+            return asyncClient.put(key, value, options).get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
