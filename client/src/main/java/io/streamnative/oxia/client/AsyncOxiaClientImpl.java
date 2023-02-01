@@ -48,9 +48,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
     static CompletableFuture<AsyncOxiaClient> newInstance(ClientConfig config) {
         var channelManager = new ChannelManager();
-        var shardManager =
-                new ShardManager(
-                        channelManager.getStubFactory(), config.serviceAddress(), config.standalone());
+        var shardManager = new ShardManager(channelManager.getStubFactory(), config.serviceAddress());
         var notificationManager =
                 config.notificationCallback() == null
                         ? NotificationManagerImpl.NullObject
