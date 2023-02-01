@@ -65,11 +65,15 @@ try {
 
 ### Delete Range
 
+Consult the [Oxia documentation][sort] for detail concerning the ordering of keys.
+
 ```java
 client.deleteRange("aMinInc", "bMaxExc").join();
 ```
 
 ### List Key Range
+
+Consult the [Oxia documentation][sort] for detail concerning the ordering of keys.
 
 ```java
 var keys = client.list("aMinInc", "bMaxExc").join();
@@ -97,4 +101,4 @@ var client = new OxiaClientBuilder("localhost:6648")
 
 [oxia]: https://github.com/streamnative/oxia
 [it]: src/test/java/io/streamnative/oxia/client/OxiaClientIT.java
-
+[sort]: https://github.com/streamnative/oxia/blob/main/docs/oxia-key-sorting.md
