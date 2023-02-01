@@ -18,6 +18,7 @@ package io.streamnative.oxia.client;
 import static java.util.stream.Collectors.toList;
 
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
+import io.streamnative.oxia.client.api.DeleteOptions;
 import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.PutOptions;
 import io.streamnative.oxia.client.api.PutResult;
@@ -84,20 +85,12 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     }
 
     @Override
-    public @NonNull CompletableFuture<Boolean> delete(@NonNull String key, long expectedVersionId) {
+    public @NonNull CompletableFuture<Boolean> delete(@NonNull String key, DeleteOptions options) {
         var shardId = shardManager.get(key);
         var callback = new CompletableFuture<Boolean>();
         writeBatchManager
                 .getBatcher(shardId)
-                .add(new DeleteOperation(callback, key, expectedVersionId));
-        return callback;
-    }
-
-    @Override
-    public @NonNull CompletableFuture<Boolean> delete(@NonNull String key) {
-        var shardId = shardManager.get(key);
-        var callback = new CompletableFuture<Boolean>();
-        writeBatchManager.getBatcher(shardId).add(new DeleteOperation(callback, key));
+                .add(new DeleteOperation(callback, key, options.expectedVersionId()));
         return callback;
     }
 

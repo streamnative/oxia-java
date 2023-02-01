@@ -46,20 +46,13 @@ public interface SyncOxiaClient extends AutoCloseable {
      * in the call.
      *
      * @param key Deletes the record with the specified key.
-     * @param expectedVersion The versionId of the record that this delete operation is scoped to.
+     * @param options Set {@link DeleteOptions options} for the delete.
      * @return True if the key was actually present on the server, false otherwise.
      * @throws UnexpectedVersionIdException The versionId at the server did not that match supplied in
      *     the call.
      */
-    boolean delete(@NonNull String key, long expectedVersion) throws UnexpectedVersionIdException;
-
-    /**
-     * Deletes the record associated with the key if the record exists.
-     *
-     * @param key Deletes the record with the specified key.
-     * @return True if the key was actually present on the server, false otherwise.
-     */
-    boolean delete(@NonNull String key);
+    boolean delete(@NonNull String key, @NonNull DeleteOptions options)
+            throws UnexpectedVersionIdException;
 
     /**
      * Deletes any records with keys within the specified range. For more information on how keys are

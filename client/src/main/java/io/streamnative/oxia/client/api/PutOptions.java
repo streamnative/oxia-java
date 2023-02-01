@@ -31,7 +31,7 @@ public record PutOptions(Long expectedVersionId, boolean ephemeral) {
         return new PutOptions(Version.KeyNotExists, false);
     }
 
-    public static PutOptions expectedVersion(long versionId) {
+    public static PutOptions expectedVersionId(long versionId) {
         return new PutOptions(versionId, false);
     }
 

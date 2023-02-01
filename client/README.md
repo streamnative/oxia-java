@@ -48,7 +48,7 @@ try {
 ### Delete — unconditional
 
 ```java
-var deleted = client.delete("key").join();
+var deleted = client.delete("key", DeleteOptions.none()).join();
 ```
 
 ### Delete — conditional on version ID
@@ -56,7 +56,7 @@ var deleted = client.delete("key").join();
 ```java
 try {
   var deleted = client.delete(
-    "key", expectedVersionId
+    "key", DeleteOptions.expectedVersionId(1L)
   ).join();
 } catch (UnexpectedVersionIdException e) {
   ...

@@ -15,7 +15,7 @@
  */
 package io.streamnative.oxia.client;
 
-import static io.streamnative.oxia.client.api.PutOptions.expectedVersion;
+import static io.streamnative.oxia.client.api.PutOptions.expectedVersionId;
 import static io.streamnative.oxia.client.api.PutOptions.keyNotExists;
 import static io.streamnative.oxia.testcontainers.OxiaContainer.DEFAULT_IMAGE_NAME;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
+import io.streamnative.oxia.client.api.DeleteOptions;
 import io.streamnative.oxia.client.api.KeyAlreadyExistsException;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.Notification.KeyCreated;
@@ -88,7 +89,7 @@ public class OxiaClientIT {
                         () -> assertThat(notifications).contains(new KeyCreated("a", finalAVersion)));
 
         // update 'a' with expected version
-        client.put("a", "a2".getBytes(UTF_8), expectedVersion(aVersion)).join();
+        client.put("a", "a2".getBytes(UTF_8), expectedVersionId(aVersion)).join();
         getResult = client.get("a").join();
         assertThat(getResult.getValue()).isEqualTo("a2".getBytes(UTF_8));
         aVersion = getResult.getVersion().versionId();
@@ -102,12 +103,13 @@ public class OxiaClientIT {
         // put with unexpected version
         var bVersion = client.get("b").join().getVersion().versionId();
         assertThatThrownBy(
-                        () -> client.put("b", "b2".getBytes(UTF_8), expectedVersion(bVersion + 1L)).join())
+                        () -> client.put("b", "b2".getBytes(UTF_8), expectedVersionId(bVersion + 1L)).join())
                 .hasCauseInstanceOf(UnexpectedVersionIdException.class);
 
         // delete with unexpected version
         var cVersion = client.get("c").join().getVersion().versionId();
-        assertThatThrownBy(() -> client.delete("c", cVersion + 1L).join())
+        assertThatThrownBy(
+                        () -> client.delete("c", DeleteOptions.expectedVersionId(cVersion + 1L)).join())
                 .hasCauseInstanceOf(UnexpectedVersionIdException.class);
 
         // list all keys
@@ -115,7 +117,7 @@ public class OxiaClientIT {
         assertThat(listResult).containsExactly("a", "b", "c", "d");
 
         // delete 'a' with expected version
-        client.delete("a", aVersion).join();
+        client.delete("a", DeleteOptions.expectedVersionId(aVersion)).join();
         getResult = client.get("a").join();
         assertThat(getResult).isNull();
 
@@ -123,7 +125,7 @@ public class OxiaClientIT {
         await().untilAsserted(() -> assertThat(notifications).contains(new KeyDeleted("a")));
 
         // delete 'b'
-        client.delete("b").join();
+        client.delete("b", DeleteOptions.none()).join();
         getResult = client.get("b").join();
         assertThat(getResult).isNull();
 

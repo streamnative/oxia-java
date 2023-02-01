@@ -49,24 +49,14 @@ public interface AsyncOxiaClient extends AutoCloseable {
      * in the call.
      *
      * @param key Deletes the record with the specified key.
-     * @param expectedVersionId The versionId of the record that this delete operation is scoped to.
+     * @param options Set {@link DeleteOptions options} for the delete.
      * @return A future that completes when the delete call has returned. The future can return a flag
      *     that will be true if the key was actually present on the server, false otherwise. The
      *     future will complete exceptionally with an {@link UnexpectedVersionIdException} the
      *     versionId at the server did not that match supplied in the call.
      */
     @NonNull
-    CompletableFuture<Boolean> delete(@NonNull String key, long expectedVersionId);
-
-    /**
-     * Deletes the record associated with the key if the record exists.
-     *
-     * @param key Deletes the record with the specified key.
-     * @return A future that completes when the delete call has returned. The future can return a flag
-     *     that will be true if the key was actually present on the server, false otherwise.
-     */
-    @NonNull
-    CompletableFuture<Boolean> delete(@NonNull String key);
+    CompletableFuture<Boolean> delete(@NonNull String key, @NonNull DeleteOptions options);
 
     /**
      * Deletes any records with keys within the specified range. For more information on how keys are
