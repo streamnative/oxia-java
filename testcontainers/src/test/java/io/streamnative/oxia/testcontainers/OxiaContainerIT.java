@@ -23,16 +23,13 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.Network;
-import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy;
 import org.testcontainers.containers.wait.strategy.WaitStrategy;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-@Slf4j
 @Testcontainers
 class OxiaContainerIT {
     private static final String NETWORK_ALIAS = "oxia";
@@ -40,15 +37,14 @@ class OxiaContainerIT {
 
     @Container
     private static OxiaContainer standalone =
-            new OxiaContainer(DEFAULT_IMAGE_NAME, NETWORK_ALIAS).withNetwork(network);
+            new OxiaContainer(DEFAULT_IMAGE_NAME).withNetworkAliases(NETWORK_ALIAS).withNetwork(network);
 
     @Container
     private static OxiaContainer cli =
             new OxiaContainer(DEFAULT_IMAGE_NAME)
                     .withNetwork(network)
                     .withCommand("tail", "-f", "/dev/null")
-                    .waitingFor(noopWaitStrategy())
-                    .withLogConsumer(new Slf4jLogConsumer(log));
+                    .waitingFor(noopWaitStrategy());
 
     @Test
     void testPutGetWithCLI() throws Exception {

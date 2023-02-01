@@ -44,7 +44,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
 public class OxiaClientIT {
-    @Container private static final OxiaContainer oxia = new OxiaContainer(DEFAULT_IMAGE_NAME);
+    @Container
+    private static final OxiaContainer oxia = new OxiaContainer(DEFAULT_IMAGE_NAME).withShards(4);
 
     private static AsyncOxiaClient client;
 
@@ -54,7 +55,6 @@ public class OxiaClientIT {
     static void beforeAll() {
         client =
                 new OxiaClientBuilder(oxia.getServiceAddress())
-                        .standalone()
                         .notificationCallback(notifications::add)
                         .asyncClient()
                         .join();
@@ -114,7 +114,7 @@ public class OxiaClientIT {
 
         // list all keys
         var listResult = client.list("a", "e").join();
-        assertThat(listResult).containsExactly("a", "b", "c", "d");
+        assertThat(listResult).containsOnly("a", "b", "c", "d");
 
         // delete 'a' with expected version
         client.delete("a", DeleteOptions.expectedVersionId(aVersion)).join();

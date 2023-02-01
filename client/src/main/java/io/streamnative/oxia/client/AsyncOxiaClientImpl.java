@@ -24,28 +24,31 @@ import io.streamnative.oxia.client.api.PutOptions;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.batch.BatchManager;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
-import io.streamnative.oxia.client.batch.Operation.ReadOperation.ListOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
 import io.streamnative.oxia.client.grpc.ChannelManager;
+import io.streamnative.oxia.client.grpc.ChannelManager.StubFactory;
 import io.streamnative.oxia.client.notify.NotificationManager;
 import io.streamnative.oxia.client.notify.NotificationManagerImpl;
 import io.streamnative.oxia.client.shard.ShardManager;
-import java.util.Collection;
+import io.streamnative.oxia.proto.ListRequest;
+import io.streamnative.oxia.proto.ListResponse;
+import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
+import java.util.function.Function;
 import lombok.AccessLevel;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import reactor.core.publisher.Flux;
 
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
     static CompletableFuture<AsyncOxiaClient> newInstance(ClientConfig config) {
         var channelManager = new ChannelManager();
-        var shardManager = new ShardManager(config.serviceAddress(), channelManager.getStubFactory());
+        var shardManager = new ShardManager(channelManager.getStubFactory(), config.serviceAddress());
         var notificationManager =
                 config.notificationCallback() == null
                         ? NotificationManagerImpl.NullObject
@@ -54,14 +57,20 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                                 channelManager.getStubFactory(),
                                 config.notificationCallback());
 
-        var blockingStubByShardId =
-                new BlockingStubByShardId(shardManager, channelManager.getBlockingStubFactory(), config);
-        var readBatchManager = BatchManager.newReadBatchManager(config, blockingStubByShardId);
-        var writeBatchManager = BatchManager.newWriteBatchManager(config, blockingStubByShardId);
+        Function<Long, String> leaderFn = shardManager::leader;
+        var blockingStubFn = leaderFn.andThen(channelManager.getBlockingStubFactory());
+        var readBatchManager = BatchManager.newReadBatchManager(config, blockingStubFn);
+        var writeBatchManager = BatchManager.newWriteBatchManager(config, blockingStubFn);
+        var reactorStubFactory = channelManager.getReactorStubFactory();
 
         var client =
                 new AsyncOxiaClientImpl(
-                        channelManager, shardManager, notificationManager, readBatchManager, writeBatchManager);
+                        channelManager,
+                        shardManager,
+                        notificationManager,
+                        readBatchManager,
+                        writeBatchManager,
+                        reactorStubFactory);
 
         return CompletableFuture.allOf(shardManager.start(), notificationManager.start())
                 .thenApply(v -> client);
@@ -72,6 +81,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     private final NotificationManager notificationManager;
     private final BatchManager readBatchManager;
     private final BatchManager writeBatchManager;
+    private final StubFactory<ReactorOxiaClientStub> reactorStubFactory;
 
     @Override
     public @NonNull CompletableFuture<PutResult> put(
@@ -121,33 +131,23 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     @Override
     public @NonNull CompletableFuture<List<String>> list(
             @NonNull String minKeyInclusive, @NonNull String maxKeyExclusive) {
-        List<CompletableFuture<List<String>>> responses =
-                shardManager.getAll().stream()
-                        .map(readBatchManager::getBatcher)
-                        .map(
-                                b -> {
-                                    var callback = new CompletableFuture<List<String>>();
-                                    b.add(new ListOperation(callback, minKeyInclusive, maxKeyExclusive));
-                                    return callback;
-                                })
-                        .collect(toList());
-        return CompletableFuture.allOf(responses.toArray(new CompletableFuture[0]))
-                .thenApply(
-                        v ->
-                                responses.stream()
-                                        .map(
-                                                r -> {
-                                                    try {
-                                                        return r.get();
-                                                    } catch (InterruptedException e) {
-                                                        Thread.currentThread().interrupt();
-                                                        throw new RuntimeException(e);
-                                                    } catch (ExecutionException e) {
-                                                        throw new RuntimeException(e);
-                                                    }
-                                                })
-                                        .flatMap(Collection::stream)
-                                        .collect(toList()));
+        return Flux.fromIterable(shardManager.getAll())
+                .flatMap(shardId -> list(shardId, minKeyInclusive, maxKeyExclusive))
+                .collectList()
+                .toFuture();
+    }
+
+    private Flux<String> list(
+            long shardId, @NonNull String minKeyInclusive, @NonNull String maxKeyExclusive) {
+        var leader = shardManager.leader(shardId);
+        var stub = reactorStubFactory.apply(leader);
+        var request =
+                ListRequest.newBuilder()
+                        .setShardId(ProtoUtil.longToUint32(shardId))
+                        .setStartInclusive(minKeyInclusive)
+                        .setEndExclusive(maxKeyExclusive)
+                        .build();
+        return stub.list(request).flatMapIterable(ListResponse::getKeysList);
     }
 
     @Override

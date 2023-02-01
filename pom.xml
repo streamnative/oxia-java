@@ -208,6 +208,7 @@
                 <configuration>
                     <mapping>
                         <proto>DOUBLESLASH_STYLE</proto>
+                        <MockMaker>SCRIPT_STYLE</MockMaker>
                     </mapping>
                     <licenseSets>
                         <licenseSet>

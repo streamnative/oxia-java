@@ -15,38 +15,47 @@
  */
 package io.streamnative.oxia.testcontainers;
 
-import static java.time.temporal.ChronoUnit.SECONDS;
+import static lombok.AccessLevel.PRIVATE;
 
 import java.time.Duration;
+import lombok.NonNull;
+import lombok.With;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
 
 public class OxiaContainer extends GenericContainer<OxiaContainer> {
-
-    private static final String DEFAULT_NETWORK_ALIAS = "localhost";
     public static final int OXIA_PORT = 6648;
     public static final int METRICS_PORT = 8080;
+    private static final int DEFAULT_SHARDS = 1;
+
+    @With(PRIVATE)
+    private final @NonNull DockerImageName imageName;
+
+    @With private final int shards;
 
     public static final DockerImageName DEFAULT_IMAGE_NAME =
             DockerImageName.parse("streamnative/oxia:main");
 
-    public OxiaContainer(DockerImageName imageName) {
-        this(imageName, DEFAULT_NETWORK_ALIAS);
+    public OxiaContainer(@NonNull DockerImageName imageName) {
+        this(imageName, DEFAULT_SHARDS);
     }
 
     @SuppressWarnings("resource")
-    public OxiaContainer(DockerImageName imageName, String networkAlias) {
+    OxiaContainer(@NonNull DockerImageName imageName, int shards) {
         super(imageName);
+        this.imageName = imageName;
+        this.shards = shards;
+        if (shards <= 0) {
+            throw new IllegalArgumentException("shards must be greater than zero");
+        }
         addExposedPorts(OXIA_PORT, METRICS_PORT);
-        setCommand("oxia", "standalone", "--advertised-address", networkAlias);
-        withNetworkAliases(networkAlias);
+        setCommand("oxia", "standalone", "--shards=" + shards);
         waitingFor(
                 Wait.forHttp("/metrics")
                         .forPort(METRICS_PORT)
                         .forStatusCode(200)
-                        .forPath("/metrics")
-                        .withStartupTimeout(Duration.of(30, SECONDS)));
+                        .withStartupTimeout(Duration.ofSeconds(30)));
     }
 
     public String getServiceAddress() {

@@ -15,8 +15,6 @@
  */
 package io.streamnative.oxia.client.grpc;
 
-import static io.streamnative.oxia.proto.OxiaClientGrpc.newBlockingStub;
-import static lombok.AccessLevel.PACKAGE;
 
 import io.grpc.Channel;
 import io.grpc.ManagedChannel;
@@ -24,6 +22,8 @@ import io.grpc.ManagedChannelBuilder;
 import io.streamnative.oxia.proto.OxiaClientGrpc;
 import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientBlockingStub;
 import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientStub;
+import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
+import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
@@ -34,12 +34,14 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ChannelManager implements Function<String, Channel>, AutoCloseable {
     private final ConcurrentMap<String, ManagedChannel> channels = new ConcurrentHashMap<>();
-    @Getter private final @NonNull StubFactory stubFactory;
-    @Getter private final @NonNull BlockingStubFactory blockingStubFactory;
+    @Getter private final @NonNull StubFactory<OxiaClientStub> stubFactory;
+    @Getter private final @NonNull StubFactory<OxiaClientBlockingStub> blockingStubFactory;
+    @Getter private final @NonNull StubFactory<ReactorOxiaClientStub> reactorStubFactory;
 
     public ChannelManager() {
-        stubFactory = new StubFactory(this);
-        blockingStubFactory = new BlockingStubFactory(this);
+        stubFactory = stubFactory(this);
+        blockingStubFactory = blockingStubFactory(this);
+        reactorStubFactory = reactorStubFactory(this);
     }
 
     @Override
@@ -58,25 +60,33 @@ public class ChannelManager implements Function<String, Channel>, AutoCloseable 
                                 .build());
     }
 
-    @RequiredArgsConstructor(access = PACKAGE)
-    public static class StubFactory implements Function<String, OxiaClientStub> {
-        private final @NonNull ChannelManager channelManager;
-        private final ConcurrentMap<String, OxiaClientStub> stubs = new ConcurrentHashMap<>();
-
-        @Override
-        public @NonNull OxiaClientStub apply(@NonNull String address) {
-            return stubs.computeIfAbsent(address, a -> OxiaClientGrpc.newStub(channelManager.apply(a)));
-        }
+    static StubFactory<OxiaClientStub> stubFactory(@NonNull ChannelManager channelManager) {
+        return new StubFactory<>(channelManager, OxiaClientGrpc::newStub);
     }
 
-    @RequiredArgsConstructor(access = PACKAGE)
-    public static class BlockingStubFactory implements Function<String, OxiaClientBlockingStub> {
-        private final @NonNull ChannelManager channelManager;
-        private final ConcurrentMap<String, OxiaClientBlockingStub> stubs = new ConcurrentHashMap<>();
+    static StubFactory<OxiaClientBlockingStub> blockingStubFactory(
+            @NonNull ChannelManager channelManager) {
+        return new StubFactory<>(channelManager, OxiaClientGrpc::newBlockingStub);
+    }
+
+    static StubFactory<ReactorOxiaClientStub> reactorStubFactory(
+            @NonNull ChannelManager channelManager) {
+        return new StubFactory<>(channelManager, ReactorOxiaClientGrpc::newReactorStub);
+    }
+
+    public static class StubFactory<T> implements Function<String, T> {
+        private final Function<String, T> addressToStubFn;
+
+        StubFactory(
+                @NonNull ChannelManager channelManager, @NonNull Function<Channel, T> channelToStubFn) {
+            addressToStubFn = channelManager.andThen(channelToStubFn);
+        }
+
+        private final ConcurrentMap<String, T> stubs = new ConcurrentHashMap<>();
 
         @Override
-        public @NonNull OxiaClientBlockingStub apply(@NonNull String address) {
-            return stubs.computeIfAbsent(address, a -> newBlockingStub(channelManager.apply(a)));
+        public T apply(String address) {
+            return stubs.computeIfAbsent(address, addressToStubFn);
         }
     }
 }

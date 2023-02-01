@@ -51,21 +51,23 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor(access = PACKAGE)
 @Slf4j
 public class ShardManager implements AutoCloseable {
-    private final @NonNull Receiver receiver;
     private final @NonNull Assignments assignments;
+    private final @NonNull Receiver receiver;
+    private final @NonNull String serviceAddress;
 
     public ShardManager(
-            @NonNull String serviceAddress, @NonNull Function<String, OxiaClientStub> stubFactory) {
-        this(Xxh332HashRangeShardStrategy, serviceAddress, stubFactory);
+            @NonNull Function<String, OxiaClientStub> stubFactory, @NonNull String serviceAddress) {
+        this(Xxh332HashRangeShardStrategy, stubFactory, serviceAddress);
     }
 
     @VisibleForTesting
     ShardManager(
             @NonNull ShardStrategy strategy,
-            @NonNull String serviceAddress,
-            @NonNull Function<String, OxiaClientStub> stubFactory) {
+            @NonNull Function<String, OxiaClientStub> stubFactory,
+            @NonNull String serviceAddress) {
         assignments = new Assignments(strategy);
         receiver = new ReceiveWithRecovery(new GrpcReceiver(serviceAddress, stubFactory, assignments));
+        this.serviceAddress = serviceAddress;
     }
 
     public CompletableFuture<Void> start() {

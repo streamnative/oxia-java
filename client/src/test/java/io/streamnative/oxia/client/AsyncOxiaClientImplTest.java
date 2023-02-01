@@ -18,6 +18,7 @@ package io.streamnative.oxia.client;
 import static io.streamnative.oxia.client.api.PutOptions.expectedVersionId;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -28,13 +29,17 @@ import io.streamnative.oxia.client.api.PutOptions;
 import io.streamnative.oxia.client.batch.BatchManager;
 import io.streamnative.oxia.client.batch.Batcher;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
-import io.streamnative.oxia.client.batch.Operation.ReadOperation.ListOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
 import io.streamnative.oxia.client.grpc.ChannelManager;
+import io.streamnative.oxia.client.grpc.ChannelManager.StubFactory;
 import io.streamnative.oxia.client.notify.NotificationManager;
 import io.streamnative.oxia.client.shard.ShardManager;
+import io.streamnative.oxia.proto.ListRequest;
+import io.streamnative.oxia.proto.ListResponse;
+import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
+import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,6 +47,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import reactor.core.publisher.Flux;
 
 @ExtendWith(MockitoExtension.class)
 class AsyncOxiaClientImplTest {
@@ -52,6 +58,7 @@ class AsyncOxiaClientImplTest {
     @Mock BatchManager readBatchManager;
     @Mock BatchManager writeBatchManager;
     @Mock Batcher batcher;
+    @Mock StubFactory<ReactorOxiaClientStub> reactorStubFactory;
 
     AsyncOxiaClientImpl client;
 
@@ -59,7 +66,12 @@ class AsyncOxiaClientImplTest {
     void setUp() {
         client =
                 new AsyncOxiaClientImpl(
-                        channelManager, shardManager, notificationManager, readBatchManager, writeBatchManager);
+                        channelManager,
+                        shardManager,
+                        notificationManager,
+                        readBatchManager,
+                        writeBatchManager,
+                        reactorStubFactory);
     }
 
     @Test
@@ -213,53 +225,30 @@ class AsyncOxiaClientImplTest {
     }
 
     @Test
-    void list() {
-        var batcher1 = mock(Batcher.class);
-        var batcher2 = mock(Batcher.class);
-        var batcher3 = mock(Batcher.class);
-        var opCaptor1 = ArgumentCaptor.forClass(ListOperation.class);
-        var opCaptor2 = ArgumentCaptor.forClass(ListOperation.class);
-        var opCaptor3 = ArgumentCaptor.forClass(ListOperation.class);
-        var min = "a-min";
-        var max = "z-max";
-        when(shardManager.getAll()).thenReturn(List.of(1L, 2L, 3L));
-        when(readBatchManager.getBatcher(1L)).thenReturn(batcher1);
-        when(readBatchManager.getBatcher(2L)).thenReturn(batcher2);
-        when(readBatchManager.getBatcher(3L)).thenReturn(batcher3);
-        doNothing().when(batcher1).add(opCaptor1.capture());
-        doNothing().when(batcher2).add(opCaptor2.capture());
-        doNothing().when(batcher3).add(opCaptor3.capture());
-        var result = client.list(min, max);
-        assertThat(result).isNotCompleted();
+    void list(@Mock ReactorOxiaClientStub stub0, @Mock ReactorOxiaClientStub stub1) {
+        when(shardManager.getAll()).thenReturn(List.of(0L, 1L));
+        setupListStub(0L, "leader0", stub0);
+        setupListStub(1L, "leader1", stub1);
 
-        assertThat(opCaptor1.getValue())
-                .satisfies(
-                        o -> {
-                            assertThat(o.minKeyInclusive()).isEqualTo(min);
-                            assertThat(o.maxKeyInclusive()).isEqualTo(max);
-                            assertThat(o.callback()).isNotCompleted();
-                        });
+        List<String> list = client.list("a", "e").join();
 
-        assertThat(opCaptor2.getValue())
-                .satisfies(
-                        o -> {
-                            assertThat(o.minKeyInclusive()).isEqualTo(min);
-                            assertThat(o.maxKeyInclusive()).isEqualTo(max);
-                            assertThat(o.callback()).isNotCompleted();
-                        });
+        assertThat(list)
+                .containsExactlyInAnyOrder("0-a", "0-b", "0-c", "0-d", "1-a", "1-b", "1-c", "1-d");
+    }
 
-        assertThat(opCaptor3.getValue())
-                .satisfies(
-                        o -> {
-                            assertThat(o.minKeyInclusive()).isEqualTo(min);
-                            assertThat(o.maxKeyInclusive()).isEqualTo(max);
-                            assertThat(o.callback()).isNotCompleted();
-                        });
+    private void setupListStub(long shardId, String leader, ReactorOxiaClientStub stub) {
+        when(shardManager.leader(shardId)).thenReturn(leader);
+        when(reactorStubFactory.apply(leader)).thenReturn(stub);
+        when(stub.list(any(ListRequest.class)))
+                .thenReturn(
+                        Flux.just(listResponse(shardId, "a", "b"), listResponse(shardId, "c", "d"))
+                                .delayElements(Duration.ofMillis(1)));
+    }
 
-        opCaptor1.getValue().callback().complete(List.of("a"));
-        opCaptor2.getValue().callback().complete(List.of("b"));
-        opCaptor3.getValue().callback().complete(List.of("c"));
-        assertThat(result).isCompletedWithValueMatching(l -> l.containsAll(List.of("a", "b", "c")));
+    private ListResponse listResponse(long shardId, String first, String second) {
+        return ListResponse.newBuilder()
+                .addAllKeys(List.of(shardId + "-" + first, shardId + "-" + second))
+                .build();
     }
 
     @Test
