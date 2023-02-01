@@ -43,24 +43,36 @@ import io.streamnative.oxia.proto.ListResponse;
 import io.streamnative.oxia.proto.PutRequest;
 import io.streamnative.oxia.proto.PutResponse;
 import io.streamnative.oxia.proto.Status;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import lombok.Getter;
 import lombok.NonNull;
 
 public sealed interface Operation<R> permits ReadOperation, WriteOperation {
 
     CompletableFuture<R> callback();
 
+    int protoSize();
+
     default void fail(Throwable t) {
         callback().completeExceptionally(t);
     }
 
     sealed interface ReadOperation<R> extends Operation<R> permits GetOperation, ListOperation {
-        record GetOperation(@NonNull CompletableFuture<GetResult> callback, @NonNull String key)
-                implements ReadOperation<GetResult> {
-            GetRequest toProto() {
+        final class GetOperation implements ReadOperation<GetResult> {
+            private final @NonNull CompletableFuture<GetResult> callback;
+            private final @NonNull String key;
+
+            @Getter(lazy = true)
+            private final GetRequest proto = toProto();
+
+            public GetOperation(@NonNull CompletableFuture<GetResult> callback, @NonNull String key) {
+                this.callback = callback;
+                this.key = key;
+            }
+
+            private GetRequest toProto() {
                 return GetRequest.newBuilder().setKey(key).setIncludeValue(true).build();
             }
 
@@ -71,14 +83,62 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                     default -> fail(new IllegalStateException("GRPC.Status: " + response.getStatus().name()));
                 }
             }
+
+            @Override
+            public @NonNull CompletableFuture<GetResult> callback() {
+                return callback;
+            }
+
+            @Override
+            public int protoSize() {
+                return getProto().getSerializedSize();
+            }
+
+            public @NonNull String key() {
+                return key;
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) {
+                    return true;
+                }
+                if (o == null || getClass() != o.getClass()) {
+                    return false;
+                }
+                GetOperation that = (GetOperation) o;
+                return key.equals(that.key);
+            }
+
+            @Override
+            public int hashCode() {
+                return Objects.hash(key);
+            }
+
+            @Override
+            public String toString() {
+                return "GetOperation{" + "key='" + key + '\'' + '}';
+            }
         }
 
-        record ListOperation(
-                @NonNull CompletableFuture<List<String>> callback,
-                @NonNull String minKeyInclusive,
-                @NonNull String maxKeyInclusive)
-                implements ReadOperation<List<String>> {
-            ListRequest toProto() {
+        final class ListOperation implements ReadOperation<List<String>> {
+            private final @NonNull CompletableFuture<List<String>> callback;
+            private final @NonNull String minKeyInclusive;
+            private final @NonNull String maxKeyInclusive;
+
+            @Getter(lazy = true)
+            private final ListRequest proto = toProto();
+
+            public ListOperation(
+                    @NonNull CompletableFuture<List<String>> callback,
+                    @NonNull String minKeyInclusive,
+                    @NonNull String maxKeyInclusive) {
+                this.callback = callback;
+                this.minKeyInclusive = minKeyInclusive;
+                this.maxKeyInclusive = maxKeyInclusive;
+            }
+
+            private ListRequest toProto() {
                 return ListRequest.newBuilder()
                         .setStartInclusive(minKeyInclusive)
                         .setEndExclusive(maxKeyInclusive)
@@ -92,29 +152,89 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                                         .map(ByteString::toStringUtf8)
                                         .collect(toList())));
             }
+
+            @Override
+            public @NonNull CompletableFuture<List<String>> callback() {
+                return callback;
+            }
+
+            @Override
+            public int protoSize() {
+                return getProto().getSerializedSize();
+            }
+
+            public @NonNull String minKeyInclusive() {
+                return minKeyInclusive;
+            }
+
+            public @NonNull String maxKeyInclusive() {
+                return maxKeyInclusive;
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) {
+                    return true;
+                }
+                if (o == null || getClass() != o.getClass()) {
+                    return false;
+                }
+                ListOperation that = (ListOperation) o;
+                return minKeyInclusive.equals(that.minKeyInclusive)
+                        && maxKeyInclusive.equals(that.maxKeyInclusive);
+            }
+
+            @Override
+            public int hashCode() {
+                return Objects.hash(minKeyInclusive, maxKeyInclusive);
+            }
+
+            @Override
+            public String toString() {
+                return "ListOperation{"
+                        + "minKeyInclusive='"
+                        + minKeyInclusive
+                        + '\''
+                        + ", maxKeyInclusive='"
+                        + maxKeyInclusive
+                        + '\''
+                        + '}';
+            }
         }
     }
 
     sealed interface WriteOperation<R> extends Operation<R>
             permits PutOperation, DeleteOperation, DeleteRangeOperation {
-        record PutOperation(
-                @NonNull CompletableFuture<PutResult> callback,
-                @NonNull String key,
-                byte @NonNull [] value,
-                Long expectedVersionId)
-                implements WriteOperation<PutResult> {
 
-            public PutOperation {
+        final class PutOperation implements WriteOperation<PutResult> {
+            private final @NonNull CompletableFuture<PutResult> callback;
+            private final @NonNull String key;
+            private final byte @NonNull [] value;
+            private final Long expectedVersionId;
+
+            @Getter(lazy = true)
+            private final PutRequest proto = toProto();
+
+            public PutOperation(
+                    @NonNull CompletableFuture<PutResult> callback,
+                    @NonNull String key,
+                    byte @NonNull [] value,
+                    Long expectedVersionId) {
                 if (expectedVersionId != null && expectedVersionId < KeyNotExists) {
                     throw new IllegalArgumentException(
                             "expectedVersionId must be >= -1 (KeyNotExists), was: " + expectedVersionId);
                 }
+                this.callback = callback;
+                this.key = key;
+                this.value = value;
+                this.expectedVersionId = expectedVersionId;
             }
 
-            PutRequest toProto() {
-                var builder = PutRequest.newBuilder().setKey(key).setValue(ByteString.copyFrom(value));
-                setOptionalExpectedVersionId(expectedVersionId, builder::setExpectedVersionId);
-                return builder.build();
+            public PutOperation(
+                    @NonNull CompletableFuture<PutResult> callback,
+                    @NonNull String key,
+                    byte @NonNull [] payload) {
+                this(callback, key, payload, null);
             }
 
             void complete(@NonNull PutResponse response) {
@@ -131,11 +251,92 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 }
             }
 
-            public PutOperation(
-                    @NonNull CompletableFuture<PutResult> callback,
+            private PutRequest toProto() {
+                var builder = PutRequest.newBuilder().setKey(key).setValue(ByteString.copyFrom(value));
+                setOptionalExpectedVersionId(expectedVersionId, builder::setExpectedVersionId);
+                return builder.build();
+            }
+
+            @Override
+            public @NonNull CompletableFuture<PutResult> callback() {
+                return callback;
+            }
+
+            @Override
+            public int protoSize() {
+                return getProto().getSerializedSize();
+            }
+
+            public @NonNull String key() {
+                return key;
+            }
+
+            public byte @NonNull [] value() {
+                return value;
+            }
+
+            public Long expectedVersionId() {
+                return expectedVersionId;
+            }
+        }
+
+        final class DeleteOperation implements WriteOperation<Boolean> {
+            private final @NonNull CompletableFuture<Boolean> callback;
+            private final @NonNull String key;
+            private final Long expectedVersionId;
+
+            @Getter(lazy = true)
+            private final DeleteRequest proto = toProto();
+
+            public DeleteOperation(
+                    @NonNull CompletableFuture<Boolean> callback,
                     @NonNull String key,
-                    byte @NonNull [] payload) {
-                this(callback, key, payload, null);
+                    Long expectedVersionId) {
+                if (expectedVersionId != null && expectedVersionId < 0) {
+                    throw new IllegalArgumentException(
+                            "expectedVersionId must be >= 0, was: " + expectedVersionId);
+                }
+                this.callback = callback;
+                this.key = key;
+                this.expectedVersionId = expectedVersionId;
+            }
+
+            public DeleteOperation(@NonNull CompletableFuture<Boolean> callback, @NonNull String key) {
+                this(callback, key, null);
+            }
+
+            void complete(@NonNull DeleteResponse response) {
+                switch (response.getStatus()) {
+                    case UNEXPECTED_VERSION_ID -> fail(
+                            new UnexpectedVersionIdException(key(), expectedVersionId()));
+                    case KEY_NOT_FOUND -> callback.complete(false);
+                    case OK -> callback.complete(true);
+                    default -> fail(new IllegalStateException("GRPC.Status: " + response.getStatus().name()));
+                }
+            }
+
+            private DeleteRequest toProto() {
+                var builder = DeleteRequest.newBuilder().setKey(key);
+                setOptionalExpectedVersionId(expectedVersionId, builder::setExpectedVersionId);
+                return builder.build();
+            }
+
+            @Override
+            public @NonNull CompletableFuture<Boolean> callback() {
+                return callback;
+            }
+
+            @Override
+            public int protoSize() {
+                return getProto().getSerializedSize();
+            }
+
+            public @NonNull String key() {
+                return key;
+            }
+
+            public Long expectedVersionId() {
+                return expectedVersionId;
             }
 
             @Override
@@ -146,58 +347,45 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 if (o == null || getClass() != o.getClass()) {
                     return false;
                 }
-                PutOperation that = (PutOperation) o;
-                return Objects.equals(expectedVersionId, that.expectedVersionId)
-                        && key.equals(that.key)
-                        && Arrays.equals(value, that.value);
+                DeleteOperation that = (DeleteOperation) o;
+                return key.equals(that.key) && Objects.equals(expectedVersionId, that.expectedVersionId);
             }
 
             @Override
             public int hashCode() {
-                int result = Objects.hash(key, expectedVersionId);
-                result = 31 * result + Arrays.hashCode(value);
-                return result;
+                return Objects.hash(key, expectedVersionId);
+            }
+
+            @Override
+            public String toString() {
+                return "DeleteOperation{"
+                        + "key='"
+                        + key
+                        + '\''
+                        + ", expectedVersionId="
+                        + expectedVersionId
+                        + '}';
             }
         }
 
-        record DeleteOperation(
-                @NonNull CompletableFuture<Boolean> callback, @NonNull String key, Long expectedVersionId)
-                implements WriteOperation<Boolean> {
+        final class DeleteRangeOperation implements WriteOperation<Void> {
+            private final @NonNull CompletableFuture<Void> callback;
+            private final @NonNull String minKeyInclusive;
+            private final @NonNull String maxKeyInclusive;
 
-            public DeleteOperation {
-                if (expectedVersionId != null && expectedVersionId < 0) {
-                    throw new IllegalArgumentException(
-                            "expectedVersionId must be >= 0, was: " + expectedVersionId);
-                }
+            @Getter(lazy = true)
+            private final DeleteRangeRequest proto = toProto();
+
+            public DeleteRangeOperation(
+                    @NonNull CompletableFuture<Void> callback,
+                    @NonNull String minKeyInclusive,
+                    @NonNull String maxKeyInclusive) {
+                this.callback = callback;
+                this.minKeyInclusive = minKeyInclusive;
+                this.maxKeyInclusive = maxKeyInclusive;
             }
 
-            DeleteRequest toProto() {
-                var builder = DeleteRequest.newBuilder().setKey(key);
-                setOptionalExpectedVersionId(expectedVersionId, builder::setExpectedVersionId);
-                return builder.build();
-            }
-
-            void complete(@NonNull DeleteResponse response) {
-                switch (response.getStatus()) {
-                    case UNEXPECTED_VERSION_ID -> fail(
-                            new UnexpectedVersionIdException(key, expectedVersionId));
-                    case KEY_NOT_FOUND -> callback.complete(false);
-                    case OK -> callback.complete(true);
-                    default -> fail(new IllegalStateException("GRPC.Status: " + response.getStatus().name()));
-                }
-            }
-
-            public DeleteOperation(@NonNull CompletableFuture<Boolean> callback, @NonNull String key) {
-                this(callback, key, null);
-            }
-        }
-
-        record DeleteRangeOperation(
-                @NonNull CompletableFuture<Void> callback,
-                @NonNull String minKeyInclusive,
-                @NonNull String maxKeyInclusive)
-                implements WriteOperation<Void> {
-            DeleteRangeRequest toProto() {
+            private DeleteRangeRequest toProto() {
                 return DeleteRangeRequest.newBuilder()
                         .setStartInclusive(minKeyInclusive)
                         .setEndExclusive(maxKeyInclusive)
@@ -210,6 +398,54 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 } else {
                     fail(new IllegalStateException("GRPC.Status: " + response.getStatus().name()));
                 }
+            }
+
+            @Override
+            public @NonNull CompletableFuture<Void> callback() {
+                return callback;
+            }
+
+            @Override
+            public int protoSize() {
+                return getProto().getSerializedSize();
+            }
+
+            public @NonNull String minKeyInclusive() {
+                return minKeyInclusive;
+            }
+
+            public @NonNull String maxKeyInclusive() {
+                return maxKeyInclusive;
+            }
+
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) {
+                    return true;
+                }
+                if (o == null || getClass() != o.getClass()) {
+                    return false;
+                }
+                DeleteRangeOperation that = (DeleteRangeOperation) o;
+                return minKeyInclusive.equals(that.minKeyInclusive)
+                        && maxKeyInclusive.equals(that.maxKeyInclusive);
+            }
+
+            @Override
+            public int hashCode() {
+                return Objects.hash(minKeyInclusive, maxKeyInclusive);
+            }
+
+            @Override
+            public String toString() {
+                return "DeleteRangeOperation{"
+                        + "minKeyInclusive='"
+                        + minKeyInclusive
+                        + '\''
+                        + ", maxKeyInclusive='"
+                        + maxKeyInclusive
+                        + '\''
+                        + '}';
             }
         }
     }

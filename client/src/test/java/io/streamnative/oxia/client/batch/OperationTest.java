@@ -62,7 +62,7 @@ class OperationTest {
 
         @Test
         void toProto() {
-            var request = op.toProto();
+            var request = op.getProto();
             assertThat(request.getKey()).isEqualTo(op.key());
         }
 
@@ -120,7 +120,7 @@ class OperationTest {
 
         @Test
         void toProto() {
-            var request = op.toProto();
+            var request = op.getProto();
             assertThat(request.getStartInclusive()).isEqualTo(op.minKeyInclusive());
             assertThat(request.getEndExclusive()).isEqualTo(op.maxKeyInclusive());
         }
@@ -152,7 +152,7 @@ class OperationTest {
         @Test
         void toProtoNoExpectedVersion() {
             var op = new PutOperation(callback, "key", payload);
-            var request = op.toProto();
+            var request = op.getProto();
             assertThat(request)
                     .satisfies(
                             r -> {
@@ -165,7 +165,7 @@ class OperationTest {
         @Test
         void toProtoExpectedVersion() {
             var op = new PutOperation(callback, "key", payload, 1L);
-            var request = op.toProto();
+            var request = op.getProto();
             assertThat(request)
                     .satisfies(
                             r -> {
@@ -178,7 +178,7 @@ class OperationTest {
         @Test
         void toProtoNoExistingVersion() {
             var op = new PutOperation(callback, "key", payload, KeyNotExists);
-            var request = op.toProto();
+            var request = op.getProto();
             assertThat(request)
                     .satisfies(
                             r -> {
@@ -272,7 +272,7 @@ class OperationTest {
         @Test
         void toProtoNoExpectedVersion() {
             var op = new DeleteOperation(callback, "key");
-            var request = op.toProto();
+            var request = op.getProto();
             assertThat(request)
                     .satisfies(
                             r -> {
@@ -284,7 +284,7 @@ class OperationTest {
         @Test
         void toProtoExpectedVersion() {
             var op = new DeleteOperation(callback, "key", 1L);
-            var request = op.toProto();
+            var request = op.getProto();
             assertThat(request)
                     .satisfies(
                             r -> {
@@ -346,7 +346,7 @@ class OperationTest {
 
         @Test
         void toProto() {
-            var request = op.toProto();
+            var request = op.getProto();
             assertThat(request.getStartInclusive()).isEqualTo(op.minKeyInclusive());
             assertThat(request.getEndExclusive()).isEqualTo(op.maxKeyInclusive());
         }

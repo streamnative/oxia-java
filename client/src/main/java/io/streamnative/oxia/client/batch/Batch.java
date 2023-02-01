@@ -46,6 +46,8 @@ public interface Batch {
 
     int size();
 
+    int sizeBytes();
+
     long getShardId();
 
     void complete();
@@ -54,6 +56,7 @@ public interface Batch {
         @VisibleForTesting final List<PutOperation> puts = new ArrayList<>();
         @VisibleForTesting final List<DeleteOperation> deletes = new ArrayList<>();
         @VisibleForTesting final List<DeleteRangeOperation> deleteRanges = new ArrayList<>();
+        private int sizeBytes = 0;
 
         WriteBatch(
                 @NonNull Function<Long, OxiaClientBlockingStub> stubByShardId,
@@ -69,12 +72,20 @@ public interface Batch {
                 deletes.add(d);
             } else if (operation instanceof DeleteRangeOperation r) {
                 deleteRanges.add(r);
+            } else {
+                throw new IllegalArgumentException("Unsupported operation: " + operation);
             }
+            sizeBytes += operation.protoSize();
         }
 
         @Override
         public int size() {
             return puts.size() + deletes.size() + deleteRanges.size();
+        }
+
+        @Override
+        public int sizeBytes() {
+            return sizeBytes;
         }
 
         @Override
@@ -101,10 +112,10 @@ public interface Batch {
         WriteRequest toProto() {
             return WriteRequest.newBuilder()
                     .setShardId(longToUint32(getShardId()))
-                    .addAllPuts(puts.stream().map(PutOperation::toProto).collect(toList()))
-                    .addAllDeletes(deletes.stream().map(DeleteOperation::toProto).collect(toList()))
+                    .addAllPuts(puts.stream().map(PutOperation::getProto).collect(toList()))
+                    .addAllDeletes(deletes.stream().map(DeleteOperation::getProto).collect(toList()))
                     .addAllDeleteRanges(
-                            deleteRanges.stream().map(DeleteRangeOperation::toProto).collect(toList()))
+                            deleteRanges.stream().map(DeleteRangeOperation::getProto).collect(toList()))
                     .build();
         }
     }
@@ -112,13 +123,17 @@ public interface Batch {
     final class ReadBatch extends BatchBase implements Batch {
         @VisibleForTesting final List<GetOperation> gets = new ArrayList<>();
         @VisibleForTesting final List<ListOperation> lists = new ArrayList<>();
+        private int sizeBytes = 0;
 
         public void add(@NonNull Operation<?> operation) {
             if (operation instanceof GetOperation g) {
                 gets.add(g);
             } else if (operation instanceof ListOperation l) {
                 lists.add(l);
+            } else {
+                throw new IllegalArgumentException("Unsupported operation: " + operation);
             }
+            sizeBytes += operation.protoSize();
         }
 
         ReadBatch(
@@ -131,6 +146,11 @@ public interface Batch {
         @Override
         public int size() {
             return gets.size() + lists.size();
+        }
+
+        @Override
+        public int sizeBytes() {
+            return sizeBytes;
         }
 
         @Override
@@ -153,8 +173,8 @@ public interface Batch {
         ReadRequest toProto() {
             return ReadRequest.newBuilder()
                     .setShardId(longToUint32(getShardId()))
-                    .addAllGets(gets.stream().map(GetOperation::toProto).collect(toList()))
-                    .addAllLists(lists.stream().map(ListOperation::toProto).collect(toList()))
+                    .addAllGets(gets.stream().map(GetOperation::getProto).collect(toList()))
+                    .addAllLists(lists.stream().map(ListOperation::getProto).collect(toList()))
                     .build();
         }
     }

@@ -76,8 +76,12 @@ public class Batcher implements Runnable, AutoCloseable {
                     var spentLingerBudgetMs = Math.max(0, clock.millis() - batch.getStartTime());
                     lingerBudgetMs = Math.max(0L, lingerBudgetMs - spentLingerBudgetMs);
                 }
-
                 if (operation != null) {
+                    if (batch != null
+                            && batch.sizeBytes() + operation.protoSize() > config.maxBatchSizeBytes()) {
+                        batch.complete();
+                        batch = null;
+                    }
                     if (batch == null) {
                         batch = batchFactory.apply(shardId);
                         lingerBudgetMs = config.batchLinger().toMillis();

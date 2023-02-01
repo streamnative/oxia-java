@@ -167,9 +167,9 @@ class BatchTest {
             assertThat(request)
                     .satisfies(
                             r -> {
-                                assertThat(r.getPutsList()).containsOnly(put.toProto());
-                                assertThat(r.getDeletesList()).containsOnly(delete.toProto());
-                                assertThat(r.getDeleteRangesList()).containsOnly(deleteRange.toProto());
+                                assertThat(r.getPutsList()).containsOnly(put.getProto());
+                                assertThat(r.getDeletesList()).containsOnly(delete.getProto());
+                                assertThat(r.getDeleteRangesList()).containsOnly(deleteRange.getProto());
                             });
         }
 
@@ -310,8 +310,8 @@ class BatchTest {
             assertThat(request)
                     .satisfies(
                             r -> {
-                                assertThat(r.getGetsList()).containsOnly(get.toProto());
-                                assertThat(r.getListsList()).containsOnly(list.toProto());
+                                assertThat(r.getGetsList()).containsOnly(get.getProto());
+                                assertThat(r.getListsList()).containsOnly(list.getProto());
                             });
         }
 

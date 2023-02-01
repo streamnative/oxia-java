@@ -61,7 +61,14 @@ class BatcherTest {
     long shardId = 1L;
     ClientConfig config =
             new ClientConfig(
-                    "address", n -> {}, Duration.ofMillis(100), Duration.ofMillis(1000), 10, 5, false);
+                    "address",
+                    n -> {},
+                    Duration.ofMillis(100),
+                    Duration.ofMillis(1000),
+                    10,
+                    1024 * 1024,
+                    5,
+                    false);
 
     BlockingQueue<Operation<?>> queue = new ArrayBlockingQueue<>(config.operationQueueCapacity());
     ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();

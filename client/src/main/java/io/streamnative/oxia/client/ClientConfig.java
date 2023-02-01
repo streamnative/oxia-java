@@ -27,5 +27,6 @@ public record ClientConfig(
         @NonNull Duration requestTimeout,
         @NonNull Duration batchLinger,
         int maxRequestsPerBatch,
+        int maxBatchSizeBytes,
         int operationQueueCapacity,
         boolean standalone) {}

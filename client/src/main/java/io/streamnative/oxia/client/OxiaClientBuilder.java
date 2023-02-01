@@ -33,12 +33,15 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
     public static final int DefaultMaxRequestsPerBatch = 1000;
     public static final Duration DefaultRequestTimeout = Duration.ofSeconds(30);
     public static final int DefaultOperationQueueCapacity = 1000;
+    public static final int DefaultMaxBatchSizeBytes = 1024 * 1024;
+    public static final int De = 1000;
 
     @NonNull private final String serviceAddress;
     private Consumer<Notification> notificationCallback;
     @NonNull private Duration requestTimeout = DefaultRequestTimeout;
     @NonNull private Duration batchLinger = DefaultBatchLinger;
     private int maxRequestsPerBatch = DefaultMaxRequestsPerBatch;
+    private int maxBatchSizeBytes = DefaultMaxBatchSizeBytes;
     private int operationQueueCapacity = DefaultOperationQueueCapacity;
     private boolean standalone = false;
 
@@ -68,6 +71,15 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
         return this;
     }
 
+    public @NonNull OxiaClientBuilder maxBatchSizeBytes(int maxBatchSizeBytes) {
+        if (maxBatchSizeBytes < 1024) {
+            throw new IllegalArgumentException(
+                    "MaxBatchSizeBytes must be greater than 1024: " + maxBatchSizeBytes);
+        }
+        this.maxBatchSizeBytes = maxBatchSizeBytes;
+        return this;
+    }
+
     public @NonNull OxiaClientBuilder operationQueueCapacity(int operationQueueCapacity) {
         if (operationQueueCapacity < 0) {
             throw new IllegalArgumentException(
@@ -90,6 +102,7 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
                         requestTimeout,
                         batchLinger,
                         maxRequestsPerBatch,
+                        maxBatchSizeBytes,
                         operationQueueCapacity,
                         standalone);
         return AsyncOxiaClientImpl.newInstance(config);
