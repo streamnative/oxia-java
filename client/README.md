@@ -66,13 +66,13 @@ try {
 ### Delete Range
 
 ```java
-client.deleteRange("aMinInc","bMaxExc").join();
+client.deleteRange("aMinInc", "bMaxExc").join();
 ```
 
 ### List Key Range
 
 ```java
-var keys = client.list("aMinInc","bMaxExc").join();
+var keys = client.list("aMinInc", "bMaxExc").join();
 ```
 
 ### Subscribe to notifications
