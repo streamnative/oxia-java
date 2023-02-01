@@ -96,5 +96,5 @@ var client = new OxiaClientBuilder("localhost:6648")
 | `operationQueueCapacity` |          1000 | Number of operations that can be buffered prior to batching. |
 
 [oxia]: https://github.com/streamnative/oxia
-[it]: client/src/test/java/io/streamnative/oxia/client/OxiaClientIT.java
+[it]: src/test/java/io/streamnative/oxia/client/OxiaClientIT.java
 
