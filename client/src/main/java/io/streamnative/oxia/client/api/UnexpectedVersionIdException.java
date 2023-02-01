@@ -31,7 +31,7 @@ public class UnexpectedVersionIdException extends OxiaException {
      * @param version The record versionId to which the call was scoped.
      */
     public UnexpectedVersionIdException(@NonNull String key, long version) {
-        super("key '" + key + "' has unexpected versionId: " + version);
+        super("key '" + key + "' has unexpected versionId (expected " + version + ")");
         this.version = version;
         this.key = key;
     }
