@@ -34,7 +34,6 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
     public static final Duration DefaultRequestTimeout = Duration.ofSeconds(30);
     public static final int DefaultOperationQueueCapacity = 1000;
     public static final int DefaultMaxBatchSizeBytes = 1024 * 1024;
-    public static final int De = 1000;
 
     @NonNull private final String serviceAddress;
     private Consumer<Notification> notificationCallback;
