@@ -27,35 +27,30 @@ import org.testcontainers.utility.DockerImageName;
 public class OxiaContainer extends GenericContainer<OxiaContainer> {
     public static final int OXIA_PORT = 6648;
     public static final int METRICS_PORT = 8080;
-    private static final String DEFAULT_ADVERTISED_ADDRESS = "localhost";
     private static final int DEFAULT_SHARDS = 1;
 
     @With(PRIVATE)
     private final @NonNull DockerImageName imageName;
 
-    @With private @NonNull String advertisedAddress;
     @With private final int shards;
 
     public static final DockerImageName DEFAULT_IMAGE_NAME =
             DockerImageName.parse("streamnative/oxia:main");
 
     public OxiaContainer(@NonNull DockerImageName imageName) {
-        this(imageName, DEFAULT_ADVERTISED_ADDRESS, DEFAULT_SHARDS);
+        this(imageName, DEFAULT_SHARDS);
     }
 
     @SuppressWarnings("resource")
-    OxiaContainer(@NonNull DockerImageName imageName, @NonNull String advertisedAddress, int shards) {
+    OxiaContainer(@NonNull DockerImageName imageName, int shards) {
         super(imageName);
         this.imageName = imageName;
-        this.advertisedAddress = advertisedAddress;
         this.shards = shards;
         if (shards <= 0) {
             throw new IllegalArgumentException("shards must be greater than zero");
         }
         addExposedPorts(OXIA_PORT, METRICS_PORT);
-        withNetworkAliases(advertisedAddress);
-        setCommand(
-                "oxia", "standalone", "--advertised-address=" + advertisedAddress, "--shards=" + shards);
+        setCommand("oxia", "standalone", "--shards=" + shards);
         waitingFor(
                 Wait.forHttp("/metrics")
                         .forPort(METRICS_PORT)

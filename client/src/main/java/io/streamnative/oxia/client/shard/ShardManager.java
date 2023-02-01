@@ -54,25 +54,20 @@ public class ShardManager implements AutoCloseable {
     private final @NonNull Assignments assignments;
     private final @NonNull Receiver receiver;
     private final @NonNull String serviceAddress;
-    private final boolean standalone;
 
     public ShardManager(
-            @NonNull Function<String, OxiaClientStub> stubFactory,
-            @NonNull String serviceAddress,
-            boolean standalone) {
-        this(Xxh332HashRangeShardStrategy, stubFactory, serviceAddress, standalone);
+            @NonNull Function<String, OxiaClientStub> stubFactory, @NonNull String serviceAddress) {
+        this(Xxh332HashRangeShardStrategy, stubFactory, serviceAddress);
     }
 
     @VisibleForTesting
     ShardManager(
             @NonNull ShardStrategy strategy,
             @NonNull Function<String, OxiaClientStub> stubFactory,
-            @NonNull String serviceAddress,
-            boolean standalone) {
+            @NonNull String serviceAddress) {
         assignments = new Assignments(strategy);
         receiver = new ReceiveWithRecovery(new GrpcReceiver(serviceAddress, stubFactory, assignments));
         this.serviceAddress = serviceAddress;
-        this.standalone = standalone;
     }
 
     public CompletableFuture<Void> start() {
@@ -89,9 +84,6 @@ public class ShardManager implements AutoCloseable {
     }
 
     public String leader(long shardId) {
-        if (standalone) {
-            return serviceAddress;
-        }
         return assignments.leader(shardId);
     }
 

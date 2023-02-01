@@ -55,7 +55,6 @@ public class OxiaClientIT {
     static void beforeAll() {
         client =
                 new OxiaClientBuilder(oxia.getServiceAddress())
-                        .standalone()
                         .notificationCallback(notifications::add)
                         .asyncClient()
                         .join();

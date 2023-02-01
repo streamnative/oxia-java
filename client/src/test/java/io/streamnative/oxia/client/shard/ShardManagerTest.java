@@ -197,7 +197,7 @@ public class ShardManagerTest {
 
         @BeforeEach
         void mocking() {
-            manager = new ShardManager(assignments, receiver, "address", false);
+            manager = new ShardManager(assignments, receiver, "address");
         }
 
         @Test

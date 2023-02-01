@@ -23,7 +23,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy;
@@ -31,17 +30,14 @@ import org.testcontainers.containers.wait.strategy.WaitStrategy;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-@Slf4j
 @Testcontainers
 class OxiaContainerIT {
-    private static final String ADVERTISED_ADDRESS = "oxia";
+    private static final String NETWORK_ALIAS = "oxia";
     private static final Network network = Network.newNetwork();
 
     @Container
     private static OxiaContainer standalone =
-            new OxiaContainer(DEFAULT_IMAGE_NAME)
-                    .withAdvertisedAddress(ADVERTISED_ADDRESS)
-                    .withNetwork(network);
+            new OxiaContainer(DEFAULT_IMAGE_NAME).withNetworkAliases(NETWORK_ALIAS).withNetwork(network);
 
     @Container
     private static OxiaContainer cli =
@@ -52,7 +48,7 @@ class OxiaContainerIT {
 
     @Test
     void testPutGetWithCLI() throws Exception {
-        var address = ADVERTISED_ADDRESS + ":" + OXIA_PORT;
+        var address = NETWORK_ALIAS + ":" + OXIA_PORT;
 
         var result =
                 cli.execInContainer("oxia", "client", "-a", address, "put", "-k", "hello", "-v", "world");

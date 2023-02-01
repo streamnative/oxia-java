@@ -116,7 +116,7 @@ class ShardManagerGrpcTest {
 
     @Test
     public void start() throws Exception {
-        try (var shardManager = new ShardManager(clientByShardId, "address", false)) {
+        try (var shardManager = new ShardManager(clientByShardId, "address")) {
             var bootstrap = shardManager.start();
             assertThat(bootstrap).isNotCompleted();
             assertThat(shardManager.getAll()).isEmpty();
@@ -133,7 +133,7 @@ class ShardManagerGrpcTest {
         var s1v1 = newShardAssignments(1L, 2, 5, "leader 1");
         var s1v2 = newShardAssignments(1L, 2, 3, "leader 2");
         var strategy = new StaticShardStrategy().assign("key1", s1v1).assign("key2", s1v1);
-        try (var shardManager = new ShardManager(strategy, clientByShardId, "address", false)) {
+        try (var shardManager = new ShardManager(strategy, clientByShardId, "address")) {
             responses.add(assignments(s1v1));
             shardManager.start().get();
             assertThat(shardManager.get("key1")).isEqualTo(1L);
@@ -159,7 +159,7 @@ class ShardManagerGrpcTest {
         var s1 = newShardAssignments(1L, 1, 3, "leader 1");
         var s2 = newShardAssignments(2L, 2, 4, "leader 2");
         var strategy = new StaticShardStrategy().assign("key1", s1);
-        try (var shardManager = new ShardManager(strategy, clientByShardId, "address", false)) {
+        try (var shardManager = new ShardManager(strategy, clientByShardId, "address")) {
             responses.add(assignments(s1));
             shardManager.start().get();
             assertThat(shardManager.get("key1")).isEqualTo(1L);
@@ -184,7 +184,7 @@ class ShardManagerGrpcTest {
 
     @Test
     public void recoveryFromError() throws Exception {
-        try (var shardManager = new ShardManager(clientByShardId, "address", false)) {
+        try (var shardManager = new ShardManager(clientByShardId, "address")) {
             responses.add(assignments(1, 2, 3, "leader 1"));
             shardManager.start().get();
             assertThat(shardManager.leader(1)).isEqualTo("leader 1");
@@ -198,7 +198,7 @@ class ShardManagerGrpcTest {
 
     @Test
     public void recoveryFromEndOfStream() throws Exception {
-        try (var shardManager = new ShardManager(clientByShardId, "address", false)) {
+        try (var shardManager = new ShardManager(clientByShardId, "address")) {
             var bootstrapped = shardManager.start();
             await("next request").untilAsserted(() -> assertThat(shardAssignmentsCount).hasValue(1));
             responses.add(assignments(1L, 2, 3, "leader 1"));
