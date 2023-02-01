@@ -53,7 +53,8 @@ public class OxiaClientIT {
                 new OxiaClientBuilder(oxia.getServiceAddress())
                         .standalone()
                         .notificationCallback(notifications::add)
-                        .asyncClient();
+                        .asyncClient()
+                        .join();
     }
 
     @AfterAll

@@ -40,16 +40,11 @@ import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 class AsyncOxiaClientImpl implements AsyncOxiaClient {
-    private final ChannelManager channelManager;
-    private final ShardManager shardManager;
-    private final NotificationManager notificationManager;
-    private final BatchManager readBatchManager;
-    private final BatchManager writeBatchManager;
 
-    AsyncOxiaClientImpl(ClientConfig config) {
-        channelManager = new ChannelManager();
-        shardManager = new ShardManager(config.serviceAddress(), channelManager.getStubFactory());
-        notificationManager =
+    static CompletableFuture<AsyncOxiaClient> newInstance(ClientConfig config) {
+        var channelManager = new ChannelManager();
+        var shardManager = new ShardManager(config.serviceAddress(), channelManager.getStubFactory());
+        var notificationManager =
                 config.notificationCallback() == null
                         ? NotificationManagerImpl.NullObject
                         : new NotificationManagerImpl(
@@ -57,13 +52,24 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                                 channelManager.getStubFactory(),
                                 config.notificationCallback());
 
-        BlockingStubByShardId blockingStubByShardId =
+        var blockingStubByShardId =
                 new BlockingStubByShardId(shardManager, channelManager.getBlockingStubFactory(), config);
-        readBatchManager = BatchManager.newReadBatchManager(config, blockingStubByShardId);
-        writeBatchManager = BatchManager.newWriteBatchManager(config, blockingStubByShardId);
-        shardManager.start().join();
-        notificationManager.start();
+        var readBatchManager = BatchManager.newReadBatchManager(config, blockingStubByShardId);
+        var writeBatchManager = BatchManager.newWriteBatchManager(config, blockingStubByShardId);
+
+        var client =
+                new AsyncOxiaClientImpl(
+                        channelManager, shardManager, notificationManager, readBatchManager, writeBatchManager);
+
+        return CompletableFuture.allOf(shardManager.start(), notificationManager.start())
+                .thenApply(v -> client);
     }
+
+    private final ChannelManager channelManager;
+    private final ShardManager shardManager;
+    private final NotificationManager notificationManager;
+    private final BatchManager readBatchManager;
+    private final BatchManager writeBatchManager;
 
     @Override
     public @NonNull CompletableFuture<PutResult> put(

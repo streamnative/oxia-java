@@ -123,17 +123,24 @@ class NotificationManagerImplTest {
 
     @Test
     public void start() throws Exception {
-        try (var notificationManager =
-                new NotificationManagerImpl("address", clientByShardId, notificationConsumer)) {
-            assertThatNoException().isThrownBy(notificationManager::start);
-        }
+        var notificationManager =
+                new NotificationManagerImpl("address", clientByShardId, notificationConsumer);
+        assertThatNoException().isThrownBy(() -> notificationManager.start());
+    }
+
+    @Test
+    public void complete() throws Exception {
+        var notificationManager =
+                new NotificationManagerImpl("address", clientByShardId, notificationConsumer);
+        var future = notificationManager.start();
+        await().untilAsserted(() -> assertThat(future).isCompleted());
     }
 
     @Test
     public void notifications() throws Exception {
         try (var notificationManager =
                 new NotificationManagerImpl("address", clientByShardId, notificationConsumer)) {
-            notificationManager.start();
+            notificationManager.start().join();
             responses.add(addDefaultNotification());
             await("consumption of notifications")
                     .untilAsserted(
@@ -149,7 +156,7 @@ class NotificationManagerImplTest {
     public void recoveryFromError() throws Exception {
         try (var notificationManager =
                 new NotificationManagerImpl("address", clientByShardId, notificationConsumer)) {
-            notificationManager.start();
+            notificationManager.start().join();
             responses.add(addDefaultNotification());
             await("next request").untilAsserted(() -> assertThat(getNotificationsCount).hasValue(1));
             responses.add(error());
@@ -161,7 +168,7 @@ class NotificationManagerImplTest {
     public void recoveryFromEndOfStream() throws Exception {
         try (var notificationManager =
                 new NotificationManagerImpl("address", clientByShardId, notificationConsumer)) {
-            notificationManager.start();
+            notificationManager.start().join();
             responses.add(addDefaultNotification());
             await("next request").untilAsserted(() -> assertThat(getNotificationsCount).hasValue(1));
             responses.add(completed());

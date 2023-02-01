@@ -15,6 +15,9 @@
  */
 package io.streamnative.oxia.client.notify;
 
+
+import java.util.concurrent.CompletableFuture;
+
 public interface NotificationManager extends AutoCloseable {
-    void start();
+    CompletableFuture<Void> start();
 }
