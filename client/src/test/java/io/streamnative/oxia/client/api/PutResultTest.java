@@ -34,8 +34,9 @@ class PutResultTest {
                                                         .setVersionId(1L)
                                                         .setCreatedTimestamp(2L)
                                                         .setModifiedTimestamp(3L)
+                                                        .setModificationsCount(4L)
                                                         .build())
                                         .build()))
-                .isEqualTo(new PutResult(new io.streamnative.oxia.client.api.Version(1L, 2L, 3L)));
+                .isEqualTo(new PutResult(new io.streamnative.oxia.client.api.Version(1L, 2L, 3L, 4L)));
     }
 }

@@ -85,15 +85,13 @@ class OperationTest {
                                             .setVersionId(1L)
                                             .setCreatedTimestamp(2L)
                                             .setModifiedTimestamp(3L)
+                                            .setModificationsCount(4L)
                                             .build())
                             .build();
             op.complete(response);
             assertThat(callback)
-                    .isCompletedWithValueMatching(
-                            r ->
-                                    r.equals(
-                                            new GetResult(
-                                                    payload, new io.streamnative.oxia.client.api.Version(1L, 2L, 3L))));
+                    .isCompletedWithValue(
+                            new GetResult(payload, new io.streamnative.oxia.client.api.Version(1L, 2L, 3L, 4L)));
         }
 
         @Test
@@ -229,13 +227,13 @@ class OperationTest {
                                             .setVersionId(1L)
                                             .setCreatedTimestamp(2L)
                                             .setModifiedTimestamp(3L)
+                                            .setModificationsCount(4L)
                                             .build())
                             .build();
             op.complete(response);
             assertThat(callback)
-                    .isCompletedWithValueMatching(
-                            r ->
-                                    r.equals(new PutResult(new io.streamnative.oxia.client.api.Version(1L, 2L, 3L))));
+                    .isCompletedWithValue(
+                            new PutResult(new io.streamnative.oxia.client.api.Version(1L, 2L, 3L, 4L)));
         }
 
         @Test
