@@ -15,7 +15,7 @@ See the included [integration test][it] for executable examples.
 ### Get and Put
 
 ```java
-var client = new OxiaClientBuilder("localhost:6648").asyncClient();
+var client = new OxiaClientBuilder("localhost:6648").asyncClient().join();
 var value = client.get("key").join().getValue();
 // This Put is unconditional
 var version = client.put("key", "hello".getBytes()).join().getVersion();   
@@ -87,7 +87,7 @@ A stream of record change notifications that can be consumed.
 var client = new OxiaClientBuilder("localhost:6648")
   .notificationCallback(
     notification -> System.out.println("Received notification: " + notification)
-  ).asyncClient();
+  ).asyncClient().join();
 ```
 
 ## Configuration
