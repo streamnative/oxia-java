@@ -46,8 +46,8 @@ public class NotificationManagerImpl implements NotificationManager {
     public static final NotificationManager NullObject =
             new NotificationManager() {
                 @Override
-                public void start() {
-                    // NOOP
+                public CompletableFuture<Void> start() {
+                    return CompletableFuture.completedFuture(null);
                 }
 
                 @Override
@@ -72,11 +72,10 @@ public class NotificationManagerImpl implements NotificationManager {
         receiver.close();
     }
 
-    @SneakyThrows
     @Override
-    public void start() {
+    public CompletableFuture<Void> start() {
         receiver.receive();
-        receiver.bootstrap().get();
+        return receiver.bootstrap();
     }
 
     @RequiredArgsConstructor(access = PACKAGE)
