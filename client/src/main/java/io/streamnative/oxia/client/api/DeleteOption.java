@@ -21,6 +21,7 @@ import static io.streamnative.oxia.client.api.DeleteOption.VersionIdDeleteOption
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Set;
 
 public sealed interface DeleteOption permits VersionIdDeleteOption {
@@ -39,6 +40,13 @@ public sealed interface DeleteOption permits VersionIdDeleteOption {
         }
 
         record IfVersionIdEquals(long versionId) implements VersionIdDeleteOption {
+
+            public IfVersionIdEquals {
+                if (versionId < 0) {
+                    throw new IllegalArgumentException("versionId cannot be less than 0 - was: " + versionId);
+                }
+            }
+
             @Override
             public Long toVersionId() {
                 return versionId();
@@ -76,7 +84,7 @@ public sealed interface DeleteOption permits VersionIdDeleteOption {
                                                 + Arrays.toString(args));
                             }
                         });
-        return Set.of(args);
+        return new HashSet<>(Arrays.asList(args));
     }
 
     static Long toVersionId(Collection<DeleteOption> options) {

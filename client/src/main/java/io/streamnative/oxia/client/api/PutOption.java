@@ -23,13 +23,10 @@ import static io.streamnative.oxia.client.api.PutOption.VersionIdPutOption.Uncon
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Set;
 
 public sealed interface PutOption permits VersionIdPutOption, EphemeralRecord {
-
-    default boolean isVersionIdOption() {
-        return false;
-    }
 
     default boolean cannotCoExistWith(PutOption option) {
         return false;
@@ -40,15 +37,18 @@ public sealed interface PutOption permits VersionIdPutOption, EphemeralRecord {
 
         Long toVersionId();
 
-        default boolean isVersionIdOption() {
-            return true;
-        }
-
         default boolean cannotCoExistWith(PutOption option) {
             return option instanceof VersionIdPutOption;
         }
 
         record IfVersionIdEquals(long versionId) implements VersionIdPutOption {
+
+            public IfVersionIdEquals {
+                if (versionId < 0) {
+                    throw new IllegalArgumentException("versionId cannot be less than 0 - was: " + versionId);
+                }
+            }
+
             @Override
             public Long toVersionId() {
                 return versionId();
@@ -97,7 +97,7 @@ public sealed interface PutOption permits VersionIdPutOption, EphemeralRecord {
                                                 + Arrays.toString(args));
                             }
                         });
-        return Set.of(args);
+        return new HashSet<>(Arrays.asList(args));
     }
 
     static Long toVersionId(Collection<PutOption> options) {
