@@ -17,9 +17,9 @@ package io.streamnative.oxia.client;
 
 
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
-import io.streamnative.oxia.client.api.DeleteOptions;
+import io.streamnative.oxia.client.api.DeleteOption;
 import io.streamnative.oxia.client.api.GetResult;
-import io.streamnative.oxia.client.api.PutOptions;
+import io.streamnative.oxia.client.api.PutOption;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.SyncOxiaClient;
 import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
@@ -36,7 +36,7 @@ class SyncOxiaClientImpl implements SyncOxiaClient {
 
     @SneakyThrows
     @Override
-    public @NonNull PutResult put(@NonNull String key, byte @NonNull [] value, PutOptions options) {
+    public @NonNull PutResult put(@NonNull String key, byte @NonNull [] value, PutOption... options) {
         try {
             return asyncClient.put(key, value, options).get();
         } catch (InterruptedException e) {
@@ -49,7 +49,7 @@ class SyncOxiaClientImpl implements SyncOxiaClient {
 
     @SneakyThrows
     @Override
-    public boolean delete(@NonNull String key, DeleteOptions options)
+    public boolean delete(@NonNull String key, DeleteOption... options)
             throws UnexpectedVersionIdException {
         try {
             return asyncClient.delete(key, options).get();

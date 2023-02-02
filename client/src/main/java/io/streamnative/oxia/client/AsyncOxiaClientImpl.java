@@ -18,9 +18,9 @@ package io.streamnative.oxia.client;
 import static java.util.stream.Collectors.toList;
 
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
-import io.streamnative.oxia.client.api.DeleteOptions;
+import io.streamnative.oxia.client.api.DeleteOption;
 import io.streamnative.oxia.client.api.GetResult;
-import io.streamnative.oxia.client.api.PutOptions;
+import io.streamnative.oxia.client.api.PutOption;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.batch.BatchManager;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
@@ -85,22 +85,24 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
     @Override
     public @NonNull CompletableFuture<PutResult> put(
-            @NonNull String key, byte @NonNull [] value, @NonNull PutOptions options) {
+            @NonNull String key, byte @NonNull [] value, @NonNull PutOption... options) {
+        var validatedOptions = PutOption.validate(options);
         var shardId = shardManager.get(key);
         var callback = new CompletableFuture<PutResult>();
         writeBatchManager
                 .getBatcher(shardId)
-                .add(new PutOperation(callback, key, value, options.expectedVersionId()));
+                .add(new PutOperation(callback, key, value, PutOption.toVersionId(validatedOptions)));
         return callback;
     }
 
     @Override
-    public @NonNull CompletableFuture<Boolean> delete(@NonNull String key, DeleteOptions options) {
+    public @NonNull CompletableFuture<Boolean> delete(@NonNull String key, DeleteOption... options) {
+        var validatedOptions = DeleteOption.validate(options);
         var shardId = shardManager.get(key);
         var callback = new CompletableFuture<Boolean>();
         writeBatchManager
                 .getBatcher(shardId)
-                .add(new DeleteOperation(callback, key, options.expectedVersionId()));
+                .add(new DeleteOperation(callback, key, DeleteOption.toVersionId(validatedOptions)));
         return callback;
     }
 
