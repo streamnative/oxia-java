@@ -31,6 +31,7 @@ import io.streamnative.oxia.client.grpc.ChannelManager;
 import io.streamnative.oxia.client.grpc.ChannelManager.StubFactory;
 import io.streamnative.oxia.client.notify.NotificationManager;
 import io.streamnative.oxia.client.notify.NotificationManagerImpl;
+import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.client.shard.ShardManager;
 import io.streamnative.oxia.proto.ListRequest;
 import io.streamnative.oxia.proto.ListResponse;
@@ -60,7 +61,10 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         Function<Long, String> leaderFn = shardManager::leader;
         var blockingStubFn = leaderFn.andThen(channelManager.getBlockingStubFactory());
         var readBatchManager = BatchManager.newReadBatchManager(config, blockingStubFn);
-        var writeBatchManager = BatchManager.newWriteBatchManager(config, blockingStubFn);
+
+        var sessionManager = new SessionManager();
+        var writeBatchManager =
+                BatchManager.newWriteBatchManager(config, blockingStubFn, sessionManager);
         var reactorStubFactory = channelManager.getReactorStubFactory();
 
         var client =
@@ -70,6 +74,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                         notificationManager,
                         readBatchManager,
                         writeBatchManager,
+                        sessionManager,
                         reactorStubFactory);
 
         return CompletableFuture.allOf(shardManager.start(), notificationManager.start())
@@ -81,6 +86,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     private final NotificationManager notificationManager;
     private final BatchManager readBatchManager;
     private final BatchManager writeBatchManager;
+    private final SessionManager sessionManager;
     private final StubFactory<ReactorOxiaClientStub> reactorStubFactory;
 
     @Override
@@ -89,9 +95,10 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         var validatedOptions = PutOption.validate(options);
         var shardId = shardManager.get(key);
         var callback = new CompletableFuture<PutResult>();
-        writeBatchManager
-                .getBatcher(shardId)
-                .add(new PutOperation(callback, key, value, PutOption.toVersionId(validatedOptions)));
+        var versionId = PutOption.toVersionId(validatedOptions);
+        var op =
+                new PutOperation(callback, key, value, versionId, PutOption.toEphemeral(validatedOptions));
+        writeBatchManager.getBatcher(shardId).add(op);
         return callback;
     }
 
@@ -100,9 +107,8 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         var validatedOptions = DeleteOption.validate(options);
         var shardId = shardManager.get(key);
         var callback = new CompletableFuture<Boolean>();
-        writeBatchManager
-                .getBatcher(shardId)
-                .add(new DeleteOperation(callback, key, DeleteOption.toVersionId(validatedOptions)));
+        var versionId = DeleteOption.toVersionId(validatedOptions);
+        writeBatchManager.getBatcher(shardId).add(new DeleteOperation(callback, key, versionId));
         return callback;
     }
 
@@ -156,6 +162,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     public void close() throws Exception {
         readBatchManager.close();
         writeBatchManager.close();
+        sessionManager.close();
         notificationManager.close();
         shardManager.close();
         channelManager.close();

@@ -26,6 +26,7 @@ import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
+import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientBlockingStub;
 import io.streamnative.oxia.proto.ReadRequest;
 import io.streamnative.oxia.proto.WriteRequest;
@@ -53,12 +54,15 @@ public interface Batch {
         @VisibleForTesting final List<PutOperation> puts = new ArrayList<>();
         @VisibleForTesting final List<DeleteOperation> deletes = new ArrayList<>();
         @VisibleForTesting final List<DeleteRangeOperation> deleteRanges = new ArrayList<>();
+        private final SessionManager sessionManager;
 
         WriteBatch(
                 @NonNull Function<Long, OxiaClientBlockingStub> stubByShardId,
+                @NonNull SessionManager sessionManager,
                 long shardId,
                 long createTime) {
             super(stubByShardId, shardId, createTime);
+            this.sessionManager = sessionManager;
         }
 
         public void add(@NonNull Operation<?> operation) {
@@ -100,7 +104,8 @@ public interface Batch {
         WriteRequest toProto() {
             return WriteRequest.newBuilder()
                     .setShardId(longToUint32(getShardId()))
-                    .addAllPuts(puts.stream().map(PutOperation::toProto).collect(toList()))
+                    .addAllPuts(
+                            puts.stream().map(p -> p.toProto(sessionManager, getShardId())).collect(toList()))
                     .addAllDeletes(deletes.stream().map(DeleteOperation::toProto).collect(toList()))
                     .addAllDeleteRanges(
                             deleteRanges.stream().map(DeleteRangeOperation::toProto).collect(toList()))
@@ -170,16 +175,20 @@ public interface Batch {
     }
 
     class WriteBatchFactory extends BatchFactory {
+        final @NonNull SessionManager sessionManager;
+
         public WriteBatchFactory(
                 @NonNull Function<Long, OxiaClientBlockingStub> stubByShardId,
+                @NonNull SessionManager sessionManager,
                 @NonNull ClientConfig config,
                 @NonNull Clock clock) {
             super(stubByShardId, config, clock);
+            this.sessionManager = sessionManager;
         }
 
         @Override
         public @NonNull Batch apply(@NonNull Long shardId) {
-            return new WriteBatch(stubByShardId, shardId, clock.millis());
+            return new WriteBatch(stubByShardId, sessionManager, shardId, clock.millis());
         }
     }
 

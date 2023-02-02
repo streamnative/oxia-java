@@ -20,6 +20,7 @@ import static java.util.stream.Collectors.toList;
 import static lombok.AccessLevel.PACKAGE;
 
 import io.streamnative.oxia.client.ClientConfig;
+import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientBlockingStub;
 import java.time.Clock;
 import java.util.List;
@@ -99,8 +100,10 @@ public class BatchManager implements AutoCloseable {
     }
 
     public static @NonNull BatchManager newWriteBatchManager(
-            @NonNull ClientConfig config, @NonNull Function<Long, OxiaClientBlockingStub> stubByShardId) {
+            @NonNull ClientConfig config,
+            @NonNull Function<Long, OxiaClientBlockingStub> stubByShardId,
+            @NonNull SessionManager sessionManager) {
         return new BatchManager(
-                Batcher.newWriteBatcherFactory(config, stubByShardId, Clock.systemUTC()));
+                Batcher.newWriteBatcherFactory(config, stubByShardId, sessionManager, Clock.systemUTC()));
     }
 }

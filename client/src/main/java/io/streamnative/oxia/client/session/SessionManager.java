@@ -13,18 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.streamnative.oxia.client;
+package io.streamnative.oxia.client.session;
 
+public class SessionManager implements AutoCloseable {
 
-import java.nio.ByteBuffer;
-
-public class ProtoUtil {
-
-    public static int longToUint32(long value) {
-        return ByteBuffer.allocate(8).putLong(value).position(4).getInt();
+    public long getSessionId(long shardId) {
+        return 0L;
     }
 
-    public static long uint32ToLong(int unit32AsInt) {
-        return ByteBuffer.allocate(8).putInt(0).putInt(unit32AsInt).flip().getLong();
-    }
+    @Override
+    public void close() throws Exception {}
 }

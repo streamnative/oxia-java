@@ -24,6 +24,7 @@ import static io.streamnative.oxia.client.api.PutOption.VersionIdPutOption.Uncon
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 public sealed interface PutOption permits VersionIdPutOption, AsEphemeralRecord {
@@ -100,12 +101,11 @@ public sealed interface PutOption permits VersionIdPutOption, AsEphemeralRecord 
         return new HashSet<>(Arrays.asList(args));
     }
 
-    static Long toVersionId(Collection<PutOption> options) {
+    static Optional<Long> toVersionId(Collection<PutOption> options) {
         return options.stream()
                 .filter(o -> o instanceof VersionIdPutOption)
                 .findAny()
-                .map(o -> ((VersionIdPutOption) o).toVersionId())
-                .orElse(null);
+                .map(o -> ((VersionIdPutOption) o).toVersionId());
     }
 
     static boolean toEphemeral(Collection<PutOption> options) {
