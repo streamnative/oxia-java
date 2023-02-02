@@ -77,6 +77,7 @@ class BatchTest {
     Function<Long, OxiaClientBlockingStub> clientByShardId;
     @Mock SessionManager sessionManager;
     long shardId = 1L;
+    long sessionId = 1L;
     long startTime = 2L;
 
     private final OxiaClientImplBase serviceImpl =
@@ -114,6 +115,7 @@ class BatchTest {
                         .start();
         channel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
         clientByShardId = s -> newBlockingStub(channel);
+        when(sessionManager.getSessionId(shardId)).thenReturn(sessionId);
     }
 
     @AfterEach
@@ -168,7 +170,7 @@ class BatchTest {
             assertThat(request)
                     .satisfies(
                             r -> {
-                                assertThat(r.getPutsList()).containsOnly(put.toProto(sessionManager, shardId));
+                                assertThat(r.getPutsList()).containsOnly(put.toProto(sessionId));
                                 assertThat(r.getDeletesList()).containsOnly(delete.toProto());
                                 assertThat(r.getDeleteRangesList()).containsOnly(deleteRange.toProto());
                             });

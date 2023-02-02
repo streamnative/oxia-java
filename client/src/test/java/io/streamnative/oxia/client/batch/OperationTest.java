@@ -33,7 +33,6 @@ import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
-import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.proto.DeleteRangeResponse;
 import io.streamnative.oxia.proto.DeleteResponse;
 import io.streamnative.oxia.proto.GetResponse;
@@ -47,7 +46,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
@@ -113,11 +111,11 @@ class OperationTest {
     @Nested
     @DisplayName("Tests of put operation")
     class PutOperationTests {
-        @Mock SessionManager sessionManager;
         CompletableFuture<PutResult> callback = new CompletableFuture<>();
         byte[] payload = "hello".getBytes(UTF_8);
         PutOperation op = new PutOperation(callback, "key", payload, Optional.of(10L), false);
         long shardId = 0L;
+        long sessionId = 0L;
 
         @Test
         void constructInvalidExpectedVersionId() {
@@ -133,7 +131,7 @@ class OperationTest {
         @Test
         void toProtoNoExpectedVersion() {
             var op = new PutOperation(callback, "key", payload, Optional.empty(), false);
-            var request = op.toProto(sessionManager, shardId);
+            var request = op.toProto(sessionId);
             assertThat(request)
                     .satisfies(
                             r -> {
@@ -146,7 +144,7 @@ class OperationTest {
         @Test
         void toProtoExpectedVersion() {
             var op = new PutOperation(callback, "key", payload, Optional.of(1L), false);
-            var request = op.toProto(sessionManager, shardId);
+            var request = op.toProto(sessionId);
             assertThat(request)
                     .satisfies(
                             r -> {
@@ -159,7 +157,7 @@ class OperationTest {
         @Test
         void toProtoNoExistingVersion() {
             var op = new PutOperation(callback, "key", payload, Optional.of(KeyNotExists), false);
-            var request = op.toProto(sessionManager, shardId);
+            var request = op.toProto(sessionId);
             assertThat(request)
                     .satisfies(
                             r -> {

@@ -28,7 +28,6 @@ import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.KeyAlreadyExistsException;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
-import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.proto.DeleteRangeRequest;
 import io.streamnative.oxia.proto.DeleteRangeResponse;
 import io.streamnative.oxia.proto.DeleteRequest;
@@ -86,11 +85,11 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 }
             }
 
-            PutRequest toProto(SessionManager sessionManager, long shardId) {
+            PutRequest toProto(long sessionId) {
                 var builder = PutRequest.newBuilder().setKey(key).setValue(ByteString.copyFrom(value));
                 expectedVersionId.ifPresent(builder::setExpectedVersionId);
                 if (ephemeral) {
-                    builder.setSessionId(sessionManager.getSessionId(shardId));
+                    builder.setSessionId(sessionId);
                 }
                 return builder.build();
             }

@@ -102,10 +102,10 @@ public interface Batch {
 
         @NonNull
         WriteRequest toProto() {
+            var sessionId = sessionManager.getSessionId(getShardId());
             return WriteRequest.newBuilder()
                     .setShardId(longToUint32(getShardId()))
-                    .addAllPuts(
-                            puts.stream().map(p -> p.toProto(sessionManager, getShardId())).collect(toList()))
+                    .addAllPuts(puts.stream().map(p -> p.toProto(sessionId)).collect(toList()))
                     .addAllDeletes(deletes.stream().map(DeleteOperation::toProto).collect(toList()))
                     .addAllDeleteRanges(
                             deleteRanges.stream().map(DeleteRangeOperation::toProto).collect(toList()))
