@@ -89,7 +89,7 @@ class DeleteOptionTest {
 
     @Test
     void toVersionId() {
-        assertThat(DeleteOption.toVersionId(Set.of(DeleteOption.Unconditionally))).isNull();
-        assertThat(DeleteOption.toVersionId(Set.of(DeleteOption.ifVersionIdEquals(1L)))).isEqualTo(1L);
+        assertThat(DeleteOption.toVersionId(Set.of(DeleteOption.Unconditionally))).isEmpty();
+        assertThat(DeleteOption.toVersionId(Set.of(DeleteOption.ifVersionIdEquals(1L)))).hasValue(1L);
     }
 }
