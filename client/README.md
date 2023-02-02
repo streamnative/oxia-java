@@ -26,7 +26,7 @@ var version = client.put("key", "hello".getBytes(), PutOptions.none()).join().ge
 ```java
 try {
   var result = client.put(
-        "key", value, PutOptions.keyNotExists()
+        "key", value, PutOption.IfRecordDoesNotExist
   ).join();
 } catch (KeyAlreadyExistsException e) {
   ...
@@ -38,7 +38,7 @@ try {
 ```java
 try {
   var result = client.put(
-    "key", value, PutOptions.expectedVersionId(1L)
+    "key", value, PutOption.ifVersionIdEquals(1L)
   ).join();
 } catch (UnexpectedVersionIdException e) {
   ...
@@ -48,7 +48,7 @@ try {
 ### Delete — unconditional
 
 ```java
-var deleted = client.delete("key", DeleteOptions.none()).join();
+var deleted = client.delete("key").join();
 ```
 
 ### Delete — conditional on version ID
@@ -56,7 +56,7 @@ var deleted = client.delete("key", DeleteOptions.none()).join();
 ```java
 try {
   var deleted = client.delete(
-    "key", DeleteOptions.expectedVersionId(1L)
+    "key", DeleteOption.ifVersionIdEquals(1L)
   ).join();
 } catch (UnexpectedVersionIdException e) {
   ...

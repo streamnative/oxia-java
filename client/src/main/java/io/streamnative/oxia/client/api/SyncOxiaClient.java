@@ -31,12 +31,12 @@ public interface SyncOxiaClient extends AutoCloseable {
      *
      * @param key The key with which the value should be associated.
      * @param value The value to associate with the key.
-     * @param options Set {@link PutOptions options} for the put.
+     * @param options Set {@link PutOption options} for the put.
      * @return The result of the put at the specified key.
      * @throws UnexpectedVersionIdException The versionId at the server did not that match supplied in
      *     the call.
      */
-    PutResult put(@NonNull String key, byte @NonNull [] value, PutOptions options)
+    PutResult put(@NonNull String key, byte @NonNull [] value, PutOption... options)
             throws UnexpectedVersionIdException;
 
     /**
@@ -46,12 +46,12 @@ public interface SyncOxiaClient extends AutoCloseable {
      * in the call.
      *
      * @param key Deletes the record with the specified key.
-     * @param options Set {@link DeleteOptions options} for the delete.
+     * @param options Set {@link DeleteOption options} for the delete.
      * @return True if the key was actually present on the server, false otherwise.
      * @throws UnexpectedVersionIdException The versionId at the server did not that match supplied in
      *     the call.
      */
-    boolean delete(@NonNull String key, @NonNull DeleteOptions options)
+    boolean delete(@NonNull String key, @NonNull DeleteOption... options)
             throws UnexpectedVersionIdException;
 
     /**
