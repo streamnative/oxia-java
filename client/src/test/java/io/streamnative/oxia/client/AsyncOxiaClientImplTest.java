@@ -91,7 +91,7 @@ class AsyncOxiaClientImplTest {
                 .satisfies(
                         o -> {
                             assertThat(o.key()).isEqualTo(key);
-                            assertThat(o.expectedVersionId()).isNull();
+                            assertThat(o.expectedVersionId()).isEmpty();
                             assertThat(o.value()).isEqualTo(value);
                             assertThat(o.callback()).isSameAs(result);
                         });
@@ -113,7 +113,7 @@ class AsyncOxiaClientImplTest {
                 .satisfies(
                         o -> {
                             assertThat(o.key()).isEqualTo(key);
-                            assertThat(o.expectedVersionId()).isEqualTo(expectedVersionId);
+                            assertThat(o.expectedVersionId()).hasValue(expectedVersionId);
                             assertThat(o.value()).isEqualTo(value);
                             assertThat(o.callback()).isSameAs(result);
                         });
@@ -133,7 +133,7 @@ class AsyncOxiaClientImplTest {
                 .satisfies(
                         o -> {
                             assertThat(o.key()).isEqualTo(key);
-                            assertThat(o.expectedVersionId()).isNull();
+                            assertThat(o.expectedVersionId()).isEmpty();
                             assertThat(o.callback()).isSameAs(result);
                         });
     }
@@ -153,7 +153,7 @@ class AsyncOxiaClientImplTest {
                 .satisfies(
                         o -> {
                             assertThat(o.key()).isEqualTo(key);
-                            assertThat(o.expectedVersionId()).isEqualTo(expectedVersionId);
+                            assertThat(o.expectedVersionId()).hasValue(expectedVersionId);
                             assertThat(o.callback()).isSameAs(result);
                         });
     }
