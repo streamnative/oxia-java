@@ -115,7 +115,6 @@ class BatchTest {
                         .start();
         channel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
         clientByShardId = s -> newBlockingStub(channel);
-        when(sessionManager.getSessionId(shardId)).thenReturn(sessionId);
     }
 
     @AfterEach
