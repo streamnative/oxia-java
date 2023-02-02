@@ -161,7 +161,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
             }
 
             public DeleteOperation(@NonNull CompletableFuture<Boolean> callback, @NonNull String key) {
-                this(callback, key, null);
+                this(callback, key, Optional.empty());
             }
         }
 

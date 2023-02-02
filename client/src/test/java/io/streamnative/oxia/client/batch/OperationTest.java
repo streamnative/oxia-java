@@ -270,7 +270,7 @@ class OperationTest {
                     .satisfies(
                             r -> {
                                 assertThat(r.getKey()).isEqualTo(op.key());
-                                assertThat(r.getExpectedVersionId()).isEqualTo(1L);
+                                assertThat(r.getExpectedVersionId()).isEqualTo(10L);
                             });
         }
 

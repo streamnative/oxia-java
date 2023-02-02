@@ -33,6 +33,7 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
     public static final int DefaultMaxRequestsPerBatch = 1000;
     public static final Duration DefaultRequestTimeout = Duration.ofSeconds(30);
     public static final int DefaultOperationQueueCapacity = 1000;
+    public static final Duration DefaultSessionTimeout = Duration.ofSeconds(30);
 
     @NonNull private final String serviceAddress;
     private Consumer<Notification> notificationCallback;
@@ -40,6 +41,7 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
     @NonNull private Duration batchLinger = DefaultBatchLinger;
     private int maxRequestsPerBatch = DefaultMaxRequestsPerBatch;
     private int operationQueueCapacity = DefaultOperationQueueCapacity;
+    @NonNull private Duration sessionTimeout = DefaultSessionTimeout;
 
     @Override
     public @NonNull OxiaClientBuilder notificationCallback(
@@ -76,6 +78,11 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
         return this;
     }
 
+    public @NonNull OxiaClientBuilder sessionTimeout(@NonNull Duration sessionTimeout) {
+        this.sessionTimeout = sessionTimeout;
+        return this;
+    }
+
     public @NonNull CompletableFuture<AsyncOxiaClient> asyncClient() {
         var config =
                 new ClientConfig(
@@ -84,7 +91,8 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
                         requestTimeout,
                         batchLinger,
                         maxRequestsPerBatch,
-                        operationQueueCapacity);
+                        operationQueueCapacity,
+                        sessionTimeout);
         return AsyncOxiaClientImpl.newInstance(config);
     }
 
