@@ -15,7 +15,7 @@
  */
 package io.streamnative.oxia.client.api;
 
-import static io.streamnative.oxia.client.api.PutOption.EphemeralRecord;
+import static io.streamnative.oxia.client.api.PutOption.AsEphemeralRecord;
 import static io.streamnative.oxia.client.api.PutOption.VersionIdPutOption;
 import static io.streamnative.oxia.client.api.PutOption.VersionIdPutOption.IfRecordDoesNotExist;
 import static io.streamnative.oxia.client.api.PutOption.VersionIdPutOption.IfVersionIdEquals;
@@ -26,7 +26,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
-public sealed interface PutOption permits VersionIdPutOption, EphemeralRecord {
+public sealed interface PutOption permits VersionIdPutOption, AsEphemeralRecord {
 
     default boolean cannotCoExistWith(PutOption option) {
         return false;
@@ -70,11 +70,11 @@ public sealed interface PutOption permits VersionIdPutOption, EphemeralRecord {
         }
     }
 
-    record EphemeralRecord() implements PutOption {}
+    record AsEphemeralRecord() implements PutOption {}
 
     VersionIdPutOption IfRecordDoesNotExist = new VersionIdPutOption.IfRecordDoesNotExist();
     VersionIdPutOption Unconditionally = new VersionIdPutOption.Unconditionally();
-    PutOption EphemeralRecord = new EphemeralRecord();
+    PutOption AsEphemeralRecord = new AsEphemeralRecord();
 
     static VersionIdPutOption ifVersionIdEquals(long versionId) {
         return new IfVersionIdEquals(versionId);
@@ -109,6 +109,6 @@ public sealed interface PutOption permits VersionIdPutOption, EphemeralRecord {
     }
 
     static boolean toEphemeral(Collection<PutOption> options) {
-        return options.stream().anyMatch(o -> o instanceof EphemeralRecord);
+        return options.stream().anyMatch(o -> o instanceof PutOption.AsEphemeralRecord);
     }
 }

@@ -38,7 +38,7 @@ class PutOptionTest {
                                 assertThat(o.toVersionId()).isEqualTo(1L);
                                 assertThat(o.cannotCoExistWith(PutOption.Unconditionally)).isTrue();
                                 assertThat(o.cannotCoExistWith(PutOption.IfRecordDoesNotExist)).isTrue();
-                                assertThat(o.cannotCoExistWith(PutOption.EphemeralRecord)).isFalse();
+                                assertThat(o.cannotCoExistWith(PutOption.AsEphemeralRecord)).isFalse();
                             });
         }
 
@@ -62,7 +62,7 @@ class PutOptionTest {
                                 assertThat(o.toVersionId()).isEqualTo(Version.KeyNotExists);
                                 assertThat(o.cannotCoExistWith(PutOption.Unconditionally)).isTrue();
                                 assertThat(o.cannotCoExistWith(PutOption.ifVersionIdEquals(1L))).isTrue();
-                                assertThat(o.cannotCoExistWith(PutOption.EphemeralRecord)).isFalse();
+                                assertThat(o.cannotCoExistWith(PutOption.AsEphemeralRecord)).isFalse();
                             });
         }
     }
@@ -79,24 +79,24 @@ class PutOptionTest {
                                 assertThat(o.toVersionId()).isNull();
                                 assertThat(o.cannotCoExistWith(PutOption.IfRecordDoesNotExist)).isTrue();
                                 assertThat(o.cannotCoExistWith(PutOption.ifVersionIdEquals(1L))).isTrue();
-                                assertThat(o.cannotCoExistWith(PutOption.EphemeralRecord)).isFalse();
+                                assertThat(o.cannotCoExistWith(PutOption.AsEphemeralRecord)).isFalse();
                             });
         }
     }
 
     @Nested
-    @DisplayName("EphemeralRecord tests")
-    class EphemeralRecordTests {
+    @DisplayName("AsEphemeralRecord tests")
+    class AsEphemeralRecordTests {
         @Test
-        void ephemeral() {
-            assertThat(PutOption.EphemeralRecord)
+        void asEphemeral() {
+            assertThat(PutOption.AsEphemeralRecord)
                     .satisfies(
                             o -> {
-                                assertThat(o).isInstanceOf(PutOption.EphemeralRecord.class);
+                                assertThat(o).isInstanceOf(PutOption.AsEphemeralRecord.class);
                                 assertThat(o.cannotCoExistWith(PutOption.IfRecordDoesNotExist)).isFalse();
                                 assertThat(o.cannotCoExistWith(PutOption.Unconditionally)).isFalse();
                                 assertThat(o.cannotCoExistWith(PutOption.ifVersionIdEquals(1L))).isFalse();
-                                assertThat(o.cannotCoExistWith(PutOption.EphemeralRecord)).isFalse();
+                                assertThat(o.cannotCoExistWith(PutOption.AsEphemeralRecord)).isFalse();
                             });
         }
     }
@@ -105,11 +105,11 @@ class PutOptionTest {
     void validate() {
         assertThat(
                         PutOption.validate(
-                                PutOption.EphemeralRecord,
-                                PutOption.EphemeralRecord,
+                                PutOption.AsEphemeralRecord,
+                                PutOption.AsEphemeralRecord,
                                 PutOption.ifVersionIdEquals(1L),
                                 PutOption.ifVersionIdEquals(1L)))
-                .containsOnly(PutOption.EphemeralRecord, PutOption.ifVersionIdEquals(1L));
+                .containsOnly(PutOption.AsEphemeralRecord, PutOption.ifVersionIdEquals(1L));
     }
 
     @Test
@@ -130,20 +130,20 @@ class PutOptionTest {
 
     @Test
     void toVersionId() {
-        assertThat(PutOption.toVersionId(Set.of(PutOption.EphemeralRecord))).isNull();
+        assertThat(PutOption.toVersionId(Set.of(PutOption.AsEphemeralRecord))).isNull();
         assertThat(PutOption.toVersionId(Set.of(PutOption.Unconditionally))).isNull();
         assertThat(PutOption.toVersionId(Set.of(PutOption.IfRecordDoesNotExist)))
                 .isEqualTo(Version.KeyNotExists);
         assertThat(PutOption.toVersionId(Set.of(PutOption.ifVersionIdEquals(1L)))).isEqualTo(1L);
         assertThat(
                         PutOption.toVersionId(
-                                Set.of(PutOption.EphemeralRecord, PutOption.ifVersionIdEquals(1L))))
+                                Set.of(PutOption.AsEphemeralRecord, PutOption.ifVersionIdEquals(1L))))
                 .isEqualTo(1L);
     }
 
     @Test
     void toEphemeral() {
-        assertThat(PutOption.toEphemeral(Set.of(PutOption.EphemeralRecord))).isTrue();
+        assertThat(PutOption.toEphemeral(Set.of(PutOption.AsEphemeralRecord))).isTrue();
         assertThat(PutOption.toEphemeral(Set.of())).isFalse();
     }
 }
