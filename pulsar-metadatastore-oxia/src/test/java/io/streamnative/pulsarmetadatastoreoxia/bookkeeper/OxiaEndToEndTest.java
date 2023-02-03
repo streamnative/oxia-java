@@ -25,6 +25,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.metadata.bookkeeper.EndToEndTest;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
+import org.testng.annotations.Ignore;
+import org.testng.annotations.Test;
 
 @Slf4j
 public class OxiaEndToEndTest extends EndToEndTest implements OxiaTestBase {
@@ -43,8 +45,12 @@ public class OxiaEndToEndTest extends EndToEndTest implements OxiaTestBase {
 
     // TODO -------- Failing tests:
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testBasic(String provider, Supplier<String> urlSupplier) throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testWithLedgerRecovery(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 }

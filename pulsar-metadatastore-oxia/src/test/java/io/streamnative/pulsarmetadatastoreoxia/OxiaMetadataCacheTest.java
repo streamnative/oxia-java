@@ -23,6 +23,8 @@ import lombok.Setter;
 import org.apache.pulsar.metadata.MetadataCacheTest;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
+import org.testng.annotations.Ignore;
+import org.testng.annotations.Test;
 
 public class OxiaMetadataCacheTest extends MetadataCacheTest implements OxiaTestBase {
 
@@ -40,9 +42,15 @@ public class OxiaMetadataCacheTest extends MetadataCacheTest implements OxiaTest
 
     // -------- Override ZK-specific tests to do nothing --------
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void crossStoreAddDelete(String provider, Supplier<String> urlSupplier) throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void crossStoreUpdates(String provider, Supplier<String> urlSupplier) throws Exception {}
 
+    @Ignore
+    @Test
     public void readModifyUpdateBadVersionRetry() throws Exception {}
 }

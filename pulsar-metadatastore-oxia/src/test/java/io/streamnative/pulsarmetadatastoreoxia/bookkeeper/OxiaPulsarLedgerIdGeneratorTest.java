@@ -24,6 +24,8 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.metadata.bookkeeper.PulsarLedgerIdGeneratorTest;
 import org.testng.annotations.DataProvider;
+import org.testng.annotations.Ignore;
+import org.testng.annotations.Test;
 
 @Slf4j
 public class OxiaPulsarLedgerIdGeneratorTest extends PulsarLedgerIdGeneratorTest
@@ -42,6 +44,8 @@ public class OxiaPulsarLedgerIdGeneratorTest extends PulsarLedgerIdGeneratorTest
 
     // TODO -------- Failing tests:
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testGenerateLedgerId(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 }

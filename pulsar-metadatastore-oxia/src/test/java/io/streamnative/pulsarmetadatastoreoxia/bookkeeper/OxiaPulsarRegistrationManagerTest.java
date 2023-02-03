@@ -25,6 +25,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.metadata.bookkeeper.PulsarRegistrationManagerTest;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
+import org.testng.annotations.Ignore;
+import org.testng.annotations.Test;
 
 @Slf4j
 public class OxiaPulsarRegistrationManagerTest extends PulsarRegistrationManagerTest
@@ -44,39 +46,63 @@ public class OxiaPulsarRegistrationManagerTest extends PulsarRegistrationManager
 
     // TODO -------- Failing tests:
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testPrepareFormat(String provider, Supplier<String> urlSupplier) throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testNukeNonExistingCluster(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testNukeExistingCluster(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testInitNewClusterTwice(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testPrepareFormatNonExistingCluster(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testPrepareFormatExistingCluster(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testNukeExistingClusterWithWritableBookies(
             String provider, Supplier<String> urlSupplier) throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testNukeExistingClusterWithReadonlyBookies(
             String provider, Supplier<String> urlSupplier) throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testNukeExistingClusterWithAllBookies(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testFormatExistingCluster(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testFormatExistingClusterWithBookies(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 
     @Override
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testFormatNonExistingCluster(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 }

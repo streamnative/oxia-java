@@ -173,7 +173,6 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
         CompletableFuture<Void> parentsCreated = createParents(path);
         return parentsCreated.thenCompose(
                 __ -> {
-                    // TODO ephemeral
                     var expectedVersion = optExpectedVersion;
                     if (expectedVersion.isPresent()
                             && expectedVersion.get() != -1L
@@ -193,7 +192,8 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
                     } else {
                         actualPath = CompletableFuture.completedFuture(path);
                     }
-                    var putOption =
+                    var ephemeral = options.contains(CreateOption.Ephemeral);
+                    var versionCondition =
                             expectedVersion
                                     .map(
                                             ver -> {
@@ -203,11 +203,15 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
                                                 return PutOption.ifVersionIdEquals(ver);
                                             })
                                     .orElse(PutOption.Unconditionally);
+                    var putOptions =
+                            ephemeral
+                                    ? new PutOption[] {PutOption.AsEphemeralRecord, versionCondition}
+                                    : new PutOption[] {versionCondition};
                     return actualPath
                             .thenCompose(
                                     aPath ->
                                             client
-                                                    .put(aPath, data, putOption)
+                                                    .put(aPath, data, putOptions)
                                                     .thenApply(res -> new PathWithPutResult(aPath, res)))
                             .thenApply(res -> convertStat(res.path(), res.result().version()))
                             .exceptionallyCompose(this::convertException);
@@ -215,13 +219,11 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
     }
 
     private <T> CompletionStage<T> convertException(Throwable ex) {
-        return (ex instanceof UnexpectedVersionIdException
-                        || ex.getCause() instanceof UnexpectedVersionIdException)
-                ? CompletableFuture.failedFuture(new MetadataStoreException.BadVersionException(ex))
-                : (ex instanceof KeyAlreadyExistsException
-                                || ex.getCause() instanceof KeyAlreadyExistsException)
-                        ? CompletableFuture.failedFuture(new MetadataStoreException.AlreadyExistsException(ex))
-                        : CompletableFuture.failedFuture(ex);
+        return (ex.getCause() instanceof UnexpectedVersionIdException)
+                ? CompletableFuture.failedFuture(new MetadataStoreException.BadVersionException(ex.getCause()))
+                : (ex.getCause() instanceof KeyAlreadyExistsException)
+                        ? CompletableFuture.failedFuture(new MetadataStoreException.AlreadyExistsException(ex.getCause()))
+                        : CompletableFuture.failedFuture(ex.getCause());
     }
 
     private CompletableFuture<Void> createParents(String path) {
@@ -240,17 +242,19 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
                                 return CompletableFuture.completedFuture(null);
                             } else {
                                 var immediate = parentChain.remove(parentChain.size() - 1);
-                                return createParentsRecursive(parentChain, immediate);
+                                return createImmediateParent(immediate).thenCompose(__ -> createParents(parentChain));
                             }
-                        });
+                        }).exceptionallyCompose(ex -> {
+                            if (ex.getCause() instanceof KeyAlreadyExistsException) {
+                                return CompletableFuture.completedFuture(null);
+                            }
+                            return CompletableFuture.failedFuture(ex.getCause());
+                });
     }
 
-    private CompletableFuture<Void> createParentsRecursive(
-            List<String> parentChain, String immediate) {
-        return createParents(parentChain)
-                .thenCompose(__ -> client.put(immediate, new byte[] {}, PutOption.IfRecordDoesNotExist))
-                .thenApply(__ -> (Void) null)
-                .exceptionallyCompose(this::convertException);
+    private CompletableFuture<Void> createImmediateParent(String immediate) {
+        return client.put(immediate, new byte[] {}, PutOption.IfRecordDoesNotExist)
+                .thenApply(__ -> null);
     }
 
     private List<String> getParentChain(String path) {

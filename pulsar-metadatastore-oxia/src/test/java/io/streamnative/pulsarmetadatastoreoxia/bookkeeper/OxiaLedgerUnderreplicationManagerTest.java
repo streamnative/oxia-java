@@ -25,6 +25,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.metadata.bookkeeper.LedgerUnderreplicationManagerTest;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
+import org.testng.annotations.Ignore;
+import org.testng.annotations.Test;
 
 /** Test the zookeeper implementation of the ledger replication manager. */
 @Slf4j
@@ -45,47 +47,79 @@ public class OxiaLedgerUnderreplicationManagerTest extends LedgerUnderreplicatio
 
     // TODO -------- Failing tests:
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testBasicInteraction(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testGetList(String provider, Supplier<String> urlSupplier) throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testLocking(String provider, Supplier<String> urlSupplier) throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testMarkingAsReplicated(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testRelease(String provider, Supplier<String> urlSupplier) throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testManyFailures(String provider, Supplier<String> urlSupplier) throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testGetReplicationWorkerIdRereplicatingLedger(
             String provider, Supplier<String> urlSupplier) throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void test2reportSame(String provider, Supplier<String> urlSupplier) throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testMultipleManagersShouldBeAbleToTakeAndReleaseLock(
             String provider, Supplier<String> urlSupplier) throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testMarkSimilarMissingReplica(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testManyFailuresInAnEnsemble(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testDisableLedgerReplication(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testEnableLedgerReplication(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testPlacementPolicyCheckCTime(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testReplicasCheckCTime(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 
     @Override
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testCheckAllLedgersCTime(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 }

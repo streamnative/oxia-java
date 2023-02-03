@@ -25,6 +25,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.metadata.bookkeeper.PulsarLayoutManagerTest;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
+import org.testng.annotations.Ignore;
+import org.testng.annotations.Test;
 
 @Slf4j
 public class OxiaPulsarLayoutManagerTest extends PulsarLayoutManagerTest implements OxiaTestBase {
@@ -43,6 +45,8 @@ public class OxiaPulsarLayoutManagerTest extends PulsarLayoutManagerTest impleme
 
     // TODO -------- Failing tests:
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testReadCreateDeleteLayout(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 }

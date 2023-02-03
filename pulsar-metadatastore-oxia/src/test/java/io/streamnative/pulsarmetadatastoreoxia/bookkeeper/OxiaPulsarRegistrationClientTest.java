@@ -25,6 +25,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.metadata.bookkeeper.PulsarRegistrationClientTest;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
+import org.testng.annotations.Ignore;
+import org.testng.annotations.Test;
 
 @Slf4j
 public class OxiaPulsarRegistrationClientTest extends PulsarRegistrationClientTest
@@ -44,10 +46,14 @@ public class OxiaPulsarRegistrationClientTest extends PulsarRegistrationClientTe
 
     // TODO -------- Failing tests:
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testGetWritableBookies(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 
     @Override
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testGetReadonlyBookies(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 }

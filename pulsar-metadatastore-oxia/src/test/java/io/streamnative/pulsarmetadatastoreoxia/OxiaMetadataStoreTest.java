@@ -24,6 +24,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.metadata.MetadataStoreTest;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
+import org.testng.annotations.Ignore;
+import org.testng.annotations.Test;
 
 @Slf4j
 public class OxiaMetadataStoreTest extends MetadataStoreTest implements OxiaTestBase {
@@ -41,16 +43,27 @@ public class OxiaMetadataStoreTest extends MetadataStoreTest implements OxiaTest
     }
 
     // TODO -------- Failing tests:
+
+    @Ignore
+    @Test(dataProvider = "impl")
     public void emptyStoreTest(String provider, Supplier<String> urlSupplier) throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void insertionTestWithExpectedVersion(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void notificationListeners(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testDeleteUnusedDirectories(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testGetChildren(String provider, Supplier<String> urlSupplier) throws Exception {}
 }

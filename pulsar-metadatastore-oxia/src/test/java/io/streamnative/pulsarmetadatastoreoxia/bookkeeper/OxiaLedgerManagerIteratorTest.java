@@ -25,6 +25,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.metadata.bookkeeper.LedgerManagerIteratorTest;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
+import org.testng.annotations.Ignore;
+import org.testng.annotations.Test;
 
 /** Test the ledger manager iterator. */
 @Slf4j
@@ -42,12 +44,4 @@ public class OxiaLedgerManagerIteratorTest extends LedgerManagerIteratorTest
     public Object[][] implementations() {
         return impl();
     }
-
-    // TODO -------- Failing tests:
-
-    public void testSeveralContiguousLedgers(String provider, Supplier<String> urlSupplier)
-            throws Throwable {}
-
-    public void checkConcurrentModifications(String provider, Supplier<String> urlSupplier)
-            throws Throwable {}
 }

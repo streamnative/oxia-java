@@ -23,6 +23,8 @@ import lombok.Setter;
 import org.apache.pulsar.metadata.MetadataStoreBatchingTest;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
+import org.testng.annotations.Ignore;
+import org.testng.annotations.Test;
 
 public class OxiaMetadataStoreBatchingTest extends MetadataStoreBatchingTest
         implements OxiaTestBase {
@@ -41,10 +43,16 @@ public class OxiaMetadataStoreBatchingTest extends MetadataStoreBatchingTest
 
     // TODO -------- Failing tests:
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testPutVersionErrors(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testSequential(String provider, Supplier<String> urlSupplier) throws Exception {}
 
+    @Ignore
+    @Test(dataProvider = "impl")
     public void testBigBatchSize(String provider, Supplier<String> urlSupplier) throws Exception {}
 }
