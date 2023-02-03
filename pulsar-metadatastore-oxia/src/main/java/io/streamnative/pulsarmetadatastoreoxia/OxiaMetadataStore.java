@@ -64,12 +64,7 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
         super.registerSyncLister(Optional.ofNullable(metadataStoreConfig.getSynchronizer()));
 
         /* TODO use sessionTimeoutMillis
-
-        TODO do we need to do anything with below configs?
-        private final boolean allowReadOnlyOperations;  - seems optional
-        private final String configFilePath;            - probably not
-        private final int batchingMaxSizeKb;            - not supported by oxia
-        private MetadataEventSynchronizer synchronizer; - is above en
+                 batchingMaxSizeKb;            - not supported by oxia _yet_
         */
 
     }
