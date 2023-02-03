@@ -32,7 +32,7 @@ jobs:
           fetch-depth: 1
 
       - name: Install pulsar-metadata
-        run: mvn install -am -pl :pulsar-metadata -Pskip-all --no-transfer-progress --batch-mode
+        run: mvn install -am -pl :pulsar-metadata -DskipTests --no-transfer-progress --batch-mode
 
       - name: Checkout code
         uses: actions/checkout@v3
