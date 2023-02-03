@@ -27,6 +27,7 @@ import com.google.protobuf.ByteString;
 import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.KeyAlreadyExistsException;
 import io.streamnative.oxia.client.api.PutResult;
+import io.streamnative.oxia.client.api.SessionDoesNotExistException;
 import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
 import io.streamnative.oxia.proto.DeleteRangeRequest;
 import io.streamnative.oxia.proto.DeleteRangeResponse;
@@ -85,17 +86,18 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 }
             }
 
-            PutRequest toProto(long sessionId) {
+            PutRequest toProto(long sessionId, @NonNull String clientIdentifier) {
                 var builder = PutRequest.newBuilder().setKey(key).setValue(ByteString.copyFrom(value));
                 expectedVersionId.ifPresent(builder::setExpectedVersionId);
                 if (ephemeral) {
-                    builder.setSessionId(sessionId);
+                    builder.setSessionId(sessionId).setClientIdentity(clientIdentifier);
                 }
                 return builder.build();
             }
 
             void complete(@NonNull PutResponse response) {
                 switch (response.getStatus()) {
+                    case SESSION_DOES_NOT_EXIST -> fail(new SessionDoesNotExistException());
                     case UNEXPECTED_VERSION_ID -> {
                         if (expectedVersionId.get() == KeyNotExists) {
                             fail(new KeyAlreadyExistsException(key));

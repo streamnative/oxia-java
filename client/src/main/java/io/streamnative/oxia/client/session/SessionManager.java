@@ -15,12 +15,55 @@
  */
 package io.streamnative.oxia.client.session;
 
+import static lombok.AccessLevel.PACKAGE;
+
+import io.streamnative.oxia.client.ClientConfig;
+import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
+import java.util.ArrayList;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.function.Function;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+@RequiredArgsConstructor(access = PACKAGE)
 public class SessionManager implements AutoCloseable {
 
-    public long getSessionId(long shardId) {
-        return 0L;
+    private final ConcurrentMap<Long, Session> sessionsByShardId = new ConcurrentHashMap<>();
+    private final @NonNull Session.Factory factory;
+
+    public SessionManager(
+            @NonNull ClientConfig config,
+            @NonNull Function<Long, ReactorOxiaClientGrpc.ReactorOxiaClientStub> stubByShardId) {
+        this(new Session.Factory(config, stubByShardId));
+    }
+
+    @NonNull
+    public Session getSession(long shardId) {
+        return sessionsByShardId.computeIfAbsent(
+                shardId,
+                s -> {
+                    var session = factory.create(shardId);
+                    session.start();
+                    return session;
+                });
     }
 
     @Override
-    public void close() throws Exception {}
+    public void close() throws Exception {
+        var closed = new ArrayList<>();
+        sessionsByShardId.values().parallelStream()
+                .forEach(
+                        s -> {
+                            try {
+                                s.close();
+                                closed.add(s);
+                            } catch (Exception e) {
+                                log.error("Error closing session {}", s.getSessionId(), e);
+                            }
+                        });
+        closed.forEach(sessionsByShardId::remove);
+    }
 }

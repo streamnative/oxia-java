@@ -79,6 +79,7 @@ class BatchTest {
     long shardId = 1L;
     long sessionId = 1L;
     long startTime = 2L;
+    String clientId = "client-id";
 
     private final OxiaClientImplBase serviceImpl =
             mock(
@@ -135,9 +136,11 @@ class BatchTest {
         DeleteOperation delete = new DeleteOperation(deleteCallable, "", Optional.of(1L));
         DeleteRangeOperation deleteRange = new DeleteRangeOperation(deleteRangeCallable, "a", "b");
 
+        String clientIdentifier = "client-id";
+
         @BeforeEach
         void setup() {
-            batch = new WriteBatch(clientByShardId, sessionManager, shardId, startTime);
+            batch = new WriteBatch(clientByShardId, sessionManager, clientIdentifier, shardId, startTime);
         }
 
         @Test
@@ -169,7 +172,7 @@ class BatchTest {
             assertThat(request)
                     .satisfies(
                             r -> {
-                                assertThat(r.getPutsList()).containsOnly(put.toProto(sessionId));
+                                assertThat(r.getPutsList()).containsOnly(put.toProto(sessionId, clientId));
                                 assertThat(r.getDeletesList()).containsOnly(delete.toProto());
                                 assertThat(r.getDeleteRangesList()).containsOnly(deleteRange.toProto());
                             });
@@ -227,6 +230,7 @@ class BatchTest {
                                 throw new NoShardAvailableException(s);
                             },
                             sessionManager,
+                            clientIdentifier,
                             shardId,
                             startTime);
 
@@ -373,7 +377,7 @@ class BatchTest {
 
         @Mock Clock clock;
 
-        ClientConfig config = new ClientConfig("address", n -> {}, ZERO, ZERO, 1, 1, ZERO);
+        ClientConfig config = new ClientConfig("address", n -> {}, ZERO, ZERO, 1, 1, ZERO, "client_id");
 
         @BeforeEach
         void mocking() {

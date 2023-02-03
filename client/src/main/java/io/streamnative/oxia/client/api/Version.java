@@ -16,6 +16,7 @@
 package io.streamnative.oxia.client.api;
 
 
+import java.util.Optional;
 import lombok.NonNull;
 
 /**
@@ -25,9 +26,16 @@ import lombok.NonNull;
  * @param createdTimestamp The instant at which the record was created. In epoch milliseconds.
  * @param modifiedTimestamp The instant at which the record was last updated. In epoch milliseconds.
  * @param modificationsCount The number of modifications since the record was last created.
+ * @param sessionId The session to which this record is scoped.
+ * @param clientIdentifier The client to which this record was scoped.
  */
 public record Version(
-        long versionId, long createdTimestamp, long modifiedTimestamp, long modificationsCount) {
+        long versionId,
+        long createdTimestamp,
+        long modifiedTimestamp,
+        long modificationsCount,
+        @NonNull Optional<Long> sessionId,
+        @NonNull Optional<String> clientIdentifier) {
     public static final long KeyNotExists = -1;
 
     /** Represents the state where a versionId of a record (and thus the record) does not exist. */
@@ -76,6 +84,8 @@ public record Version(
                 version.getVersionId(),
                 version.getCreatedTimestamp(),
                 version.getModifiedTimestamp(),
-                version.getModificationsCount());
+                version.getModificationsCount(),
+                version.hasSessionId() ? Optional.of(version.getSessionId()) : Optional.empty(),
+                version.hasClientIdentity() ? Optional.of(version.getClientIdentity()) : Optional.empty());
     }
 }

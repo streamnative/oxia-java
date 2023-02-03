@@ -13,20 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.streamnative.oxia.client;
+package io.streamnative.oxia.client.api;
 
+/** The session does not exist on the server. */
+public class SessionDoesNotExistException extends OxiaException {
 
-import io.streamnative.oxia.client.api.Notification;
-import java.time.Duration;
-import java.util.function.Consumer;
-import lombok.NonNull;
-
-public record ClientConfig(
-        @NonNull String serviceAddress,
-        Consumer<Notification> notificationCallback,
-        @NonNull Duration requestTimeout,
-        @NonNull Duration batchLinger,
-        int maxRequestsPerBatch,
-        int operationQueueCapacity,
-        @NonNull Duration sessionTimeout,
-        @NonNull String clientIdentifier) {}
+    /** Creates an instance of the exception. */
+    public SessionDoesNotExistException() {
+        super("session does not exist");
+    }
+}

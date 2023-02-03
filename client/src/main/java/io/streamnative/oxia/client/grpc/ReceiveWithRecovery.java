@@ -15,6 +15,7 @@
  */
 package io.streamnative.oxia.client.grpc;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static lombok.AccessLevel.PUBLIC;
 
 import java.util.concurrent.CompletableFuture;
@@ -79,5 +80,12 @@ public class ReceiveWithRecovery implements Receiver {
     public void close() throws Exception {
         closed.complete(null);
         executor.shutdown();
+        try {
+            if (!executor.awaitTermination(1, SECONDS)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+        }
     }
 }

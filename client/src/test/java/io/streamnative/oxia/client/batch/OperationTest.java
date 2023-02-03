@@ -84,12 +84,17 @@ class OperationTest {
                                             .setCreatedTimestamp(2L)
                                             .setModifiedTimestamp(3L)
                                             .setModificationsCount(4L)
+                                            .setSessionId(5L)
+                                            .setClientIdentity("client-id")
                                             .build())
                             .build();
             op.complete(response);
             assertThat(callback)
                     .isCompletedWithValue(
-                            new GetResult(payload, new io.streamnative.oxia.client.api.Version(1L, 2L, 3L, 4L)));
+                            new GetResult(
+                                    payload,
+                                    new io.streamnative.oxia.client.api.Version(
+                                            1L, 2L, 3L, 4L, Optional.of(5L), Optional.of("client-id"))));
         }
 
         @Test
@@ -114,8 +119,8 @@ class OperationTest {
         CompletableFuture<PutResult> callback = new CompletableFuture<>();
         byte[] payload = "hello".getBytes(UTF_8);
         PutOperation op = new PutOperation(callback, "key", payload, Optional.of(10L), false);
-        long shardId = 0L;
         long sessionId = 0L;
+        String clientId = "client-id";
 
         @Test
         void constructInvalidExpectedVersionId() {
@@ -131,39 +136,45 @@ class OperationTest {
         @Test
         void toProtoNoExpectedVersion() {
             var op = new PutOperation(callback, "key", payload, Optional.empty(), false);
-            var request = op.toProto(sessionId);
+            var request = op.toProto(sessionId, clientId);
             assertThat(request)
                     .satisfies(
                             r -> {
                                 assertThat(r.getKey()).isEqualTo(op.key());
                                 assertThat(r.getValue().toByteArray()).isEqualTo(op.value());
                                 assertThat(r.hasExpectedVersionId()).isFalse();
+                                assertThat(r.hasSessionId()).isFalse();
+                                assertThat(r.hasClientIdentity()).isFalse();
                             });
         }
 
         @Test
         void toProtoExpectedVersion() {
             var op = new PutOperation(callback, "key", payload, Optional.of(1L), false);
-            var request = op.toProto(sessionId);
+            var request = op.toProto(sessionId, clientId);
             assertThat(request)
                     .satisfies(
                             r -> {
                                 assertThat(r.getKey()).isEqualTo(op.key());
                                 assertThat(r.getValue().toByteArray()).isEqualTo(op.value());
                                 assertThat(r.getExpectedVersionId()).isEqualTo(1L);
+                                assertThat(r.hasSessionId()).isFalse();
+                                assertThat(r.hasClientIdentity()).isFalse();
                             });
         }
 
         @Test
         void toProtoNoExistingVersion() {
             var op = new PutOperation(callback, "key", payload, Optional.of(KeyNotExists), false);
-            var request = op.toProto(sessionId);
+            var request = op.toProto(sessionId, clientId);
             assertThat(request)
                     .satisfies(
                             r -> {
                                 assertThat(r.getKey()).isEqualTo(op.key());
                                 assertThat(r.getValue().toByteArray()).isEqualTo(op.value());
                                 assertThat(r.getExpectedVersionId()).isEqualTo(KeyNotExists);
+                                assertThat(r.hasSessionId()).isFalse();
+                                assertThat(r.hasClientIdentity()).isFalse();
                             });
         }
 
@@ -214,7 +225,9 @@ class OperationTest {
             op.complete(response);
             assertThat(callback)
                     .isCompletedWithValue(
-                            new PutResult(new io.streamnative.oxia.client.api.Version(1L, 2L, 3L, 4L)));
+                            new PutResult(
+                                    new io.streamnative.oxia.client.api.Version(
+                                            1L, 2L, 3L, 4L, Optional.of(sessionId), Optional.of(clientId))));
         }
 
         @Test

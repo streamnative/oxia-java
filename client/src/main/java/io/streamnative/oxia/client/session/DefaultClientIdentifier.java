@@ -13,20 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.streamnative.oxia.client;
+package io.streamnative.oxia.client.session;
 
 
-import io.streamnative.oxia.client.api.Notification;
-import java.time.Duration;
-import java.util.function.Consumer;
-import lombok.NonNull;
+import java.util.UUID;
+import java.util.function.Supplier;
 
-public record ClientConfig(
-        @NonNull String serviceAddress,
-        Consumer<Notification> notificationCallback,
-        @NonNull Duration requestTimeout,
-        @NonNull Duration batchLinger,
-        int maxRequestsPerBatch,
-        int operationQueueCapacity,
-        @NonNull Duration sessionTimeout,
-        @NonNull String clientIdentifier) {}
+public class DefaultClientIdentifier implements Supplier<String> {
+
+    private final String id = UUID.randomUUID().toString();
+
+    @Override
+    public String get() {
+        return id;
+    }
+}
