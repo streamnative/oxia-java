@@ -26,7 +26,6 @@ import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
 import io.streamnative.oxia.client.api.Version;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
@@ -55,12 +54,13 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
         if (!metadataStoreConfig.isBatchingEnabled()) {
             linger = 0;
         }
-        var builder =
+        client =
                 new OxiaClientBuilder(serviceAddress)
                         .notificationCallback(this::notificationCallback)
                         .batchLinger(Duration.ofMillis(linger))
-                        .maxRequestsPerBatch(metadataStoreConfig.getBatchingMaxOperations());
-        client = builder.asyncClient().get();
+                        .maxRequestsPerBatch(metadataStoreConfig.getBatchingMaxOperations())
+                        .asyncClient()
+                        .get();
         super.registerSyncLister(Optional.ofNullable(metadataStoreConfig.getSynchronizer()));
 
         /* TODO use sessionTimeoutMillis
@@ -79,12 +79,11 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
             super.receivedNotification(
                     new org.apache.pulsar.metadata.api.Notification(
                             NotificationType.Created, keyCreated.key()));
-            var path = keyCreated.key();
-            var parents = getParentChain(path);
-            if (!parents.isEmpty()) {
+            var parent = parent(keyCreated.key());
+            if (parent != null && parent.length() > 0) {
                 super.receivedNotification(
                         new org.apache.pulsar.metadata.api.Notification(
-                                NotificationType.ChildrenChanged, parents.get(parents.size() - 1)));
+                                NotificationType.ChildrenChanged, parent));
             }
 
         } else if (notification instanceof Notification.KeyModified keyModified) {
@@ -95,12 +94,11 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
             super.receivedNotification(
                     new org.apache.pulsar.metadata.api.Notification(
                             NotificationType.Deleted, keyDeleted.key()));
-            var path = keyDeleted.key();
-            var parents = getParentChain(path);
-            if (!parents.isEmpty()) {
+            var parent = parent(keyDeleted.key());
+            if (parent != null && parent.length() > 0) {
                 super.receivedNotification(
                         new org.apache.pulsar.metadata.api.Notification(
-                                NotificationType.ChildrenChanged, parents.get(parents.size() - 1)));
+                                NotificationType.ChildrenChanged, parent));
             }
         } else {
             log.error("Unknown notification type {}", notification);
@@ -240,23 +238,19 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
     }
 
     private CompletableFuture<Void> createParents(String path) {
-        List<String> parentChain = getParentChain(path);
-        return createParents(parentChain);
-    }
-
-    private CompletableFuture<Void> createParents(List<String> parentChain) {
-        if (parentChain.size() == 0) {
+        var parent = parent(path);
+        if (parent == null || parent.length() == 0) {
             return CompletableFuture.completedFuture(null);
         }
-        return exists(parentChain.get(parentChain.size() - 1))
+        return exists(parent)
                 .thenCompose(
                         exists -> {
                             if (exists) {
                                 return CompletableFuture.completedFuture(null);
                             } else {
-                                var immediate = parentChain.remove(parentChain.size() - 1);
-                                return createImmediateParent(immediate)
-                                        .thenCompose(__ -> createParents(parentChain));
+                                return client
+                                        .put(parent, new byte[] {}, PutOption.IfRecordDoesNotExist)
+                                        .thenCompose(__ -> createParents(parent));
                             }
                         })
                 .exceptionallyCompose(
@@ -266,23 +260,6 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
                             }
                             return CompletableFuture.failedFuture(ex.getCause());
                         });
-    }
-
-    private CompletableFuture<Void> createImmediateParent(String immediate) {
-        return client
-                .put(immediate, new byte[] {}, PutOption.IfRecordDoesNotExist)
-                .thenApply(__ -> null);
-    }
-
-    private List<String> getParentChain(String path) {
-        String[] split = path.split("/");
-        var parentChain = new ArrayList<String>();
-        var prefix = "";
-        for (int i = 1; i < split.length - 1; ++i) {
-            prefix = prefix + "/" + split[i];
-            parentChain.add(prefix);
-        }
-        return parentChain;
     }
 
     private String counterPath(String path) {

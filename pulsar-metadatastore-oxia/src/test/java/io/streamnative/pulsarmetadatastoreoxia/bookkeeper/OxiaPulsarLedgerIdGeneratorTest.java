@@ -40,6 +40,8 @@ public class OxiaPulsarLedgerIdGeneratorTest extends PulsarLedgerIdGeneratorTest
 
     // -------- Override ZK-specific tests to do nothing --------
 
+    @Ignore
+    @Test
     public void testGenerateLedgerIdWithZkPrefix() throws Exception {}
 
     // TODO -------- Failing tests:

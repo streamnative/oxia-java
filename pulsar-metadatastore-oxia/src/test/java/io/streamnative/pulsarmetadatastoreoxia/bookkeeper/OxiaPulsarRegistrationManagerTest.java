@@ -46,9 +46,10 @@ public class OxiaPulsarRegistrationManagerTest extends PulsarRegistrationManager
 
     // TODO -------- Failing tests:
 
-    @Ignore
-    @Test(dataProvider = "impl")
-    public void testPrepareFormat(String provider, Supplier<String> urlSupplier) throws Exception {}
+    //    @Ignore
+    //    @Test(dataProvider = "impl")
+    //    public void testPrepareFormat(String provider, Supplier<String> urlSupplier) throws
+    // Exception {}
 
     @Ignore
     @Test(dataProvider = "impl")

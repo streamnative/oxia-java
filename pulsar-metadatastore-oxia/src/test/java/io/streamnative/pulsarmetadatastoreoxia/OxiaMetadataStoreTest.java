@@ -53,11 +53,6 @@ public class OxiaMetadataStoreTest extends MetadataStoreTest implements OxiaTest
     public void insertionTestWithExpectedVersion(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 
-    //    @Ignore
-    //    @Test(dataProvider = "impl")
-    //    public void notificationListeners(String provider, Supplier<String> urlSupplier)
-    //            throws Exception {}
-
     @Ignore
     @Test(dataProvider = "impl")
     public void testDeleteUnusedDirectories(String provider, Supplier<String> urlSupplier)

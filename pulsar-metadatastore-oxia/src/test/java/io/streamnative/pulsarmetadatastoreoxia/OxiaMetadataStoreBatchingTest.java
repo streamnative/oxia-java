@@ -43,16 +43,7 @@ public class OxiaMetadataStoreBatchingTest extends MetadataStoreBatchingTest
 
     // TODO -------- Failing tests:
 
-    @Ignore
-    @Test(dataProvider = "impl")
-    public void testPutVersionErrors(String provider, Supplier<String> urlSupplier)
-            throws Exception {}
-
-    @Ignore
-    @Test(dataProvider = "impl")
-    public void testSequential(String provider, Supplier<String> urlSupplier) throws Exception {}
-
-    @Ignore
+    @Ignore("We need batch size limit of at least .5MB")
     @Test(dataProvider = "impl")
     public void testBigBatchSize(String provider, Supplier<String> urlSupplier) throws Exception {}
 }
