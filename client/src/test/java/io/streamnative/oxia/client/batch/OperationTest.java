@@ -39,6 +39,7 @@ import io.streamnative.oxia.proto.GetResponse;
 import io.streamnative.oxia.proto.PutResponse;
 import io.streamnative.oxia.proto.Version;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.DisplayName;
@@ -112,21 +113,25 @@ class OperationTest {
     class PutOperationTests {
         CompletableFuture<PutResult> callback = new CompletableFuture<>();
         byte[] payload = "hello".getBytes(UTF_8);
-        PutOperation op = new PutOperation(callback, "key", payload, 10L);
+        PutOperation op = new PutOperation(callback, "key", payload, Optional.of(10L), false);
+        long shardId = 0L;
+        long sessionId = 0L;
 
         @Test
         void constructInvalidExpectedVersionId() {
             assertThatNoException()
-                    .isThrownBy(() -> new PutOperation(callback, "key", payload, KeyNotExists));
-            assertThatNoException().isThrownBy(() -> new PutOperation(callback, "key", payload, 0L));
-            assertThatThrownBy(() -> new PutOperation(callback, "key", payload, -2L))
+                    .isThrownBy(
+                            () -> new PutOperation(callback, "key", payload, Optional.of(KeyNotExists), false));
+            assertThatNoException()
+                    .isThrownBy(() -> new PutOperation(callback, "key", payload, Optional.of(0L), false));
+            assertThatThrownBy(() -> new PutOperation(callback, "key", payload, Optional.of(-2L), false))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
         void toProtoNoExpectedVersion() {
-            var op = new PutOperation(callback, "key", payload, null);
-            var request = op.toProto();
+            var op = new PutOperation(callback, "key", payload, Optional.empty(), false);
+            var request = op.toProto(sessionId);
             assertThat(request)
                     .satisfies(
                             r -> {
@@ -138,8 +143,8 @@ class OperationTest {
 
         @Test
         void toProtoExpectedVersion() {
-            var op = new PutOperation(callback, "key", payload, 1L);
-            var request = op.toProto();
+            var op = new PutOperation(callback, "key", payload, Optional.of(1L), false);
+            var request = op.toProto(sessionId);
             assertThat(request)
                     .satisfies(
                             r -> {
@@ -151,8 +156,8 @@ class OperationTest {
 
         @Test
         void toProtoNoExistingVersion() {
-            var op = new PutOperation(callback, "key", payload, KeyNotExists);
-            var request = op.toProto();
+            var op = new PutOperation(callback, "key", payload, Optional.of(KeyNotExists), false);
+            var request = op.toProto(sessionId);
             assertThat(request)
                     .satisfies(
                             r -> {
@@ -179,7 +184,7 @@ class OperationTest {
 
         @Test
         void completeKeyAlreadyExists() {
-            var op = new PutOperation(callback, "key", payload, KeyNotExists);
+            var op = new PutOperation(callback, "key", payload, Optional.of(KeyNotExists), false);
             var response = PutResponse.newBuilder().setStatus(UNEXPECTED_VERSION_ID).build();
             op.complete(response);
             assertThat(callback).isCompletedExceptionally();
@@ -232,14 +237,15 @@ class OperationTest {
     @DisplayName("Tests of delete operation")
     class DeleteOperationTests {
         CompletableFuture<Boolean> callback = new CompletableFuture<>();
-        DeleteOperation op = new DeleteOperation(callback, "key", 10L);
+        DeleteOperation op = new DeleteOperation(callback, "key", Optional.of(10L));
 
         @Test
         void constructInvalidExpectedVersionId() {
-            assertThatNoException().isThrownBy(() -> new DeleteOperation(callback, "key", 0L));
-            assertThatThrownBy(() -> new DeleteOperation(callback, "key", KeyNotExists))
+            assertThatNoException()
+                    .isThrownBy(() -> new DeleteOperation(callback, "key", Optional.of(0L)));
+            assertThatThrownBy(() -> new DeleteOperation(callback, "key", Optional.of(KeyNotExists)))
                     .isInstanceOf(IllegalArgumentException.class);
-            assertThatThrownBy(() -> new DeleteOperation(callback, "key", -2L))
+            assertThatThrownBy(() -> new DeleteOperation(callback, "key", Optional.of(-2L)))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
@@ -257,13 +263,12 @@ class OperationTest {
 
         @Test
         void toProtoExpectedVersion() {
-            var op = new DeleteOperation(callback, "key", 1L);
             var request = op.toProto();
             assertThat(request)
                     .satisfies(
                             r -> {
                                 assertThat(r.getKey()).isEqualTo(op.key());
-                                assertThat(r.getExpectedVersionId()).isEqualTo(1L);
+                                assertThat(r.getExpectedVersionId()).isEqualTo(10L);
                             });
         }
 

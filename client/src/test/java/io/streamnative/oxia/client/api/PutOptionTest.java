@@ -130,15 +130,15 @@ class PutOptionTest {
 
     @Test
     void toVersionId() {
-        assertThat(PutOption.toVersionId(Set.of(PutOption.AsEphemeralRecord))).isNull();
-        assertThat(PutOption.toVersionId(Set.of(PutOption.Unconditionally))).isNull();
+        assertThat(PutOption.toVersionId(Set.of(PutOption.AsEphemeralRecord))).isEmpty();
+        assertThat(PutOption.toVersionId(Set.of(PutOption.Unconditionally))).isEmpty();
         assertThat(PutOption.toVersionId(Set.of(PutOption.IfRecordDoesNotExist)))
-                .isEqualTo(Version.KeyNotExists);
-        assertThat(PutOption.toVersionId(Set.of(PutOption.ifVersionIdEquals(1L)))).isEqualTo(1L);
+                .hasValue(Version.KeyNotExists);
+        assertThat(PutOption.toVersionId(Set.of(PutOption.ifVersionIdEquals(1L)))).hasValue(1L);
         assertThat(
                         PutOption.toVersionId(
                                 Set.of(PutOption.AsEphemeralRecord, PutOption.ifVersionIdEquals(1L))))
-                .isEqualTo(1L);
+                .hasValue(1L);
     }
 
     @Test

@@ -19,6 +19,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static lombok.AccessLevel.PACKAGE;
 
 import io.streamnative.oxia.client.ClientConfig;
+import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientBlockingStub;
 import java.time.Clock;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -113,7 +114,10 @@ public class Batcher implements Runnable, AutoCloseable {
     static @NonNull Function<Long, Batcher> newWriteBatcherFactory(
             @NonNull ClientConfig config,
             @NonNull Function<Long, OxiaClientBlockingStub> stubByShardId,
+            @NonNull SessionManager sessionManager,
             Clock clock) {
-        return s -> new Batcher(config, s, new Batch.WriteBatchFactory(stubByShardId, config, clock));
+        return s ->
+                new Batcher(
+                        config, s, new Batch.WriteBatchFactory(stubByShardId, sessionManager, config, clock));
     }
 }

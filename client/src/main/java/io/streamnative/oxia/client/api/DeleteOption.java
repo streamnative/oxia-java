@@ -22,6 +22,7 @@ import static io.streamnative.oxia.client.api.DeleteOption.VersionIdDeleteOption
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 
 public sealed interface DeleteOption permits VersionIdDeleteOption {
@@ -87,11 +88,10 @@ public sealed interface DeleteOption permits VersionIdDeleteOption {
         return new HashSet<>(Arrays.asList(args));
     }
 
-    static Long toVersionId(Collection<DeleteOption> options) {
+    static Optional<Long> toVersionId(Collection<DeleteOption> options) {
         return options.stream()
                 .filter(o -> o instanceof VersionIdDeleteOption)
                 .findAny()
-                .map(o -> ((VersionIdDeleteOption) o).toVersionId())
-                .orElse(null);
+                .map(o -> ((VersionIdDeleteOption) o).toVersionId());
     }
 }

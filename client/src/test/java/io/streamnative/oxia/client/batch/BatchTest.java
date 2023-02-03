@@ -44,6 +44,7 @@ import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
+import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.client.shard.NoShardAvailableException;
 import io.streamnative.oxia.proto.DeleteRangeResponse;
 import io.streamnative.oxia.proto.DeleteResponse;
@@ -57,6 +58,7 @@ import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -73,7 +75,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class BatchTest {
 
     Function<Long, OxiaClientBlockingStub> clientByShardId;
+    @Mock SessionManager sessionManager;
     long shardId = 1L;
+    long sessionId = 1L;
     long startTime = 2L;
 
     private final OxiaClientImplBase serviceImpl =
@@ -127,13 +131,13 @@ class BatchTest {
         CompletableFuture<Boolean> deleteCallable = new CompletableFuture<>();
         CompletableFuture<Void> deleteRangeCallable = new CompletableFuture<>();
 
-        PutOperation put = new PutOperation(putCallable, "", new byte[0], 1L);
-        DeleteOperation delete = new DeleteOperation(deleteCallable, "", 1L);
+        PutOperation put = new PutOperation(putCallable, "", new byte[0], Optional.of(1L), false);
+        DeleteOperation delete = new DeleteOperation(deleteCallable, "", Optional.of(1L));
         DeleteRangeOperation deleteRange = new DeleteRangeOperation(deleteRangeCallable, "a", "b");
 
         @BeforeEach
         void setup() {
-            batch = new WriteBatch(clientByShardId, shardId, startTime);
+            batch = new WriteBatch(clientByShardId, sessionManager, shardId, startTime);
         }
 
         @Test
@@ -165,7 +169,7 @@ class BatchTest {
             assertThat(request)
                     .satisfies(
                             r -> {
-                                assertThat(r.getPutsList()).containsOnly(put.toProto());
+                                assertThat(r.getPutsList()).containsOnly(put.toProto(sessionId));
                                 assertThat(r.getDeletesList()).containsOnly(delete.toProto());
                                 assertThat(r.getDeleteRangesList()).containsOnly(deleteRange.toProto());
                             });
@@ -222,6 +226,7 @@ class BatchTest {
                             s -> {
                                 throw new NoShardAvailableException(s);
                             },
+                            sessionManager,
                             shardId,
                             startTime);
 
@@ -368,7 +373,7 @@ class BatchTest {
 
         @Mock Clock clock;
 
-        ClientConfig config = new ClientConfig("address", n -> {}, ZERO, ZERO, 1, 1);
+        ClientConfig config = new ClientConfig("address", n -> {}, ZERO, ZERO, 1, 1, ZERO);
 
         @BeforeEach
         void mocking() {
@@ -381,7 +386,9 @@ class BatchTest {
 
             @Test
             void apply() {
-                var batch = new Batch.WriteBatchFactory(clientByShardId, config, clock).apply(shardId);
+                var batch =
+                        new Batch.WriteBatchFactory(clientByShardId, sessionManager, config, clock)
+                                .apply(shardId);
                 assertThat(batch.getStartTime()).isEqualTo(1L);
                 assertThat(batch.getShardId()).isEqualTo(shardId);
             }

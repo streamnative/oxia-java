@@ -34,6 +34,7 @@ import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
 import io.streamnative.oxia.client.grpc.ChannelManager;
 import io.streamnative.oxia.client.grpc.ChannelManager.StubFactory;
 import io.streamnative.oxia.client.notify.NotificationManager;
+import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.client.shard.ShardManager;
 import io.streamnative.oxia.proto.ListRequest;
 import io.streamnative.oxia.proto.ListResponse;
@@ -56,6 +57,7 @@ class AsyncOxiaClientImplTest {
     @Mock NotificationManager notificationManager;
     @Mock BatchManager readBatchManager;
     @Mock BatchManager writeBatchManager;
+    @Mock SessionManager sessionManager;
     @Mock Batcher batcher;
     @Mock StubFactory<ReactorOxiaClientStub> reactorStubFactory;
 
@@ -70,6 +72,7 @@ class AsyncOxiaClientImplTest {
                         notificationManager,
                         readBatchManager,
                         writeBatchManager,
+                        sessionManager,
                         reactorStubFactory);
     }
 
@@ -88,7 +91,7 @@ class AsyncOxiaClientImplTest {
                 .satisfies(
                         o -> {
                             assertThat(o.key()).isEqualTo(key);
-                            assertThat(o.expectedVersionId()).isNull();
+                            assertThat(o.expectedVersionId()).isEmpty();
                             assertThat(o.value()).isEqualTo(value);
                             assertThat(o.callback()).isSameAs(result);
                         });
@@ -110,7 +113,7 @@ class AsyncOxiaClientImplTest {
                 .satisfies(
                         o -> {
                             assertThat(o.key()).isEqualTo(key);
-                            assertThat(o.expectedVersionId()).isEqualTo(expectedVersionId);
+                            assertThat(o.expectedVersionId()).hasValue(expectedVersionId);
                             assertThat(o.value()).isEqualTo(value);
                             assertThat(o.callback()).isSameAs(result);
                         });
@@ -130,7 +133,7 @@ class AsyncOxiaClientImplTest {
                 .satisfies(
                         o -> {
                             assertThat(o.key()).isEqualTo(key);
-                            assertThat(o.expectedVersionId()).isNull();
+                            assertThat(o.expectedVersionId()).isEmpty();
                             assertThat(o.callback()).isSameAs(result);
                         });
     }
@@ -150,7 +153,7 @@ class AsyncOxiaClientImplTest {
                 .satisfies(
                         o -> {
                             assertThat(o.key()).isEqualTo(key);
-                            assertThat(o.expectedVersionId()).isEqualTo(expectedVersionId);
+                            assertThat(o.expectedVersionId()).hasValue(expectedVersionId);
                             assertThat(o.callback()).isSameAs(result);
                         });
     }
