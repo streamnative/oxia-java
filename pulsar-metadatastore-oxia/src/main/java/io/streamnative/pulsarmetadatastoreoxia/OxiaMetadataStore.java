@@ -75,25 +75,36 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
     }
 
     private void notificationCallback(Notification notification) {
-        super.receivedNotification(convertNotification(notification));
-    }
-
-    private org.apache.pulsar.metadata.api.Notification convertNotification(
-            Notification notification) {
         if (notification instanceof Notification.KeyCreated keyCreated) {
-            return new org.apache.pulsar.metadata.api.Notification(
-                    NotificationType.Created, keyCreated.key());
+            super.receivedNotification(
+                    new org.apache.pulsar.metadata.api.Notification(
+                            NotificationType.Created, keyCreated.key()));
+            var path = keyCreated.key();
+            var parents = getParentChain(path);
+            if (!parents.isEmpty()) {
+                super.receivedNotification(
+                        new org.apache.pulsar.metadata.api.Notification(
+                                NotificationType.ChildrenChanged, parents.get(parents.size() - 1)));
+            }
+
+        } else if (notification instanceof Notification.KeyModified keyModified) {
+            super.receivedNotification(
+                    new org.apache.pulsar.metadata.api.Notification(
+                            NotificationType.Modified, keyModified.key()));
+        } else if (notification instanceof Notification.KeyDeleted keyDeleted) {
+            super.receivedNotification(
+                    new org.apache.pulsar.metadata.api.Notification(
+                            NotificationType.Deleted, keyDeleted.key()));
+            var path = keyDeleted.key();
+            var parents = getParentChain(path);
+            if (!parents.isEmpty()) {
+                super.receivedNotification(
+                        new org.apache.pulsar.metadata.api.Notification(
+                                NotificationType.ChildrenChanged, parents.get(parents.size() - 1)));
+            }
+        } else {
+            log.error("Unknown notification type {}", notification);
         }
-        if (notification instanceof Notification.KeyModified keyModified) {
-            return new org.apache.pulsar.metadata.api.Notification(
-                    NotificationType.Modified, keyModified.key());
-        }
-        if (notification instanceof Notification.KeyDeleted keyDeleted) {
-            return new org.apache.pulsar.metadata.api.Notification(
-                    NotificationType.Deleted, keyDeleted.key());
-        }
-        log.error("Unknown notification type {}", notification);
-        throw new RuntimeException("Unknown notification type");
     }
 
     Optional<GetResult> convertGetResult(
@@ -220,9 +231,11 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
 
     private <T> CompletionStage<T> convertException(Throwable ex) {
         return (ex.getCause() instanceof UnexpectedVersionIdException)
-                ? CompletableFuture.failedFuture(new MetadataStoreException.BadVersionException(ex.getCause()))
+                ? CompletableFuture.failedFuture(
+                        new MetadataStoreException.BadVersionException(ex.getCause()))
                 : (ex.getCause() instanceof KeyAlreadyExistsException)
-                        ? CompletableFuture.failedFuture(new MetadataStoreException.AlreadyExistsException(ex.getCause()))
+                        ? CompletableFuture.failedFuture(
+                                new MetadataStoreException.AlreadyExistsException(ex.getCause()))
                         : CompletableFuture.failedFuture(ex.getCause());
     }
 
@@ -242,18 +255,22 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
                                 return CompletableFuture.completedFuture(null);
                             } else {
                                 var immediate = parentChain.remove(parentChain.size() - 1);
-                                return createImmediateParent(immediate).thenCompose(__ -> createParents(parentChain));
+                                return createImmediateParent(immediate)
+                                        .thenCompose(__ -> createParents(parentChain));
                             }
-                        }).exceptionallyCompose(ex -> {
+                        })
+                .exceptionallyCompose(
+                        ex -> {
                             if (ex.getCause() instanceof KeyAlreadyExistsException) {
                                 return CompletableFuture.completedFuture(null);
                             }
                             return CompletableFuture.failedFuture(ex.getCause());
-                });
+                        });
     }
 
     private CompletableFuture<Void> createImmediateParent(String immediate) {
-        return client.put(immediate, new byte[] {}, PutOption.IfRecordDoesNotExist)
+        return client
+                .put(immediate, new byte[] {}, PutOption.IfRecordDoesNotExist)
                 .thenApply(__ -> null);
     }
 

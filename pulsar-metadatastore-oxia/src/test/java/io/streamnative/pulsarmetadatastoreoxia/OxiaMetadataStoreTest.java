@@ -53,17 +53,18 @@ public class OxiaMetadataStoreTest extends MetadataStoreTest implements OxiaTest
     public void insertionTestWithExpectedVersion(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 
-    @Ignore
-    @Test(dataProvider = "impl")
-    public void notificationListeners(String provider, Supplier<String> urlSupplier)
-            throws Exception {}
+    //    @Ignore
+    //    @Test(dataProvider = "impl")
+    //    public void notificationListeners(String provider, Supplier<String> urlSupplier)
+    //            throws Exception {}
 
     @Ignore
     @Test(dataProvider = "impl")
     public void testDeleteUnusedDirectories(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 
-    @Ignore
+    @Ignore(
+            "This is a test ordering issue. If others run before this, they create more nodes than this test expects")
     @Test(dataProvider = "impl")
     public void testGetChildren(String provider, Supplier<String> urlSupplier) throws Exception {}
 }
