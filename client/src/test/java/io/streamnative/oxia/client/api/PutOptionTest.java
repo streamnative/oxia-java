@@ -51,7 +51,7 @@ class PutOptionTest {
     }
 
     @Nested
-    @DisplayName("ifVersionIdEquals tests")
+    @DisplayName("IfRecordDoesNotExist tests")
     class IfRecordDoesNotExistTests {
         @Test
         void ifRecordDoesNotExist() {

@@ -18,6 +18,7 @@ package io.streamnative.oxia.client.batch;
 import static io.streamnative.oxia.client.api.Version.KeyNotExists;
 import static io.streamnative.oxia.proto.Status.KEY_NOT_FOUND;
 import static io.streamnative.oxia.proto.Status.OK;
+import static io.streamnative.oxia.proto.Status.SESSION_DOES_NOT_EXIST;
 import static io.streamnative.oxia.proto.Status.UNEXPECTED_VERSION_ID;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,6 +29,7 @@ import com.google.protobuf.ByteString;
 import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.KeyAlreadyExistsException;
 import io.streamnative.oxia.client.api.PutResult;
+import io.streamnative.oxia.client.api.SessionDoesNotExistException;
 import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
@@ -73,6 +75,30 @@ class OperationTest {
 
         @Test
         void completeOk() {
+            var payload = "hello".getBytes(UTF_8);
+            var response =
+                    GetResponse.newBuilder()
+                            .setStatus(OK)
+                            .setValue(ByteString.copyFrom(payload))
+                            .setVersion(
+                                    Version.newBuilder()
+                                            .setVersionId(1L)
+                                            .setCreatedTimestamp(2L)
+                                            .setModifiedTimestamp(3L)
+                                            .setModificationsCount(4L)
+                                            .build())
+                            .build();
+            op.complete(response);
+            assertThat(callback)
+                    .isCompletedWithValue(
+                            new GetResult(
+                                    payload,
+                                    new io.streamnative.oxia.client.api.Version(
+                                            1L, 2L, 3L, 4L, Optional.empty(), Optional.empty())));
+        }
+
+        @Test
+        void completeOkEphemeral() {
             var payload = "hello".getBytes(UTF_8);
             var response =
                     GetResponse.newBuilder()
@@ -210,6 +236,22 @@ class OperationTest {
         }
 
         @Test
+        void completeSessionDoesNotExist() {
+            var op = new PutOperation(callback, "key", payload, Optional.empty(), true);
+            var response = PutResponse.newBuilder().setStatus(SESSION_DOES_NOT_EXIST).build();
+            op.complete(response);
+            assertThat(callback).isCompletedExceptionally();
+            assertThatThrownBy(callback::get)
+                    .satisfies(
+                            e -> {
+                                assertThat(e).isInstanceOf(ExecutionException.class);
+                                assertThat(e.getCause())
+                                        .isInstanceOf(SessionDoesNotExistException.class)
+                                        .hasMessage("session does not exist");
+                            });
+        }
+
+        @Test
         void completeOk() {
             var response =
                     PutResponse.newBuilder()
@@ -220,6 +262,29 @@ class OperationTest {
                                             .setCreatedTimestamp(2L)
                                             .setModifiedTimestamp(3L)
                                             .setModificationsCount(4L)
+                                            .build())
+                            .build();
+            op.complete(response);
+            assertThat(callback)
+                    .isCompletedWithValue(
+                            new PutResult(
+                                    new io.streamnative.oxia.client.api.Version(
+                                            1L, 2L, 3L, 4L, Optional.empty(), Optional.empty())));
+        }
+
+        @Test
+        void completeEphemeral() {
+            var response =
+                    PutResponse.newBuilder()
+                            .setStatus(OK)
+                            .setVersion(
+                                    Version.newBuilder()
+                                            .setVersionId(1L)
+                                            .setCreatedTimestamp(2L)
+                                            .setModifiedTimestamp(3L)
+                                            .setModificationsCount(4L)
+                                            .setSessionId(sessionId)
+                                            .setClientIdentity(clientId)
                                             .build())
                             .build();
             op.complete(response);
