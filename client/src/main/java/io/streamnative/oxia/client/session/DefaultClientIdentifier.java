@@ -16,15 +16,32 @@
 package io.streamnative.oxia.client.session;
 
 
+import java.io.IOException;
+import java.util.Properties;
 import java.util.UUID;
 import java.util.function.Supplier;
 
 public class DefaultClientIdentifier implements Supplier<String> {
 
-    private final String id = UUID.randomUUID().toString();
+    private final String id = "oxia-client-java:" + mavenVersionName() + ":" + UUID.randomUUID();
 
     @Override
     public String get() {
         return id;
+    }
+
+    static String mavenVersionName() {
+        try (var resource =
+                DefaultClientIdentifier.class
+                        .getClassLoader()
+                        .getResourceAsStream("META-INF/MANIFEST.MF")) {
+            if (resource != null) {
+                var props = new Properties();
+                props.load(resource);
+                return props.getProperty("versionName");
+            }
+        } catch (IOException ignored) {
+        }
+        return "<unknown>";
     }
 }

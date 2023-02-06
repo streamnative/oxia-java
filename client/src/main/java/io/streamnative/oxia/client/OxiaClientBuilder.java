@@ -84,7 +84,7 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
         this.sessionTimeout = sessionTimeout;
         return this;
     }
-    
+
     public @NonNull OxiaClientBuilder clientIdentifier(@NonNull String clientIdentifier) {
         this.clientIdentifier = clientIdentifier;
         return this;
