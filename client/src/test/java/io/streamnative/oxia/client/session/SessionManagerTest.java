@@ -21,6 +21,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,10 +31,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class SessionManagerTest {
 
-    @Mock
-    Session.Factory factory;
-    @Mock
-    Session session;
+    @Mock Session.Factory factory;
+    @Mock Session session;
     SessionManager manager;
 
     @BeforeEach
@@ -72,9 +71,11 @@ class SessionManagerTest {
 
         assertThat(manager.sessions()).containsEntry(shardId, session);
         manager.close();
-        await().untilAsserted(() -> {
-            verify(session).close();
-            assertThat(manager.sessions()).doesNotContainKey(shardId);
-        });
+        await()
+                .untilAsserted(
+                        () -> {
+                            verify(session).close();
+                            assertThat(manager.sessions()).doesNotContainKey(shardId);
+                        });
     }
 }
