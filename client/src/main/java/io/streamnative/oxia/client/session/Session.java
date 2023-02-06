@@ -46,6 +46,8 @@ public class Session implements AutoCloseable {
     @Getter(PUBLIC)
     private final long sessionId;
 
+    private final @NonNull SessionHeartbeat heartbeat;
+
     private Disposable keepAliveSubscription;
 
     Session(
@@ -59,14 +61,12 @@ public class Session implements AutoCloseable {
                 Duration.ofMillis(
                         Math.max(config.sessionTimeout().toMillis() / 10, Duration.ofSeconds(2).toMillis())),
                 shardId,
-                sessionId);
+                sessionId,
+                SessionHeartbeat.newBuilder()
+                        .setShardId(longToUint32(sessionId))
+                        .setSessionId(sessionId)
+                        .build());
     }
-
-    private final SessionHeartbeat heartbeat =
-            SessionHeartbeat.newBuilder()
-                    .setShardId(longToUint32(sessionId))
-                    .setSessionId(sessionId)
-                    .build();
 
     void start() {
         keepAliveSubscription =

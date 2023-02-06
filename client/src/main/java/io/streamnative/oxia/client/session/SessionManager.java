@@ -15,14 +15,20 @@
  */
 package io.streamnative.oxia.client.session;
 
+import static java.util.Collections.unmodifiableMap;
 import static lombok.AccessLevel.PACKAGE;
 
+import com.google.common.annotations.VisibleForTesting;
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
+import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -53,7 +59,7 @@ public class SessionManager implements AutoCloseable {
 
     @Override
     public void close() throws Exception {
-        var closed = new ArrayList<>();
+        var closed = new ArrayList<Session>();
         sessionsByShardId.values().parallelStream()
                 .forEach(
                         s -> {
@@ -64,6 +70,11 @@ public class SessionManager implements AutoCloseable {
                                 log.error("Error closing session {}", s.getSessionId(), e);
                             }
                         });
-        closed.forEach(sessionsByShardId::remove);
+        closed.forEach(s -> sessionsByShardId.remove(s.getSessionId()));
+    }
+
+    @VisibleForTesting
+    Map<Long, Session> sessions() {
+        return unmodifiableMap(new HashMap<>(sessionsByShardId));
     }
 }

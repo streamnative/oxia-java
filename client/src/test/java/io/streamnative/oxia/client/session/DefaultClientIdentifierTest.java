@@ -15,16 +15,16 @@
  */
 package io.streamnative.oxia.client.session;
 
+import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.UUID;
-import java.util.function.Supplier;
+import org.junit.jupiter.api.Test;
 
-public class DefaultClientIdentifier implements Supplier<String> {
+class DefaultClientIdentifierTest {
 
-    private final String id = "oxia-client-java:" + UUID.randomUUID();
-
-    @Override
-    public String get() {
-        return id;
+    @Test
+    void id() {
+        assertThat(new DefaultClientIdentifier().get()).startsWith("oxia-client-java:");
+        assertThat(new DefaultClientIdentifier().get())
+                .isNotEqualTo(new DefaultClientIdentifier().get());
     }
 }

@@ -18,32 +18,38 @@ package io.streamnative.oxia.client.api;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class VersionTest {
 
     @Test
     void valid() {
-        assertThatNoException().isThrownBy(() -> new Version(0, 0, 0, 0));
+        assertThatNoException()
+                .isThrownBy(() -> new Version(0, 0, 0, 0, Optional.empty(), Optional.empty()));
     }
 
     @Test
     void invalidCreated() {
-        assertThatThrownBy(() -> new Version(0, -1, 0, 0)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new Version(0, -1, 0, 0, Optional.empty(), Optional.empty()))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void invalidModified() {
-        assertThatThrownBy(() -> new Version(0, 0, -1, 0)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new Version(0, 0, -1, 0, Optional.empty(), Optional.empty()))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void invalidVersionId() {
-        assertThatThrownBy(() -> new Version(-1, 0, 0, 0)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new Version(-1, 0, 0, 0, Optional.empty(), Optional.empty()))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void invalidModificationsCount() {
-        assertThatThrownBy(() -> new Version(0, 0, 0, -1)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new Version(0, 0, 0, -1, Optional.empty(), Optional.empty()))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }

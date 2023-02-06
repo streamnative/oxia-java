@@ -67,7 +67,8 @@ class BatcherTest {
                     Duration.ofMillis(1000),
                     10,
                     5,
-                    Duration.ofMillis(1000));
+                    Duration.ofMillis(1000),
+                    "client_id");
 
     BlockingQueue<Operation<?>> queue = new ArrayBlockingQueue<>(config.operationQueueCapacity());
     ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
