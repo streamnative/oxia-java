@@ -85,6 +85,7 @@ public class ReceiveWithRecovery implements Receiver {
                 executor.shutdownNow();
             }
         } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             executor.shutdownNow();
         }
     }
