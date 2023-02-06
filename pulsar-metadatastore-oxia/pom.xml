@@ -20,31 +20,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>io.streamnative.oxia</groupId>
-    <artifactId>oxia-java</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <packaging>pom</packaging>
-    <name>Oxia Implementations for Java</name>
+    <parent>
+        <groupId>io.streamnative.oxia</groupId>
+        <artifactId>oxia-java</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
 
-    <inceptionYear>2022</inceptionYear>
-
-    <organization>
-        <name>StreamNative Inc.</name>
-        <url>https://streamnative.io/</url>
-    </organization>
-
-    <licenses>
-        <license>
-            <name>Apache License, Version 2.0</name>
-            <url>http://www.apache.org/licenses/LICENSE-2.0</url>
-        </license>
-    </licenses>
-
-    <modules>
-        <module>client</module>
-        <module>testcontainers</module>
-        <module>pulsar-metadatastore-oxia</module>
-    </modules>
+    <artifactId>pulsar-metadatastore-oxia</artifactId>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
@@ -52,13 +34,17 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-        <assertj.version>3.24.1</assertj.version>
+        <pulsar.version>2.12.0-SNAPSHOT</pulsar.version>
+        <oxia.java.version>0.0.1-SNAPSHOT</oxia.java.version>
+
         <checkstyle.version>10.3.3</checkstyle.version>
         <lombok.version>1.18.24</lombok.version>
         <slf4j.version>2.0.5</slf4j.version>
-        <junit.jupiter.version>5.9.2</junit.jupiter.version>
-        <mockito.junit.jupiter.version>4.11.0</mockito.junit.jupiter.version>
-        <testcontainers.version>1.17.6</testcontainers.version>
+        <testng.version>7.7.0</testng.version>
+        <assertj-core.version>3.18.1</assertj-core.version>
+        <dropwizard.version>4.1.12.1</dropwizard.version>
+        <awaitility.version>4.2.0</awaitility.version>
+        <snappy.version>1.1.8.4</snappy.version>
 
         <checkstyle.plugin.version>3.2.0</checkstyle.plugin.version>
         <jacoco.plugin.version>0.8.8</jacoco.plugin.version>
@@ -70,58 +56,100 @@
         <spotless.plugin.version>2.25.0</spotless.plugin.version>
     </properties>
 
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.testcontainers</groupId>
-                <artifactId>testcontainers-bom</artifactId>
-                <version>${testcontainers.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-api</artifactId>
-                <version>${slf4j.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.projectlombok</groupId>
-                <artifactId>lombok</artifactId>
-                <version>${lombok.version}</version>
-                <scope>provided</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.assertj</groupId>
-                <artifactId>assertj-core</artifactId>
-                <version>${assertj.version}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.junit.jupiter</groupId>
-                <artifactId>junit-jupiter</artifactId>
-                <version>${junit.jupiter.version}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.junit.jupiter</groupId>
-                <artifactId>junit-jupiter-params</artifactId>
-                <version>${junit.jupiter.version}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.mockito</groupId>
-                <artifactId>mockito-junit-jupiter</artifactId>
-                <version>${mockito.junit.jupiter.version}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>org.slf4j</groupId>
-                <artifactId>slf4j-simple</artifactId>
-                <version>${slf4j.version}</version>
-                <scope>test</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>io.streamnative.oxia</groupId>
+            <artifactId>oxia-client</artifactId>
+            <version>${oxia.java.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.pulsar</groupId>
+            <artifactId>pulsar-metadata</artifactId>
+            <version>${pulsar.version}</version>
+            <scope>provided</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>grpc-core</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-core</artifactId>
+            <version>${dropwizard.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.streamnative.oxia</groupId>
+            <artifactId>oxia-testcontainers</artifactId>
+            <version>${oxia.java.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.pulsar</groupId>
+            <artifactId>buildtools</artifactId>
+            <version>${pulsar.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.pulsar</groupId>
+            <artifactId>pulsar-metadata</artifactId>
+            <version>${pulsar.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.grpc</groupId>
+                    <artifactId>grpc-core</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>${assertj-core.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+            <version>${awaitility.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>${slf4j.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <version>${testng.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- zookeeper server -->
+        <dependency>
+            <groupId>org.xerial.snappy</groupId>
+            <artifactId>snappy-java</artifactId>
+            <version>${snappy.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 
     <build>
         <plugins>
@@ -191,7 +219,6 @@
                 <version>${spotbugs.plugin.version}</version>
                 <configuration>
                     <excludeFilterFile>etc/findbugsExclude.xml</excludeFilterFile>
-                    <onlyAnalyze>io.streamnative.oxia.client.*</onlyAnalyze>
                 </configuration>
                 <executions>
                     <execution>
@@ -207,18 +234,10 @@
                 <artifactId>license-maven-plugin</artifactId>
                 <version>${license.plugin.version}</version>
                 <configuration>
+                    <header>etc/APACHE-2.txt</header>
                     <mapping>
                         <proto>DOUBLESLASH_STYLE</proto>
-                        <MockMaker>SCRIPT_STYLE</MockMaker>
                     </mapping>
-                    <licenseSets>
-                        <licenseSet>
-                            <header>etc/APACHE-2.txt</header>
-                            <excludes>
-                                <exclude>NOTICE</exclude>
-                            </excludes>
-                        </licenseSet>
-                    </licenseSets>
                 </configuration>
                 <dependencies>
                     <dependency>
@@ -284,22 +303,6 @@
                         </configuration>
                     </execution>
                 </executions>
-            </plugin>
-            <plugin>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <version>${maven.surefire.plugin.version}</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>integration-test</goal>
-                            <goal>verify</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>${maven.surefire.plugin.version}</version>
             </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
