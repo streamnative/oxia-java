@@ -24,6 +24,7 @@ import io.streamnative.oxia.client.session.DefaultClientIdentifier;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
@@ -43,7 +44,7 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
     private int maxRequestsPerBatch = DefaultMaxRequestsPerBatch;
     private int operationQueueCapacity = DefaultOperationQueueCapacity;
     @NonNull private Duration sessionTimeout = DefaultSessionTimeout;
-    @NonNull private String clientIdentifier = new DefaultClientIdentifier().get();
+    @NonNull private Supplier<String> clientIdentifier = () -> new DefaultClientIdentifier().get();
 
     @Override
     public @NonNull OxiaClientBuilder notificationCallback(
@@ -86,6 +87,11 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
     }
 
     public @NonNull OxiaClientBuilder clientIdentifier(@NonNull String clientIdentifier) {
+        this.clientIdentifier = () -> clientIdentifier;
+        return this;
+    }
+
+    public @NonNull OxiaClientBuilder clientIdentifier(@NonNull Supplier<String> clientIdentifier) {
         this.clientIdentifier = clientIdentifier;
         return this;
     }
@@ -100,7 +106,7 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
                         maxRequestsPerBatch,
                         operationQueueCapacity,
                         sessionTimeout,
-                        clientIdentifier);
+                        clientIdentifier.get());
 
         return AsyncOxiaClientImpl.newInstance(config);
     }
