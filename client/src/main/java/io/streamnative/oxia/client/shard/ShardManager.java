@@ -24,6 +24,7 @@ import static java.util.stream.Collectors.toMap;
 import static lombok.AccessLevel.PACKAGE;
 
 import com.google.common.annotations.VisibleForTesting;
+import io.grpc.Context;
 import io.grpc.stub.StreamObserver;
 import io.streamnative.oxia.client.grpc.ReceiveWithRecovery;
 import io.streamnative.oxia.client.grpc.Receiver;
@@ -180,6 +181,8 @@ public class ShardManager implements AutoCloseable {
         private final @NonNull CompletableFuture<Void> bootstrap;
         private final @NonNull Supplier<CompletableFuture<Void>> streamTerminalSupplier;
 
+        private Context.CancellableContext ctx;
+
         GrpcReceiver(
                 @NonNull String serviceAddress,
                 @NonNull Function<String, OxiaClientStub> stubFactory,
@@ -193,6 +196,7 @@ public class ShardManager implements AutoCloseable {
         }
 
         public @NonNull CompletableFuture<Void> receive() {
+            close();
             var terminal = streamTerminalSupplier.get();
             try {
                 var observer =
@@ -207,7 +211,10 @@ public class ShardManager implements AutoCloseable {
                                 });
                 // Start the stream
                 var client = stubFactory.apply(serviceAddress);
-                client.getShardAssignments(ShardAssignmentsRequest.getDefaultInstance(), observer);
+                ctx = Context.current().withCancellation();
+                ctx.run(
+                        () ->
+                                client.getShardAssignments(ShardAssignmentsRequest.getDefaultInstance(), observer));
             } catch (Exception e) {
                 terminal.completeExceptionally(e);
             }
@@ -220,7 +227,12 @@ public class ShardManager implements AutoCloseable {
         }
 
         @Override
-        public void close() {}
+        public void close() {
+            if (ctx != null) {
+                ctx.cancel(null);
+                ctx = null;
+            }
+        }
     }
 
     @RequiredArgsConstructor(access = PACKAGE)
