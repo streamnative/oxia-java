@@ -77,8 +77,7 @@ class BatchTest {
 
     Function<Long, OxiaClientBlockingStub> clientByShardId;
     @Mock SessionManager sessionManager;
-    @Mock
-    Session session;
+    @Mock Session session;
     long shardId = 1L;
     long sessionId = 1L;
     long startTime = 2L;
@@ -137,7 +136,8 @@ class BatchTest {
         CompletableFuture<Void> deleteRangeCallable = new CompletableFuture<>();
 
         PutOperation put = new PutOperation(putCallable, "", new byte[0], Optional.of(1L), false);
-        PutOperation putEphemeral = new PutOperation(putEphemeralCallable, "", new byte[0], Optional.of(1L), true);
+        PutOperation putEphemeral =
+                new PutOperation(putEphemeralCallable, "", new byte[0], Optional.of(1L), true);
         DeleteOperation delete = new DeleteOperation(deleteCallable, "", Optional.of(1L));
         DeleteRangeOperation deleteRange = new DeleteRangeOperation(deleteRangeCallable, "a", "b");
 
@@ -221,7 +221,7 @@ class BatchTest {
         public void completeFail() {
             when(session.getSessionId()).thenReturn(sessionId);
             when(sessionManager.getSession(shardId)).thenReturn(session);
-            
+
             var batchError = new RuntimeException();
             writeResponses.add(o -> o.onError(batchError));
 
@@ -235,7 +235,8 @@ class BatchTest {
             assertThat(putCallable).isCompletedExceptionally();
             assertThatThrownBy(putCallable::get).hasCauseInstanceOf(StatusRuntimeException.class);
             assertThat(putEphemeralCallable).isCompletedExceptionally();
-            assertThatThrownBy(putEphemeralCallable::get).hasCauseInstanceOf(StatusRuntimeException.class);
+            assertThatThrownBy(putEphemeralCallable::get)
+                    .hasCauseInstanceOf(StatusRuntimeException.class);
             assertThat(deleteCallable).isCompletedExceptionally();
             assertThatThrownBy(deleteCallable::get).hasCauseInstanceOf(StatusRuntimeException.class);
             assertThat(deleteRangeCallable).isCompletedExceptionally();
