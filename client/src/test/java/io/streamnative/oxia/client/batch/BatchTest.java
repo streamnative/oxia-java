@@ -15,9 +15,8 @@
  */
 package io.streamnative.oxia.client.batch;
 
-import static io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientBlockingStub;
 import static io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientImplBase;
-import static io.streamnative.oxia.proto.OxiaClientGrpc.newBlockingStub;
+import static io.streamnative.oxia.proto.ReactorOxiaClientGrpc.newReactorStub;
 import static io.streamnative.oxia.proto.Status.KEY_NOT_FOUND;
 import static io.streamnative.oxia.proto.Status.OK;
 import static io.streamnative.oxia.proto.Status.UNEXPECTED_VERSION_ID;
@@ -50,6 +49,7 @@ import io.streamnative.oxia.proto.DeleteRangeResponse;
 import io.streamnative.oxia.proto.DeleteResponse;
 import io.streamnative.oxia.proto.GetResponse;
 import io.streamnative.oxia.proto.PutResponse;
+import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import io.streamnative.oxia.proto.ReadRequest;
 import io.streamnative.oxia.proto.ReadResponse;
 import io.streamnative.oxia.proto.WriteRequest;
@@ -74,7 +74,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class BatchTest {
 
-    Function<Long, OxiaClientBlockingStub> clientByShardId;
+    Function<Long, ReactorOxiaClientStub> clientByShardId;
     @Mock SessionManager sessionManager;
     long shardId = 1L;
     long sessionId = 1L;
@@ -114,7 +114,7 @@ class BatchTest {
                         .build()
                         .start();
         channel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
-        clientByShardId = s -> newBlockingStub(channel);
+        clientByShardId = s -> newReactorStub(channel);
     }
 
     @AfterEach
