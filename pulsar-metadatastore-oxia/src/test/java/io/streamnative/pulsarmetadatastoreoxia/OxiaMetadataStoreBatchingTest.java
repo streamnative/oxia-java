@@ -47,7 +47,8 @@ public class OxiaMetadataStoreBatchingTest extends MetadataStoreBatchingTest
     @Test(dataProvider = "impl")
     public void testBigBatchSize(String provider, Supplier<String> urlSupplier) throws Exception {}
 
-    @Test(enabled = false) //TODO fix failing test
+    @Test(enabled = false) // TODO fix failing test
     @Override
-    public void testPutVersionErrors(String provider, Supplier<String> urlSupplier) throws Exception {}
+    public void testPutVersionErrors(String provider, Supplier<String> urlSupplier)
+            throws Exception {}
 }

@@ -17,16 +17,14 @@ package io.streamnative.pulsarmetadatastoreoxia;
 
 
 import io.streamnative.oxia.testcontainers.OxiaContainer;
-import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.pulsar.metadata.LockManagerTest;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Ignore;
-import org.testng.annotations.Test;
 
-@Ignore //TODO fix failing tests
+@Ignore // TODO fix failing tests
 public class OxiaLockManagerTest extends LockManagerTest implements OxiaTestBase {
 
     @Getter @Setter private OxiaContainer container;

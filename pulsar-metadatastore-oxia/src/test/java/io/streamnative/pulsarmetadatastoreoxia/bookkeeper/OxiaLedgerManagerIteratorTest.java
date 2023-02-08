@@ -18,6 +18,7 @@ package io.streamnative.pulsarmetadatastoreoxia.bookkeeper;
 
 import io.streamnative.oxia.testcontainers.OxiaContainer;
 import io.streamnative.pulsarmetadatastoreoxia.OxiaTestBase;
+import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -25,8 +26,6 @@ import org.apache.pulsar.metadata.bookkeeper.LedgerManagerIteratorTest;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
-
-import java.util.function.Supplier;
 
 /** Test the ledger manager iterator. */
 @Slf4j
@@ -45,9 +44,10 @@ public class OxiaLedgerManagerIteratorTest extends LedgerManagerIteratorTest
         return impl();
     }
 
-    @Test(enabled = false) //TODO fix failing test
+    @Test(enabled = false) // TODO fix failing test
     @Override
-    public void testSeveralContiguousLedgers(String provider, Supplier<String> urlSupplier) throws Throwable {
-        //TODO remove me when the test is passing
+    public void testSeveralContiguousLedgers(String provider, Supplier<String> urlSupplier)
+            throws Throwable {
+        // TODO remove me when the test is passing
     }
 }
