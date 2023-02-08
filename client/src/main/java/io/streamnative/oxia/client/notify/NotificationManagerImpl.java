@@ -20,6 +20,8 @@ import static io.streamnative.oxia.client.api.Notification.KeyModified;
 import static lombok.AccessLevel.PACKAGE;
 
 import com.google.common.annotations.VisibleForTesting;
+import io.grpc.Context;
+import io.grpc.Context.CancellableContext;
 import io.grpc.stub.StreamObserver;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.Notification.KeyCreated;
@@ -86,6 +88,8 @@ public class NotificationManagerImpl implements NotificationManager {
         @NonNull private final Consumer<Notification> notificationCallback;
         @NonNull private final Supplier<CompletableFuture<Void>> streamTerminalSupplier;
 
+        private CancellableContext ctx;
+
         GrpcReceiver(
                 @NonNull String serviceAddress,
                 @NonNull Function<String, OxiaClientGrpc.OxiaClientStub> stubFactory,
@@ -94,12 +98,14 @@ public class NotificationManagerImpl implements NotificationManager {
         }
 
         public @NonNull CompletableFuture<Void> receive() {
+            close();
             var terminal = streamTerminalSupplier.get();
             try {
                 var observer = new NotificationsObserver(terminal, notificationCallback);
                 // Start the stream
                 var client = stubFactory.apply(serviceAddress);
-                client.getNotifications(NotificationsRequest.getDefaultInstance(), observer);
+                ctx = Context.current().withCancellation();
+                ctx.run(() -> client.getNotifications(NotificationsRequest.getDefaultInstance(), observer));
             } catch (Exception e) {
                 terminal.completeExceptionally(e);
             }
@@ -112,7 +118,12 @@ public class NotificationManagerImpl implements NotificationManager {
         }
 
         @Override
-        public void close() {}
+        public void close() {
+            if (ctx != null) {
+                ctx.cancel(null);
+                ctx = null;
+            }
+        }
     }
 
     @RequiredArgsConstructor(access = PACKAGE)

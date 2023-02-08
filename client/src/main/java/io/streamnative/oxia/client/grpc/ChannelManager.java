@@ -15,6 +15,7 @@
  */
 package io.streamnative.oxia.client.grpc;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import io.grpc.Channel;
 import io.grpc.ManagedChannel;
@@ -46,7 +47,18 @@ public class ChannelManager implements Function<String, Channel>, AutoCloseable 
 
     @Override
     public void close() throws Exception {
-        channels.values().forEach(ManagedChannel::shutdown);
+        channels.values().forEach(this::shutdown);
+    }
+
+    private void shutdown(ManagedChannel channel) {
+        channel.shutdown();
+        try {
+            if (!channel.awaitTermination(100, MILLISECONDS)) {
+                channel.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            channel.shutdownNow();
+        }
     }
 
     @Override

@@ -15,6 +15,7 @@
  */
 package io.streamnative.oxia.client.grpc;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static lombok.AccessLevel.PUBLIC;
 
 import java.util.concurrent.CompletableFuture;
@@ -70,7 +71,7 @@ public class ReceiveWithRecovery implements Receiver {
                 Thread.currentThread().interrupt();
                 throw new RuntimeException(e);
             } catch (ExecutionException e) {
-                log.error("Shard assignments stream terminated", e.getCause());
+                log.error("Stream terminated", e.getCause());
             }
         }
     }
@@ -78,6 +79,17 @@ public class ReceiveWithRecovery implements Receiver {
     @Override
     public void close() throws Exception {
         closed.complete(null);
+        shutdown();
+    }
+
+    private void shutdown() {
         executor.shutdown();
+        try {
+            if (!executor.awaitTermination(100, MILLISECONDS)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+        }
     }
 }
