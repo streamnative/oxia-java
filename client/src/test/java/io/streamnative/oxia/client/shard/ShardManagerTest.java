@@ -187,11 +187,7 @@ public class ShardManagerTest {
 
         @Test
         void get() {
-            assertThatThrownBy(
-                            () -> {
-                                manager.get("a");
-                            })
-                    .isInstanceOf(NoShardAvailableException.class);
+            assertThatThrownBy(() -> manager.get("a")).isInstanceOf(NoShardAvailableException.class);
         }
 
         @Test
@@ -202,11 +198,7 @@ public class ShardManagerTest {
 
         @Test
         void leader() {
-            assertThatThrownBy(
-                            () -> {
-                                manager.leader(1);
-                            })
-                    .isInstanceOf(NoShardAvailableException.class);
+            assertThatThrownBy(() -> manager.leader(1)).isInstanceOf(NoShardAvailableException.class);
         }
     }
 }
