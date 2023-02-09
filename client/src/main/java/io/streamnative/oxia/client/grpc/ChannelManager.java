@@ -21,7 +21,6 @@ import io.grpc.Channel;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.streamnative.oxia.proto.OxiaClientGrpc;
-import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientBlockingStub;
 import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientStub;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
@@ -36,12 +35,10 @@ import lombok.RequiredArgsConstructor;
 public class ChannelManager implements Function<String, Channel>, AutoCloseable {
     private final ConcurrentMap<String, ManagedChannel> channels = new ConcurrentHashMap<>();
     @Getter private final @NonNull StubFactory<OxiaClientStub> stubFactory;
-    @Getter private final @NonNull StubFactory<OxiaClientBlockingStub> blockingStubFactory;
     @Getter private final @NonNull StubFactory<ReactorOxiaClientStub> reactorStubFactory;
 
     public ChannelManager() {
         stubFactory = stubFactory(this);
-        blockingStubFactory = blockingStubFactory(this);
         reactorStubFactory = reactorStubFactory(this);
     }
 
@@ -74,11 +71,6 @@ public class ChannelManager implements Function<String, Channel>, AutoCloseable 
 
     static StubFactory<OxiaClientStub> stubFactory(@NonNull ChannelManager channelManager) {
         return new StubFactory<>(channelManager, OxiaClientGrpc::newStub);
-    }
-
-    static StubFactory<OxiaClientBlockingStub> blockingStubFactory(
-            @NonNull ChannelManager channelManager) {
-        return new StubFactory<>(channelManager, OxiaClientGrpc::newBlockingStub);
     }
 
     static StubFactory<ReactorOxiaClientStub> reactorStubFactory(
