@@ -53,11 +53,9 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         var shardManager = new ShardManager(reactorStubFactory, config.serviceAddress());
         var notificationManager =
                 config.notificationCallback() == null
-                        ? NotificationManagerImpl.NullObject
+                        ? NotificationManager.NullObject
                         : new NotificationManagerImpl(
-                                config.serviceAddress(),
-                                channelManager.getStubFactory(),
-                                config.notificationCallback());
+                                reactorStubFactory, config.serviceAddress(), config.notificationCallback());
 
         Function<Long, String> leaderFn = shardManager::leader;
         var stubByShardId = leaderFn.andThen(reactorStubFactory);

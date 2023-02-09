@@ -18,29 +18,32 @@ package io.streamnative.oxia.client.notify;
 import static io.streamnative.oxia.proto.NotificationType.KEY_CREATED;
 import static io.streamnative.oxia.proto.NotificationType.KEY_DELETED;
 import static io.streamnative.oxia.proto.NotificationType.KEY_MODIFIED;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatNoException;
-import static org.awaitility.Awaitility.await;
-import static org.mockito.AdditionalAnswers.delegatesTo;
-import static org.mockito.Mockito.mock;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
+import io.grpc.Status;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
-import io.grpc.stub.StreamObserver;
 import io.streamnative.oxia.client.api.Notification;
-import io.streamnative.oxia.client.notify.NotificationManagerImplTest.StreamResponse.Notifications;
+import io.streamnative.oxia.client.api.Notification.KeyCreated;
+import io.streamnative.oxia.client.api.Notification.KeyDeleted;
+import io.streamnative.oxia.client.api.Notification.KeyModified;
 import io.streamnative.oxia.proto.NotificationBatch;
 import io.streamnative.oxia.proto.NotificationsRequest;
-import io.streamnative.oxia.proto.OxiaClientGrpc;
+import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
+import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.OxiaClientImplBase;
+import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
+import java.time.Duration;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import org.junit.jupiter.api.AfterEach;
@@ -49,60 +52,35 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @ExtendWith(MockitoExtension.class)
 class NotificationManagerImplTest {
+    BlockingQueue<Flux<NotificationBatch>> responses = new ArrayBlockingQueue<>(10);
 
-    private BlockingQueue<StreamResponse> responses = new ArrayBlockingQueue<>(10);
-    private final ScheduledExecutorService responseSender =
-            Executors.newSingleThreadScheduledExecutor();
-    private final CompletableFuture<Void> test = new CompletableFuture<>();
-    private final AtomicLong getNotificationsCount = new AtomicLong();
+    OxiaClientImplBase serviceImpl =
+            new OxiaClientImplBase() {
+                @Override
+                public Flux<NotificationBatch> getNotifications(Mono<NotificationsRequest> request) {
+                    Flux<NotificationBatch> assignments = responses.poll();
+                    if (assignments == null) {
+                        return Flux.error(Status.RESOURCE_EXHAUSTED.asException());
+                    }
+                    return assignments;
+                }
+            };
 
-    private final OxiaClientGrpc.OxiaClientImplBase serviceImpl =
-            mock(
-                    OxiaClientGrpc.OxiaClientImplBase.class,
-                    delegatesTo(
-                            new OxiaClientGrpc.OxiaClientImplBase() {
-                                @Override
-                                public void getNotifications(
-                                        NotificationsRequest request, StreamObserver<NotificationBatch> observer) {
-                                    getNotificationsCount.incrementAndGet();
-                                    responseSender.execute(
-                                            () -> {
-                                                var streamDone = false;
-                                                var queue = responses;
-                                                while (!test.isDone() && !streamDone) {
-                                                    try {
-                                                        var r = queue.take();
-                                                        if (r instanceof StreamResponse.Error e) {
-                                                            streamDone = true;
-                                                            queue = null;
-                                                            observer.onError(e.throwable());
-                                                        } else if (r instanceof StreamResponse.Completed c) {
-                                                            streamDone = true;
-                                                            queue = null;
-                                                            observer.onCompleted();
-                                                        } else if (r instanceof Notifications a) {
-                                                            observer.onNext(a.response);
-                                                        }
-                                                    } catch (InterruptedException e) {
-                                                        throw new RuntimeException(e);
-                                                    }
-                                                }
-                                            });
-                                }
-                            }));
-
-    private Function<String, OxiaClientGrpc.OxiaClientStub> clientByShardId;
-    private Server server;
-    private ManagedChannel channel;
-    @Mock Consumer<Notification> notificationConsumer;
+    String serverAddress = "address";
+    String serverName = InProcessServerBuilder.generateName();
+    Server server;
+    ManagedChannel channel;
+    @Mock Function<String, ReactorOxiaClientStub> stubFactory;
+    @Mock Consumer<Notification> notificationCallback;
 
     @BeforeEach
-    public void setUp() throws Exception {
+    void beforeEach() throws Exception {
         responses.clear();
-        String serverName = InProcessServerBuilder.generateName();
         server =
                 InProcessServerBuilder.forName(serverName)
                         .directExecutor()
@@ -110,81 +88,69 @@ class NotificationManagerImplTest {
                         .build()
                         .start();
         channel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
-        clientByShardId = s -> OxiaClientGrpc.newStub(channel);
+        var stub = ReactorOxiaClientGrpc.newReactorStub(channel);
+        doReturn(stub).when(stubFactory).apply(serverAddress);
     }
 
     @AfterEach
-    void tearDown() {
-        test.complete(null);
-        server.shutdownNow();
+    void afterEach() {
         channel.shutdownNow();
-        responseSender.shutdownNow();
+        server.shutdownNow();
     }
 
     @Test
-    public void start() throws Exception {
-        var notificationManager =
-                new NotificationManagerImpl("address", clientByShardId, notificationConsumer);
-        assertThatNoException().isThrownBy(() -> notificationManager.start());
-    }
-
-    @Test
-    public void complete() throws Exception {
-        var notificationManager =
-                new NotificationManagerImpl("address", clientByShardId, notificationConsumer);
-        var future = notificationManager.start();
-        await().untilAsserted(() -> assertThat(future).isCompleted());
-    }
-
-    @Test
-    public void notifications() throws Exception {
+    void start() {
+        var notifications =
+                NotificationBatch.newBuilder()
+                        .putNotifications("key1", created(1L))
+                        .putNotifications("key2", deleted(2L))
+                        .putNotifications("key3", modified(3L))
+                        .build();
+        responses.offer(Flux.just(notifications).concatWith(Flux.never()));
         try (var notificationManager =
-                new NotificationManagerImpl("address", clientByShardId, notificationConsumer)) {
-            notificationManager.start().join();
-            responses.add(addDefaultNotification());
-            await("consumption of notifications")
-                    .untilAsserted(
-                            () -> {
-                                verify(notificationConsumer).accept(new Notification.KeyCreated("key1", 1L));
-                                verify(notificationConsumer).accept(new Notification.KeyDeleted("key2"));
-                                verify(notificationConsumer).accept(new Notification.KeyModified("key3", 3L));
-                            });
+                new NotificationManagerImpl(stubFactory, serverAddress, notificationCallback)) {
+            assertThat(notificationManager.start()).succeedsWithin(Duration.ofSeconds(1));
+            verify(notificationCallback).accept(new KeyCreated("key1", 1L));
+            verify(notificationCallback).accept(new KeyDeleted("key2"));
+            verify(notificationCallback).accept(new KeyModified("key3", 3L));
         }
     }
 
     @Test
-    public void recoveryFromError() throws Exception {
+    void neverStarts() {
+        responses.offer(Flux.never());
         try (var notificationManager =
-                new NotificationManagerImpl("address", clientByShardId, notificationConsumer)) {
-            notificationManager.start().join();
-            responses.add(addDefaultNotification());
-            await("next request").untilAsserted(() -> assertThat(getNotificationsCount).hasValue(1));
-            responses.add(error());
-            await("next request").untilAsserted(() -> assertThat(getNotificationsCount).hasValue(2));
+                new NotificationManagerImpl(stubFactory, serverAddress, notificationCallback)) {
+            assertThatThrownBy(() -> notificationManager.start().get(1, SECONDS))
+                    .isInstanceOf(TimeoutException.class);
+            verify(notificationCallback, never()).accept(any());
         }
     }
 
     @Test
-    public void recoveryFromEndOfStream() throws Exception {
+    public void recoveryFromError() {
+        responses.offer(Flux.error(Status.UNAVAILABLE.asException()));
+        var notifications =
+                NotificationBatch.newBuilder().putNotifications("key1", created(1L)).build();
+        responses.offer(Flux.just(notifications).concatWith(Flux.never()));
         try (var notificationManager =
-                new NotificationManagerImpl("address", clientByShardId, notificationConsumer)) {
-            notificationManager.start().join();
-            responses.add(addDefaultNotification());
-            await("next request").untilAsserted(() -> assertThat(getNotificationsCount).hasValue(1));
-            responses.add(completed());
-            await("next request").untilAsserted(() -> assertThat(getNotificationsCount).hasValue(2));
+                new NotificationManagerImpl(stubFactory, serverAddress, notificationCallback)) {
+            assertThat(notificationManager.start()).succeedsWithin(Duration.ofSeconds(1));
+            verify(notificationCallback).accept(new KeyCreated("key1", 1L));
         }
     }
 
-    sealed interface StreamResponse
-            permits StreamResponse.Completed, Notifications, StreamResponse.Error {
-        record Error(Throwable throwable) implements StreamResponse {}
-
-        enum Completed implements StreamResponse {
-            INSTANCE;
+    @Test
+    public void recoveryFromEndOfStream() {
+        responses.offer(Flux.empty());
+        var notifications =
+                NotificationBatch.newBuilder().putNotifications("key1", created(1L)).build();
+        responses.offer(Flux.just(notifications).concatWith(Flux.never()));
+        try (var notificationManager =
+                new NotificationManagerImpl(stubFactory, serverAddress, notificationCallback)) {
+            assertThat(notificationManager.start()).succeedsWithin(Duration.ofSeconds(1));
+            verify(notificationCallback).accept(new KeyCreated("key1", 1L));
         }
-
-        record Notifications(NotificationBatch response) implements StreamResponse {}
     }
 
     static io.streamnative.oxia.proto.Notification created(long version) {
@@ -201,38 +167,10 @@ class NotificationManagerImplTest {
                 .build();
     }
 
-    static io.streamnative.oxia.proto.Notification modification(long version) {
+    static io.streamnative.oxia.proto.Notification modified(long version) {
         return io.streamnative.oxia.proto.Notification.newBuilder()
                 .setType(KEY_MODIFIED)
                 .setVersionId(version)
                 .build();
-    }
-
-    static void addCreate(NotificationBatch.Builder builder, String key, long version) {
-        builder.putNotifications(key, created(version));
-    }
-
-    static void addDelete(NotificationBatch.Builder builder, String key, long version) {
-        builder.putNotifications(key, deleted(version));
-    }
-
-    static void addModification(NotificationBatch.Builder builder, String key, long version) {
-        builder.putNotifications(key, modification(version));
-    }
-
-    static Notifications addDefaultNotification() {
-        NotificationBatch.Builder builder = NotificationBatch.newBuilder();
-        addCreate(builder, "key1", 1L);
-        addDelete(builder, "key2", 2L);
-        addModification(builder, "key3", 3L);
-        return new Notifications(builder.build());
-    }
-
-    static StreamResponse.Completed completed() {
-        return StreamResponse.Completed.INSTANCE;
-    }
-
-    static StreamResponse.Error error() {
-        return new StreamResponse.Error(new RuntimeException());
     }
 }
