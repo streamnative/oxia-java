@@ -60,11 +60,11 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
         Function<Long, String> leaderFn = shardManager::leader;
         var reactorStubFactory = channelManager.getReactorStubFactory();
-        var blockingStubFn = leaderFn.andThen(reactorStubFactory);
-        var readBatchManager = BatchManager.newReadBatchManager(config, blockingStubFn);
+        var stubByShardId = leaderFn.andThen(reactorStubFactory);
+        var readBatchManager = BatchManager.newReadBatchManager(config, stubByShardId);
         var sessionManager = new SessionManager();
         var writeBatchManager =
-                BatchManager.newWriteBatchManager(config, blockingStubFn, sessionManager);
+                BatchManager.newWriteBatchManager(config, stubByShardId, sessionManager);
 
         var client =
                 new AsyncOxiaClientImpl(
