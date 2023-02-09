@@ -52,7 +52,7 @@ public class ShardManager implements AutoCloseable {
     private final @NonNull Assignments assignments;
     private final @NonNull Function<String, ReactorOxiaClientStub> stubFactory;
     private final @NonNull String serviceAddress;
-    private Disposable disposable;
+    private volatile Disposable disposable;
 
     public ShardManager(
             @NonNull Function<String, ReactorOxiaClientStub> stubFactory,
