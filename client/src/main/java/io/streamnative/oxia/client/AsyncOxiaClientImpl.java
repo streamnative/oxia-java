@@ -49,7 +49,8 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
     static CompletableFuture<AsyncOxiaClient> newInstance(ClientConfig config) {
         var channelManager = new ChannelManager();
-        var shardManager = new ShardManager(channelManager.getStubFactory(), config.serviceAddress());
+        var reactorStubFactory = channelManager.getReactorStubFactory();
+        var shardManager = new ShardManager(reactorStubFactory, config.serviceAddress());
         var notificationManager =
                 config.notificationCallback() == null
                         ? NotificationManagerImpl.NullObject
@@ -59,7 +60,6 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                                 config.notificationCallback());
 
         Function<Long, String> leaderFn = shardManager::leader;
-        var reactorStubFactory = channelManager.getReactorStubFactory();
         var stubByShardId = leaderFn.andThen(reactorStubFactory);
         var readBatchManager = BatchManager.newReadBatchManager(config, stubByShardId);
         var sessionManager = new SessionManager();

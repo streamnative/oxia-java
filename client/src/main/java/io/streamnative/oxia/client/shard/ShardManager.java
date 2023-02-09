@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client.shard;
 
-import static io.grpc.Status.fromThrowable;
 import static io.streamnative.oxia.client.shard.HashRangeShardStrategy.Xxh332HashRangeShardStrategy;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.function.Function.identity;
@@ -24,13 +23,10 @@ import static java.util.stream.Collectors.toMap;
 import static lombok.AccessLevel.PACKAGE;
 
 import com.google.common.annotations.VisibleForTesting;
-import io.grpc.Context;
-import io.grpc.stub.StreamObserver;
-import io.streamnative.oxia.client.grpc.ReceiveWithRecovery;
-import io.streamnative.oxia.client.grpc.Receiver;
-import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientStub;
+import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import io.streamnative.oxia.proto.ShardAssignments;
 import io.streamnative.oxia.proto.ShardAssignmentsRequest;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -40,40 +36,70 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.Disposable;
+import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
+import reactor.util.retry.RetryBackoffSpec;
 
 @RequiredArgsConstructor(access = PACKAGE)
 @Slf4j
 public class ShardManager implements AutoCloseable {
     private final @NonNull Assignments assignments;
-    private final @NonNull Receiver receiver;
+    private final @NonNull Function<String, ReactorOxiaClientStub> stubFactory;
     private final @NonNull String serviceAddress;
+    private Disposable disposable;
 
     public ShardManager(
-            @NonNull Function<String, OxiaClientStub> stubFactory, @NonNull String serviceAddress) {
+            @NonNull Function<String, ReactorOxiaClientStub> stubFactory,
+            @NonNull String serviceAddress) {
         this(Xxh332HashRangeShardStrategy, stubFactory, serviceAddress);
     }
 
     @VisibleForTesting
     ShardManager(
             @NonNull ShardStrategy strategy,
-            @NonNull Function<String, OxiaClientStub> stubFactory,
+            @NonNull Function<String, ReactorOxiaClientStub> stubFactory,
             @NonNull String serviceAddress) {
         assignments = new Assignments(strategy);
-        receiver = new ReceiveWithRecovery(new GrpcReceiver(serviceAddress, stubFactory, assignments));
+        this.stubFactory = stubFactory;
         this.serviceAddress = serviceAddress;
     }
 
     public CompletableFuture<Void> start() {
-        receiver.receive();
-        return receiver.bootstrap();
+        synchronized (this) {
+            if (disposable != null) {
+                throw new IllegalStateException("Already started");
+            }
+            // TODO filter non-retriables?
+            RetryBackoffSpec retrySpec =
+                    Retry.backoff(Long.MAX_VALUE, Duration.ofMillis(100))
+                            .doBeforeRetry(
+                                    signal -> log.warn("Retrying receiving shard assignments: {}", signal));
+            var assignmentsFlux =
+                    stubFactory
+                            .apply(serviceAddress)
+                            .getShardAssignments(ShardAssignmentsRequest.getDefaultInstance())
+                            .doOnError(t -> log.warn("Error receiving shard assignments", t))
+                            .retryWhen(retrySpec)
+                            .repeat()
+                            .doOnNext(this::updateAssignments)
+                            .publish();
+            // Complete after the first response has been processed
+            var future = Mono.from(assignmentsFlux).then().toFuture();
+            disposable = assignmentsFlux.connect();
+            return future;
+        }
+    }
+
+    private void updateAssignments(ShardAssignments shardAssignments) {
+        var updates =
+                shardAssignments.getAssignmentsList().stream().map(Shard::fromProto).collect(toList());
+        assignments.update(updates);
     }
 
     public long get(String key) {
@@ -89,8 +115,14 @@ public class ShardManager implements AutoCloseable {
     }
 
     @Override
-    public void close() throws Exception {
-        receiver.close();
+    public void close() {
+        if (disposable != null) {
+            synchronized (this) {
+                if (disposable != null) {
+                    disposable.dispose();
+                }
+            }
+        }
     }
 
     @VisibleForTesting
@@ -169,97 +201,6 @@ public class ShardManager implements AutoCloseable {
                                             .map(Map.Entry::getValue),
                                     updates.stream())
                             .collect(toMap(Shard::id, identity())));
-        }
-    }
-
-    @RequiredArgsConstructor(access = PACKAGE)
-    @VisibleForTesting
-    static class GrpcReceiver implements Receiver {
-        private final @NonNull String serviceAddress;
-        private final @NonNull Function<String, OxiaClientStub> stubFactory;
-        private final @NonNull Assignments assignments;
-        private final @NonNull CompletableFuture<Void> bootstrap;
-        private final @NonNull Supplier<CompletableFuture<Void>> streamTerminalSupplier;
-
-        private Context.CancellableContext ctx;
-
-        GrpcReceiver(
-                @NonNull String serviceAddress,
-                @NonNull Function<String, OxiaClientStub> stubFactory,
-                @NonNull Assignments assignments) {
-            this(
-                    serviceAddress,
-                    stubFactory,
-                    assignments,
-                    new CompletableFuture<>(),
-                    CompletableFuture::new);
-        }
-
-        public @NonNull CompletableFuture<Void> receive() {
-            close();
-            var terminal = streamTerminalSupplier.get();
-            try {
-                var observer =
-                        new ShardAssignmentsObserver(
-                                terminal,
-                                s -> {
-                                    var updates =
-                                            s.getAssignmentsList().stream().map(Shard::fromProto).collect(toList());
-                                    assignments.update(updates);
-                                    // Signal to the manager that we have some initial shard assignments
-                                    bootstrap.complete(null);
-                                });
-                // Start the stream
-                var client = stubFactory.apply(serviceAddress);
-                ctx = Context.current().withCancellation();
-                ctx.run(
-                        () ->
-                                client.getShardAssignments(ShardAssignmentsRequest.getDefaultInstance(), observer));
-            } catch (Exception e) {
-                terminal.completeExceptionally(e);
-            }
-            return terminal;
-        }
-
-        @Override
-        public @NonNull CompletableFuture<Void> bootstrap() {
-            return bootstrap;
-        }
-
-        @Override
-        public void close() {
-            if (ctx != null) {
-                ctx.cancel(null);
-                ctx = null;
-            }
-        }
-    }
-
-    @RequiredArgsConstructor(access = PACKAGE)
-    @VisibleForTesting
-    static class ShardAssignmentsObserver implements StreamObserver<ShardAssignments> {
-        private final CompletableFuture<Void> streamTerminal;
-        private final Consumer<ShardAssignments> shardAssignmentsConsumer;
-
-        @Override
-        public void onNext(ShardAssignments shardAssignments) {
-            shardAssignmentsConsumer.accept(shardAssignments);
-        }
-
-        @SneakyThrows
-        @Override
-        public void onError(Throwable t) {
-            log.error("Failed receiving shard assignments - GRPC status: {}", fromThrowable(t));
-            // Stream is broken, signal that recovery is necessary
-            streamTerminal.completeExceptionally(t);
-        }
-
-        @SneakyThrows
-        @Override
-        public void onCompleted() {
-            log.info("Shard Assignment stream completed.");
-            // Stream is broken, signal that recovery is necessary
-            streamTerminal.complete(null);
         }
     }
 }
