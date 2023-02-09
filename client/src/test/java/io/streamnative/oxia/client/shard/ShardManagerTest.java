@@ -170,7 +170,7 @@ public class ShardManagerTest {
 
         @BeforeEach
         void mocking() {
-            manager = new ShardManager(assignments, stubFactory, "address");
+            manager = new ShardManager(stubFactory, "address", assignments);
         }
 
         @Test

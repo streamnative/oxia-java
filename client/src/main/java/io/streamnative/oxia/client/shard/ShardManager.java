@@ -49,25 +49,15 @@ import reactor.util.retry.RetryBackoffSpec;
 @RequiredArgsConstructor(access = PACKAGE)
 @Slf4j
 public class ShardManager implements AutoCloseable {
-    private final @NonNull Assignments assignments;
     private final @NonNull Function<String, ReactorOxiaClientStub> stubFactory;
     private final @NonNull String serviceAddress;
+    private final @NonNull Assignments assignments;
     private volatile Disposable disposable;
 
     public ShardManager(
             @NonNull Function<String, ReactorOxiaClientStub> stubFactory,
             @NonNull String serviceAddress) {
-        this(Xxh332HashRangeShardStrategy, stubFactory, serviceAddress);
-    }
-
-    @VisibleForTesting
-    ShardManager(
-            @NonNull ShardStrategy strategy,
-            @NonNull Function<String, ReactorOxiaClientStub> stubFactory,
-            @NonNull String serviceAddress) {
-        assignments = new Assignments(strategy);
-        this.stubFactory = stubFactory;
-        this.serviceAddress = serviceAddress;
+        this(stubFactory, serviceAddress, new Assignments(Xxh332HashRangeShardStrategy));
     }
 
     public CompletableFuture<Void> start() {
