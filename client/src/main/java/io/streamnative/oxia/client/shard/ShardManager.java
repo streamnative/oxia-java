@@ -20,9 +20,9 @@ import static java.util.Collections.unmodifiableMap;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
-import static lombok.AccessLevel.PACKAGE;
 
 import com.google.common.annotations.VisibleForTesting;
+import io.streamnative.oxia.client.grpc.GrpcResponseStream;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import io.streamnative.oxia.proto.ShardAssignments;
 import io.streamnative.oxia.proto.ShardAssignmentsRequest;
@@ -36,23 +36,28 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
 import reactor.util.retry.RetryBackoffSpec;
 
-@RequiredArgsConstructor(access = PACKAGE)
 @Slf4j
-public class ShardManager implements AutoCloseable {
-    private final @NonNull Function<String, ReactorOxiaClientStub> stubFactory;
-    private final @NonNull String serviceAddress;
+public class ShardManager extends GrpcResponseStream implements AutoCloseable {
     private final @NonNull Assignments assignments;
-    private volatile Disposable disposable;
+
+    @VisibleForTesting
+    ShardManager(
+            @NonNull Function<String, ReactorOxiaClientStub> stubFactory,
+            @NonNull String serviceAddress,
+            @NonNull Assignments assignments) {
+        super(stubFactory, serviceAddress);
+        this.assignments = assignments;
+    }
 
     public ShardManager(
             @NonNull Function<String, ReactorOxiaClientStub> stubFactory,
@@ -60,30 +65,25 @@ public class ShardManager implements AutoCloseable {
         this(stubFactory, serviceAddress, new Assignments(Xxh332HashRangeShardStrategy));
     }
 
-    public CompletableFuture<Void> start() {
-        synchronized (this) {
-            if (disposable != null) {
-                throw new IllegalStateException("Already started");
-            }
-            // TODO filter non-retriables?
-            RetryBackoffSpec retrySpec =
-                    Retry.backoff(Long.MAX_VALUE, Duration.ofMillis(100))
-                            .doBeforeRetry(
-                                    signal -> log.warn("Retrying receiving shard assignments: {}", signal));
-            var assignmentsFlux =
-                    stubFactory
-                            .apply(serviceAddress)
-                            .getShardAssignments(ShardAssignmentsRequest.getDefaultInstance())
-                            .doOnError(t -> log.warn("Error receiving shard assignments", t))
-                            .retryWhen(retrySpec)
-                            .repeat()
-                            .doOnNext(this::updateAssignments)
-                            .publish();
-            // Complete after the first response has been processed
-            var future = Mono.from(assignmentsFlux).then().toFuture();
-            disposable = assignmentsFlux.connect();
-            return future;
-        }
+    @Override
+    protected CompletableFuture<Void> start(
+            ReactorOxiaClientStub stub, Consumer<Disposable> consumer) {
+        // TODO filter non-retriables?
+        RetryBackoffSpec retrySpec =
+                Retry.backoff(Long.MAX_VALUE, Duration.ofMillis(100))
+                        .doBeforeRetry(signal -> log.warn("Retrying receiving shard assignments: {}", signal));
+        var assignmentsFlux =
+                stub.getShardAssignments(ShardAssignmentsRequest.getDefaultInstance())
+                        .doOnError(t -> log.warn("Error receiving shard assignments", t))
+                        .retryWhen(retrySpec)
+                        .repeat()
+                        .doOnNext(this::updateAssignments)
+                        .publish();
+        // Complete after the first response has been processed
+        var future = Mono.from(assignmentsFlux).then().toFuture();
+        var disposable = assignmentsFlux.connect();
+        consumer.accept(disposable);
+        return future;
     }
 
     private void updateAssignments(ShardAssignments shardAssignments) {
@@ -102,17 +102,6 @@ public class ShardManager implements AutoCloseable {
 
     public String leader(long shardId) {
         return assignments.leader(shardId);
-    }
-
-    @Override
-    public void close() {
-        if (disposable != null) {
-            synchronized (this) {
-                if (disposable != null) {
-                    disposable.dispose();
-                }
-            }
-        }
     }
 
     @VisibleForTesting

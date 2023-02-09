@@ -21,6 +21,7 @@ import static java.util.concurrent.CompletableFuture.completedFuture;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.Notification.KeyCreated;
 import io.streamnative.oxia.client.api.Notification.KeyDeleted;
+import io.streamnative.oxia.client.grpc.GrpcResponseStream;
 import io.streamnative.oxia.proto.NotificationBatch;
 import io.streamnative.oxia.proto.NotificationsRequest;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
@@ -30,40 +31,38 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.Disposable;
 import reactor.util.retry.Retry;
 import reactor.util.retry.RetryBackoffSpec;
 
-@RequiredArgsConstructor
 @Slf4j
-public class NotificationManagerImpl implements NotificationManager {
-    private final @NonNull Function<String, ReactorOxiaClientGrpc.ReactorOxiaClientStub> stubFactory;
-    private final @NonNull String serviceAddress;
+public class NotificationManagerImpl extends GrpcResponseStream implements NotificationManager {
     private final @NonNull Consumer<Notification> notificationCallback;
-    private volatile Disposable disposable;
+
+    public NotificationManagerImpl(
+            @NonNull Function<String, ReactorOxiaClientGrpc.ReactorOxiaClientStub> stubFactory,
+            @NonNull String serviceAddress,
+            @NonNull Consumer<Notification> notificationCallback) {
+        super(stubFactory, serviceAddress);
+        this.notificationCallback = notificationCallback;
+    }
 
     @Override
-    public CompletableFuture<Void> start() {
-        synchronized (this) {
-            if (disposable != null) {
-                throw new IllegalStateException("Already started");
-            }
-            // TODO filter non-retriables?
-            RetryBackoffSpec retrySpec =
-                    Retry.backoff(Long.MAX_VALUE, Duration.ofMillis(100))
-                            .doBeforeRetry(signal -> log.warn("Retrying receiving notifications: {}", signal));
-            disposable =
-                    stubFactory
-                            .apply(serviceAddress)
-                            .getNotifications(NotificationsRequest.getDefaultInstance())
-                            .doOnError(t -> log.warn("Error receiving notifications", t))
-                            .retryWhen(retrySpec)
-                            .repeat()
-                            .subscribe(this::notify);
-            return completedFuture(null);
-        }
+    protected CompletableFuture<Void> start(
+            ReactorOxiaClientGrpc.ReactorOxiaClientStub stub, Consumer<Disposable> consumer) {
+        // TODO filter non-retriables?
+        RetryBackoffSpec retrySpec =
+                Retry.backoff(Long.MAX_VALUE, Duration.ofMillis(100))
+                        .doBeforeRetry(signal -> log.warn("Retrying receiving notifications: {}", signal));
+        var disposable =
+                stub.getNotifications(NotificationsRequest.getDefaultInstance())
+                        .doOnError(t -> log.warn("Error receiving notifications", t))
+                        .retryWhen(retrySpec)
+                        .repeat()
+                        .subscribe(this::notify);
+        consumer.accept(disposable);
+        return completedFuture(null);
     }
 
     private void notify(NotificationBatch batch) {
@@ -81,16 +80,5 @@ public class NotificationManagerImpl implements NotificationManager {
                         })
                 .filter(Objects::nonNull)
                 .forEach(notificationCallback);
-    }
-
-    @Override
-    public void close() {
-        if (disposable != null) {
-            synchronized (this) {
-                if (disposable != null) {
-                    disposable.dispose();
-                }
-            }
-        }
     }
 }
