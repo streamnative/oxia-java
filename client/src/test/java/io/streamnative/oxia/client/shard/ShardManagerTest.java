@@ -34,7 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
-import java.util.function.Function;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -165,17 +165,17 @@ public class ShardManagerTest {
         ShardManager.Assignments assignments =
                 new ShardManager.Assignments(Xxh332HashRangeShardStrategy);
 
-        @Mock Function<String, ReactorOxiaClientStub> stubFactory;
+        @Mock Supplier<ReactorOxiaClientStub> stubFactory;
         ShardManager manager;
 
         @BeforeEach
         void mocking() {
-            manager = new ShardManager(stubFactory, "address", assignments);
+            manager = new ShardManager(stubFactory, assignments);
         }
 
         @Test
         void start(@Mock ReactorOxiaClientStub stub) {
-            when(stubFactory.apply("address")).thenReturn(stub);
+            when(stubFactory.get()).thenReturn(stub);
             var assignment = ShardAssignment.newBuilder().setShardId(0).setLeader("leader0").build();
             when(stub.getShardAssignments(ShardAssignmentsRequest.getDefaultInstance()))
                     .thenReturn(Flux.just(ShardAssignments.newBuilder().addAssignments(assignment).build()));

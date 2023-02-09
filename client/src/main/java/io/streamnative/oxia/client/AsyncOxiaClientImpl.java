@@ -39,6 +39,7 @@ import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import lombok.AccessLevel;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -50,12 +51,13 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     static CompletableFuture<AsyncOxiaClient> newInstance(ClientConfig config) {
         var channelManager = new ChannelManager();
         var reactorStubFactory = channelManager.getReactorStubFactory();
-        var shardManager = new ShardManager(reactorStubFactory, config.serviceAddress());
+        Supplier<ReactorOxiaClientStub> stubFactory =
+                () -> reactorStubFactory.apply(config.serviceAddress());
+        var shardManager = new ShardManager(stubFactory);
         var notificationManager =
                 config.notificationCallback() == null
                         ? NotificationManager.NullObject
-                        : new NotificationManagerImpl(
-                                reactorStubFactory, config.serviceAddress(), config.notificationCallback());
+                        : new NotificationManagerImpl(stubFactory, config.notificationCallback());
 
         Function<Long, String> leaderFn = shardManager::leader;
         var stubByShardId = leaderFn.andThen(reactorStubFactory);

@@ -29,7 +29,7 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.function.Supplier;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.Disposable;
@@ -41,10 +41,9 @@ public class NotificationManagerImpl extends GrpcResponseStream implements Notif
     private final @NonNull Consumer<Notification> notificationCallback;
 
     public NotificationManagerImpl(
-            @NonNull Function<String, ReactorOxiaClientGrpc.ReactorOxiaClientStub> stubFactory,
-            @NonNull String serviceAddress,
+            @NonNull Supplier<ReactorOxiaClientGrpc.ReactorOxiaClientStub> stubFactory,
             @NonNull Consumer<Notification> notificationCallback) {
-        super(stubFactory, serviceAddress);
+        super(stubFactory);
         this.notificationCallback = notificationCallback;
     }
 

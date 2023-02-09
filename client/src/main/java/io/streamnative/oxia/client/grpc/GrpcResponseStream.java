@@ -20,15 +20,14 @@ import static lombok.AccessLevel.PROTECTED;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.function.Supplier;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import reactor.core.Disposable;
 
 @RequiredArgsConstructor(access = PROTECTED)
 public abstract class GrpcResponseStream implements AutoCloseable {
-    private final @NonNull Function<String, ReactorOxiaClientStub> stubFactory;
-    private final @NonNull String serviceAddress;
+    private final @NonNull Supplier<ReactorOxiaClientStub> stubFactory;
 
     private volatile Disposable disposable;
 
@@ -37,7 +36,7 @@ public abstract class GrpcResponseStream implements AutoCloseable {
             if (disposable != null) {
                 throw new IllegalStateException("Already started");
             }
-            return start(stubFactory.apply(serviceAddress), disposable -> this.disposable = disposable);
+            return start(stubFactory.get(), disposable -> this.disposable = disposable);
         }
     }
 

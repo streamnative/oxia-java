@@ -37,7 +37,7 @@ import java.time.Duration;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeoutException;
-import java.util.function.Function;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -63,11 +63,10 @@ class ShardManagerGrpcTest {
                 }
             };
 
-    String serverAddress = "address";
     String serverName = InProcessServerBuilder.generateName();
     Server server;
     ManagedChannel channel;
-    @Mock Function<String, ReactorOxiaClientStub> stubFactory;
+    @Mock Supplier<ReactorOxiaClientStub> stubFactory;
 
     @BeforeEach
     void beforeEach() throws Exception {
@@ -80,7 +79,7 @@ class ShardManagerGrpcTest {
                         .start();
         channel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
         var stub = ReactorOxiaClientGrpc.newReactorStub(channel);
-        doReturn(stub).when(stubFactory).apply(serverAddress);
+        doReturn(stub).when(stubFactory).get();
     }
 
     @AfterEach
@@ -93,7 +92,7 @@ class ShardManagerGrpcTest {
     void start() {
         var assignments = ShardAssignments.newBuilder().addAssignments(assignment(0, 0, 3)).build();
         responses.offer(Flux.just(assignments).concatWith(Flux.never()));
-        try (var shardManager = new ShardManager(stubFactory, serverAddress)) {
+        try (var shardManager = new ShardManager(stubFactory)) {
             assertThat(shardManager.start()).succeedsWithin(Duration.ofSeconds(1));
             assertThat(shardManager.getAll()).containsExactlyInAnyOrder(0L);
             assertThat(shardManager.leader(0)).isEqualTo("leader0");
@@ -103,7 +102,7 @@ class ShardManagerGrpcTest {
     @Test
     void neverStarts() {
         responses.offer(Flux.never());
-        try (var shardManager = new ShardManager(stubFactory, serverAddress)) {
+        try (var shardManager = new ShardManager(stubFactory)) {
             assertThatThrownBy(() -> shardManager.start().get(1, SECONDS))
                     .isInstanceOf(TimeoutException.class);
             assertThat(shardManager.getAll()).isEmpty();
@@ -119,7 +118,7 @@ class ShardManagerGrpcTest {
                         .addAssignments(assignment(2, 2, 3))
                         .build();
         responses.offer(Flux.just(assignments0, assignments1).concatWith(Flux.never()));
-        try (var shardManager = new ShardManager(stubFactory, serverAddress)) {
+        try (var shardManager = new ShardManager(stubFactory)) {
             shardManager.start().join();
             await()
                     .untilAsserted(
@@ -136,7 +135,7 @@ class ShardManagerGrpcTest {
         responses.offer(Flux.error(Status.UNAVAILABLE.asException()));
         var assignments = ShardAssignments.newBuilder().addAssignments(assignment(0, 0, 3)).build();
         responses.offer(Flux.just(assignments).concatWith(Flux.never()));
-        try (var shardManager = new ShardManager(stubFactory, serverAddress)) {
+        try (var shardManager = new ShardManager(stubFactory)) {
             assertThat(shardManager.start()).succeedsWithin(Duration.ofSeconds(1));
             assertThat(shardManager.getAll()).containsExactlyInAnyOrder(0L);
             assertThat(shardManager.leader(0)).isEqualTo("leader0");
@@ -148,7 +147,7 @@ class ShardManagerGrpcTest {
         responses.offer(Flux.empty());
         var assignments = ShardAssignments.newBuilder().addAssignments(assignment(0, 0, 3)).build();
         responses.offer(Flux.just(assignments).concatWith(Flux.never()));
-        try (var shardManager = new ShardManager(stubFactory, serverAddress)) {
+        try (var shardManager = new ShardManager(stubFactory)) {
             assertThat(shardManager.start()).succeedsWithin(Duration.ofSeconds(1));
             assertThat(shardManager.getAll()).containsExactlyInAnyOrder(0L);
             assertThat(shardManager.leader(0)).isEqualTo("leader0");

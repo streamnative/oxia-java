@@ -42,7 +42,7 @@ import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -72,7 +72,7 @@ class NotificationManagerImplTest {
     String serverName = InProcessServerBuilder.generateName();
     Server server;
     ManagedChannel channel;
-    @Mock Function<String, ReactorOxiaClientStub> stubFactory;
+    @Mock Supplier<ReactorOxiaClientStub> stubFactory;
     @Mock Consumer<Notification> notificationCallback;
 
     @BeforeEach
@@ -86,7 +86,7 @@ class NotificationManagerImplTest {
                         .start();
         channel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
         var stub = ReactorOxiaClientGrpc.newReactorStub(channel);
-        doReturn(stub).when(stubFactory).apply(serverAddress);
+        doReturn(stub).when(stubFactory).get();
     }
 
     @AfterEach
@@ -104,8 +104,7 @@ class NotificationManagerImplTest {
                         .putNotifications("key3", modified(3L))
                         .build();
         responses.offer(Flux.just(notifications).concatWith(Flux.never()));
-        try (var notificationManager =
-                new NotificationManagerImpl(stubFactory, serverAddress, notificationCallback)) {
+        try (var notificationManager = new NotificationManagerImpl(stubFactory, notificationCallback)) {
             assertThat(notificationManager.start()).isCompleted();
             await()
                     .untilAsserted(
@@ -120,8 +119,7 @@ class NotificationManagerImplTest {
     @Test
     void neverStarts() {
         responses.offer(Flux.never());
-        try (var notificationManager =
-                new NotificationManagerImpl(stubFactory, serverAddress, notificationCallback)) {
+        try (var notificationManager = new NotificationManagerImpl(stubFactory, notificationCallback)) {
             assertThat(notificationManager.start()).isCompleted();
             await()
                     .untilAsserted(
@@ -137,8 +135,7 @@ class NotificationManagerImplTest {
         var notifications =
                 NotificationBatch.newBuilder().putNotifications("key1", created(1L)).build();
         responses.offer(Flux.just(notifications).concatWith(Flux.never()));
-        try (var notificationManager =
-                new NotificationManagerImpl(stubFactory, serverAddress, notificationCallback)) {
+        try (var notificationManager = new NotificationManagerImpl(stubFactory, notificationCallback)) {
             assertThat(notificationManager.start()).isCompleted();
             await()
                     .untilAsserted(
@@ -154,8 +151,7 @@ class NotificationManagerImplTest {
         var notifications =
                 NotificationBatch.newBuilder().putNotifications("key1", created(1L)).build();
         responses.offer(Flux.just(notifications).concatWith(Flux.never()));
-        try (var notificationManager =
-                new NotificationManagerImpl(stubFactory, serverAddress, notificationCallback)) {
+        try (var notificationManager = new NotificationManagerImpl(stubFactory, notificationCallback)) {
             assertThat(notificationManager.start()).isCompleted();
             await()
                     .untilAsserted(

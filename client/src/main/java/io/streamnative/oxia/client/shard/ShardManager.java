@@ -37,7 +37,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -52,17 +52,13 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
 
     @VisibleForTesting
     ShardManager(
-            @NonNull Function<String, ReactorOxiaClientStub> stubFactory,
-            @NonNull String serviceAddress,
-            @NonNull Assignments assignments) {
-        super(stubFactory, serviceAddress);
+            @NonNull Supplier<ReactorOxiaClientStub> stubFactory, @NonNull Assignments assignments) {
+        super(stubFactory);
         this.assignments = assignments;
     }
 
-    public ShardManager(
-            @NonNull Function<String, ReactorOxiaClientStub> stubFactory,
-            @NonNull String serviceAddress) {
-        this(stubFactory, serviceAddress, new Assignments(Xxh332HashRangeShardStrategy));
+    public ShardManager(@NonNull Supplier<ReactorOxiaClientStub> stubFactory) {
+        this(stubFactory, new Assignments(Xxh332HashRangeShardStrategy));
     }
 
     @Override
