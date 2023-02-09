@@ -35,7 +35,7 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
     public static final int DefaultMaxRequestsPerBatch = 1000;
     public static final Duration DefaultRequestTimeout = Duration.ofSeconds(30);
     public static final int DefaultOperationQueueCapacity = 1000;
-    public static final Duration DefaultSessionTimeout = Duration.ofSeconds(30);
+    public static final Duration DefaultSessionTimeout = Duration.ofSeconds(15);
 
     @NonNull private final String serviceAddress;
     private Consumer<Notification> notificationCallback;
@@ -82,6 +82,10 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
     }
 
     public @NonNull OxiaClientBuilder sessionTimeout(@NonNull Duration sessionTimeout) {
+        if (sessionTimeout.isNegative()) {
+            throw new IllegalArgumentException(
+                    "SessionTimeout must be greater than zero: " + sessionTimeout);
+        }
         this.sessionTimeout = sessionTimeout;
         return this;
     }

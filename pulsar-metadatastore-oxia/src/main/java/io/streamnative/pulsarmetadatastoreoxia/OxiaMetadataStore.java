@@ -30,6 +30,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +47,8 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
 
     private final AsyncOxiaClient client;
 
+    private final String identity;
+
     OxiaMetadataStore(
             String serviceAddress, MetadataStoreConfig metadataStoreConfig, boolean enableSessionWatcher)
             throws Exception {
@@ -54,19 +57,18 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
         if (!metadataStoreConfig.isBatchingEnabled()) {
             linger = 0;
         }
+        identity = UUID.randomUUID().toString();
         client =
                 new OxiaClientBuilder(serviceAddress)
+                        .clientIdentifier(identity)
+                        /* TODO batchingMaxSizeKb: not supported by oxia _yet_ */
+                        .sessionTimeout(Duration.ofMillis(metadataStoreConfig.getSessionTimeoutMillis()))
                         .notificationCallback(this::notificationCallback)
                         .batchLinger(Duration.ofMillis(linger))
                         .maxRequestsPerBatch(metadataStoreConfig.getBatchingMaxOperations())
                         .asyncClient()
                         .get();
         super.registerSyncLister(Optional.ofNullable(metadataStoreConfig.getSynchronizer()));
-
-        /* TODO use sessionTimeoutMillis
-                 batchingMaxSizeKb;            - not supported by oxia _yet_
-        */
-
     }
 
     private void notificationCallback(Notification notification) {
@@ -117,8 +119,8 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
                 version.versionId(),
                 version.createdTimestamp(),
                 version.modifiedTimestamp(),
-                false, // TODO version.sessionId != null,
-                false); // TODO version.createdBySelf());
+                version.sessionId().isPresent(),
+                version.clientIdentifier().stream().anyMatch(identity::equals));
     }
 
     @Override

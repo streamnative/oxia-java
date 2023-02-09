@@ -16,18 +16,23 @@
 package io.streamnative.oxia.client.session;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
 import io.streamnative.oxia.client.ClientConfig;
+import io.streamnative.oxia.proto.CloseSessionRequest;
+import io.streamnative.oxia.proto.CloseSessionResponse;
 import io.streamnative.oxia.proto.KeepAliveResponse;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
 import io.streamnative.oxia.proto.SessionHeartbeat;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,7 +41,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.Signal;
 import reactor.test.StepVerifier;
 
 @ExtendWith(MockitoExtension.class)
@@ -46,11 +50,12 @@ class SessionTest {
     ClientConfig config;
     long shardId = 1L;
     long sessionId = 2L;
-    Duration sessionTimeout = Duration.ofMinutes(5);
+    Duration sessionTimeout = Duration.ofSeconds(10);
     String clientId = "client";
 
     private Server server;
     private ManagedChannel channel;
+    private TestService service;
 
     @BeforeEach
     void setup() throws IOException {
@@ -68,10 +73,11 @@ class SessionTest {
                         clientId);
 
         String serverName = InProcessServerBuilder.generateName();
+        service = new TestService();
         server =
                 InProcessServerBuilder.forName(serverName)
                         .directExecutor()
-                        .addService(new TestService())
+                        .addService(service)
                         .build()
                         .start();
         channel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
@@ -95,62 +101,46 @@ class SessionTest {
     }
 
     @Test
-    void start() {
-        //        var session = new Session(stubByShardId, config, shardId, sessionId);
-        //        session.start();
-        //
-        //        Flux<SessionHeartbeat> req = Flux.just(
-        //                SessionHeartbeat.newBuilder()
-        //                        .setShardId(longToUint32(shardId))
-        //                        .setSessionId(sessionId)
-        //                        .build())
-        //                .repeat(3);
-        //
-        //        Mono<KeepAliveResponse> resp = req.as(stub::sayHelloReqStream);
-        //
-        ////        ReactorGreeterGrpc.ReactorGreeterStub stub =
-        // ReactorGreeterGrpc.newReactorStub(channel);
-        ////        Flux<HelloRequest> req = Flux.just(
-        ////                HelloRequest.newBuilder().setName("a").build(),
-        ////                HelloRequest.newBuilder().setName("b").build(),
-        ////                HelloRequest.newBuilder().setName("c").build());
-        ////
-        ////        if (!expectFusion) {
-        ////            req = req.hide();
-        ////        }
-        ////
-        ////        Mono<HelloResponse> resp = req.as(stub::sayHelloReqStream);
-        ////        Mono<HelloResponse> resp = req.as(stub::sayHelloReqStream);
-        ////
-        ////        StepVerifier.Step<String> stepVerifier =
-        // StepVerifier.create(resp.map(HelloResponse::getMessage));
-        ////
-        ////        if (expectFusion) {
-        ////            stepVerifier = ((StepVerifier.FirstStep<String>) stepVerifier).expectFusion();
-        ////        }
-        ////
-        ////        stepVerifier
-        ////                .expectNext("Hello a and b and c")
-        ////                .verifyComplete();
-        //
-        //
-        //        Flux<KeepAliveResponse> resp = req.transform(r ->
-        // stubByShardId.apply(shardId).keepAlive(r));
-        //
-        // StepVerifier.create(resp).expectNext(KeepAliveResponse.getDefaultInstance()).verifyComplete();
+    void start() throws Exception {
+        var session = new Session(stubByShardId, config, shardId, sessionId);
+        session.start();
+
+        await()
+                .untilAsserted(
+                        () -> {
+                            assertThat(service.signals.size()).isGreaterThan(2);
+                        });
+        session.close();
+        assertThat(service.closed).isTrue();
+        assertThat(service.signalsAfterClosed).isEmpty();
     }
 
     static class TestService extends ReactorOxiaClientGrpc.OxiaClientImplBase {
-        List<Signal<SessionHeartbeat>> signals;
+        List<SessionHeartbeat> signals = new LinkedList<>();
+        List<SessionHeartbeat> signalsAfterClosed = new LinkedList<>();
+        AtomicBoolean closed = new AtomicBoolean(false);
 
         @Override
         public Mono<KeepAliveResponse> keepAlive(Flux<SessionHeartbeat> request) {
             return request
                     .hide()
-                    .doOnEach(h -> signals.add(h))
+                    .doOnEach(
+                            h -> {
+                                if (!closed.get()) {
+                                    signals.add(h.get());
+                                } else {
+                                    signalsAfterClosed.add(h.get());
+                                }
+                            })
                     .hide()
                     .then()
                     .map(v -> KeepAliveResponse.getDefaultInstance());
+        }
+
+        @Override
+        public Mono<CloseSessionResponse> closeSession(Mono<CloseSessionRequest> request) {
+            closed.compareAndSet(false, true);
+            return Mono.just(CloseSessionResponse.getDefaultInstance());
         }
     }
 }
