@@ -15,155 +15,69 @@
  */
 package io.streamnative.oxia.client.notify;
 
-import static io.grpc.Status.fromThrowable;
 import static io.streamnative.oxia.client.api.Notification.KeyModified;
-import static lombok.AccessLevel.PACKAGE;
+import static java.util.concurrent.CompletableFuture.completedFuture;
 
-import com.google.common.annotations.VisibleForTesting;
-import io.grpc.Context;
-import io.grpc.Context.CancellableContext;
-import io.grpc.stub.StreamObserver;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.Notification.KeyCreated;
 import io.streamnative.oxia.client.api.Notification.KeyDeleted;
-import io.streamnative.oxia.client.grpc.ReceiveWithRecovery;
-import io.streamnative.oxia.client.grpc.Receiver;
+import io.streamnative.oxia.client.grpc.GrpcResponseStream;
 import io.streamnative.oxia.proto.NotificationBatch;
 import io.streamnative.oxia.proto.NotificationsRequest;
-import io.streamnative.oxia.proto.OxiaClientGrpc;
+import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
+import java.time.Duration;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.Disposable;
+import reactor.util.retry.Retry;
+import reactor.util.retry.RetryBackoffSpec;
 
-@RequiredArgsConstructor(access = PACKAGE)
 @Slf4j
-public class NotificationManagerImpl implements NotificationManager {
-
-    public static final NotificationManager NullObject =
-            new NotificationManager() {
-                @Override
-                public CompletableFuture<Void> start() {
-                    return CompletableFuture.completedFuture(null);
-                }
-
-                @Override
-                public void close() throws Exception {
-                    // NOOP
-                }
-            };
-
-    @NonNull private final Receiver receiver;
+public class NotificationManagerImpl extends GrpcResponseStream implements NotificationManager {
+    private final @NonNull Consumer<Notification> notificationCallback;
 
     public NotificationManagerImpl(
-            @NonNull String serviceAddress,
-            @NonNull Function<String, OxiaClientGrpc.OxiaClientStub> stubFactory,
+            @NonNull Supplier<ReactorOxiaClientGrpc.ReactorOxiaClientStub> stubFactory,
             @NonNull Consumer<Notification> notificationCallback) {
-        receiver =
-                new ReceiveWithRecovery(
-                        new GrpcReceiver(serviceAddress, stubFactory, notificationCallback));
+        super(stubFactory);
+        this.notificationCallback = notificationCallback;
     }
 
     @Override
-    public void close() throws Exception {
-        receiver.close();
+    protected CompletableFuture<Void> start(
+            ReactorOxiaClientGrpc.ReactorOxiaClientStub stub, Consumer<Disposable> consumer) {
+        // TODO filter non-retriables?
+        RetryBackoffSpec retrySpec =
+                Retry.backoff(Long.MAX_VALUE, Duration.ofMillis(100))
+                        .doBeforeRetry(signal -> log.warn("Retrying receiving notifications: {}", signal));
+        var disposable =
+                stub.getNotifications(NotificationsRequest.getDefaultInstance())
+                        .doOnError(t -> log.warn("Error receiving notifications", t))
+                        .retryWhen(retrySpec)
+                        .repeat()
+                        .subscribe(this::notify);
+        consumer.accept(disposable);
+        return completedFuture(null);
     }
 
-    @Override
-    public CompletableFuture<Void> start() {
-        receiver.receive();
-        return receiver.bootstrap();
-    }
-
-    @RequiredArgsConstructor(access = PACKAGE)
-    @VisibleForTesting
-    static class GrpcReceiver implements Receiver {
-        @NonNull private final String serviceAddress;
-        @NonNull private final Function<String, OxiaClientGrpc.OxiaClientStub> stubFactory;
-        @NonNull private final Consumer<Notification> notificationCallback;
-        @NonNull private final Supplier<CompletableFuture<Void>> streamTerminalSupplier;
-
-        private CancellableContext ctx;
-
-        GrpcReceiver(
-                @NonNull String serviceAddress,
-                @NonNull Function<String, OxiaClientGrpc.OxiaClientStub> stubFactory,
-                @NonNull Consumer<Notification> notificationCallback) {
-            this(serviceAddress, stubFactory, notificationCallback, CompletableFuture::new);
-        }
-
-        public @NonNull CompletableFuture<Void> receive() {
-            close();
-            var terminal = streamTerminalSupplier.get();
-            try {
-                var observer = new NotificationsObserver(terminal, notificationCallback);
-                // Start the stream
-                var client = stubFactory.apply(serviceAddress);
-                ctx = Context.current().withCancellation();
-                ctx.run(() -> client.getNotifications(NotificationsRequest.getDefaultInstance(), observer));
-            } catch (Exception e) {
-                terminal.completeExceptionally(e);
-            }
-            return terminal;
-        }
-
-        @Override
-        public @NonNull CompletableFuture<Void> bootstrap() {
-            return CompletableFuture.completedFuture(null);
-        }
-
-        @Override
-        public void close() {
-            if (ctx != null) {
-                ctx.cancel(null);
-                ctx = null;
-            }
-        }
-    }
-
-    @RequiredArgsConstructor(access = PACKAGE)
-    @VisibleForTesting
-    static class NotificationsObserver implements StreamObserver<NotificationBatch> {
-        @NonNull private final CompletableFuture<Void> streamTerminal;
-        @NonNull private final Consumer<Notification> notificationCallback;
-
-        @Override
-        public void onNext(NotificationBatch batch) {
-            batch.getNotificationsMap().entrySet().stream()
-                    .map(
-                            e -> {
-                                var key = e.getKey();
-                                var notice = e.getValue();
-                                return switch (notice.getType()) {
-                                    case KEY_CREATED -> new KeyCreated(key, notice.getVersionId());
-                                    case KEY_MODIFIED -> new KeyModified(key, notice.getVersionId());
-                                    case KEY_DELETED -> new KeyDeleted(key);
-                                    default -> null;
-                                };
-                            })
-                    .filter(Objects::nonNull)
-                    .forEach(notificationCallback);
-        }
-
-        @SneakyThrows
-        @Override
-        public void onError(Throwable t) {
-            log.error("Failed receiving shard assignments - GRPC status: {}", fromThrowable(t));
-            // Stream is broken, signal that recovery is necessary
-            streamTerminal.completeExceptionally(t);
-        }
-
-        @SneakyThrows
-        @Override
-        public void onCompleted() {
-            log.info("Shard Assignment stream completed.");
-            // Stream is broken, signal that recovery is necessary
-            streamTerminal.complete(null);
-        }
+    private void notify(NotificationBatch batch) {
+        batch.getNotificationsMap().entrySet().stream()
+                .map(
+                        e -> {
+                            var key = e.getKey();
+                            var notice = e.getValue();
+                            return switch (notice.getType()) {
+                                case KEY_CREATED -> new KeyCreated(key, notice.getVersionId());
+                                case KEY_MODIFIED -> new KeyModified(key, notice.getVersionId());
+                                case KEY_DELETED -> new KeyDeleted(key);
+                                default -> null;
+                            };
+                        })
+                .filter(Objects::nonNull)
+                .forEach(notificationCallback);
     }
 }
