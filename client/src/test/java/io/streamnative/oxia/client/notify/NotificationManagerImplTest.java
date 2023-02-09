@@ -18,9 +18,8 @@ package io.streamnative.oxia.client.notify;
 import static io.streamnative.oxia.proto.NotificationType.KEY_CREATED;
 import static io.streamnative.oxia.proto.NotificationType.KEY_DELETED;
 import static io.streamnative.oxia.proto.NotificationType.KEY_MODIFIED;
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
@@ -40,10 +39,8 @@ import io.streamnative.oxia.proto.NotificationsRequest;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.OxiaClientImplBase;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
-import java.time.Duration;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import org.junit.jupiter.api.AfterEach;
@@ -109,10 +106,14 @@ class NotificationManagerImplTest {
         responses.offer(Flux.just(notifications).concatWith(Flux.never()));
         try (var notificationManager =
                 new NotificationManagerImpl(stubFactory, serverAddress, notificationCallback)) {
-            assertThat(notificationManager.start()).succeedsWithin(Duration.ofSeconds(1));
-            verify(notificationCallback).accept(new KeyCreated("key1", 1L));
-            verify(notificationCallback).accept(new KeyDeleted("key2"));
-            verify(notificationCallback).accept(new KeyModified("key3", 3L));
+            assertThat(notificationManager.start()).isCompleted();
+            await()
+                    .untilAsserted(
+                            () -> {
+                                verify(notificationCallback).accept(new KeyCreated("key1", 1L));
+                                verify(notificationCallback).accept(new KeyDeleted("key2"));
+                                verify(notificationCallback).accept(new KeyModified("key3", 3L));
+                            });
         }
     }
 
@@ -121,9 +122,12 @@ class NotificationManagerImplTest {
         responses.offer(Flux.never());
         try (var notificationManager =
                 new NotificationManagerImpl(stubFactory, serverAddress, notificationCallback)) {
-            assertThatThrownBy(() -> notificationManager.start().get(1, SECONDS))
-                    .isInstanceOf(TimeoutException.class);
-            verify(notificationCallback, never()).accept(any());
+            assertThat(notificationManager.start()).isCompleted();
+            await()
+                    .untilAsserted(
+                            () -> {
+                                verify(notificationCallback, never()).accept(any());
+                            });
         }
     }
 
@@ -135,8 +139,12 @@ class NotificationManagerImplTest {
         responses.offer(Flux.just(notifications).concatWith(Flux.never()));
         try (var notificationManager =
                 new NotificationManagerImpl(stubFactory, serverAddress, notificationCallback)) {
-            assertThat(notificationManager.start()).succeedsWithin(Duration.ofSeconds(1));
-            verify(notificationCallback).accept(new KeyCreated("key1", 1L));
+            assertThat(notificationManager.start()).isCompleted();
+            await()
+                    .untilAsserted(
+                            () -> {
+                                verify(notificationCallback).accept(new KeyCreated("key1", 1L));
+                            });
         }
     }
 
@@ -148,8 +156,12 @@ class NotificationManagerImplTest {
         responses.offer(Flux.just(notifications).concatWith(Flux.never()));
         try (var notificationManager =
                 new NotificationManagerImpl(stubFactory, serverAddress, notificationCallback)) {
-            assertThat(notificationManager.start()).succeedsWithin(Duration.ofSeconds(1));
-            verify(notificationCallback).accept(new KeyCreated("key1", 1L));
+            assertThat(notificationManager.start()).isCompleted();
+            await()
+                    .untilAsserted(
+                            () -> {
+                                verify(notificationCallback).accept(new KeyCreated("key1", 1L));
+                            });
         }
     }
 

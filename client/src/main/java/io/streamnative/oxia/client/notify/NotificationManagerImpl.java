@@ -16,6 +16,7 @@
 package io.streamnative.oxia.client.notify;
 
 import static io.streamnative.oxia.client.api.Notification.KeyModified;
+import static java.util.concurrent.CompletableFuture.completedFuture;
 
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.Notification.KeyCreated;
@@ -32,7 +33,6 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.Disposable;
-import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
 import reactor.util.retry.RetryBackoffSpec;
 
@@ -54,19 +54,15 @@ public class NotificationManagerImpl implements NotificationManager {
             RetryBackoffSpec retrySpec =
                     Retry.backoff(Long.MAX_VALUE, Duration.ofMillis(100))
                             .doBeforeRetry(signal -> log.warn("Retrying receiving notifications: {}", signal));
-            var assignmentsFlux =
+            disposable =
                     stubFactory
                             .apply(serviceAddress)
                             .getNotifications(NotificationsRequest.getDefaultInstance())
                             .doOnError(t -> log.warn("Error receiving notifications", t))
                             .retryWhen(retrySpec)
                             .repeat()
-                            .doOnNext(this::notify)
-                            .publish();
-            // Complete after the first response has been processed
-            var future = Mono.from(assignmentsFlux).then().toFuture();
-            disposable = assignmentsFlux.connect();
-            return future;
+                            .subscribe(this::notify);
+            return completedFuture(null);
         }
     }
 
