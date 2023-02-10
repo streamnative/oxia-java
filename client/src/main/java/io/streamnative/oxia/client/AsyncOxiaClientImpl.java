@@ -39,6 +39,7 @@ import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import lombok.AccessLevel;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -49,23 +50,21 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
     static CompletableFuture<AsyncOxiaClient> newInstance(ClientConfig config) {
         var channelManager = new ChannelManager();
-        var shardManager = new ShardManager(channelManager.getStubFactory(), config.serviceAddress());
+        var reactorStubFactory = channelManager.getReactorStubFactory();
+        Supplier<ReactorOxiaClientStub> stubFactory =
+                () -> reactorStubFactory.apply(config.serviceAddress());
+        var shardManager = new ShardManager(stubFactory);
         var notificationManager =
                 config.notificationCallback() == null
-                        ? NotificationManagerImpl.NullObject
-                        : new NotificationManagerImpl(
-                                config.serviceAddress(),
-                                channelManager.getStubFactory(),
-                                config.notificationCallback());
+                        ? NotificationManager.NullObject
+                        : new NotificationManagerImpl(stubFactory, config.notificationCallback());
 
         Function<Long, String> leaderFn = shardManager::leader;
-        var blockingStubFn = leaderFn.andThen(channelManager.getBlockingStubFactory());
-        var readBatchManager = BatchManager.newReadBatchManager(config, blockingStubFn);
-        var reactorStubFactory = channelManager.getReactorStubFactory();
-        var reactorStubByShardId = leaderFn.andThen(channelManager.getReactorStubFactory());
-        var sessionManager = new SessionManager(config, reactorStubByShardId);
+        var stubByShardId = leaderFn.andThen(reactorStubFactory);
+        var readBatchManager = BatchManager.newReadBatchManager(config, stubByShardId);
+        var sessionManager = new SessionManager(config, stubByShardId);
         var writeBatchManager =
-                BatchManager.newWriteBatchManager(config, blockingStubFn, sessionManager);
+                BatchManager.newWriteBatchManager(config, stubByShardId, sessionManager);
 
         var client =
                 new AsyncOxiaClientImpl(

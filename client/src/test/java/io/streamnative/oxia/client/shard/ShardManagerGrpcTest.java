@@ -15,87 +15,62 @@
  */
 package io.streamnative.oxia.client.shard;
 
-import static io.streamnative.oxia.client.shard.ModelFactory.newShardAssignments;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
-import static org.mockito.AdditionalAnswers.delegatesTo;
-import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doReturn;
 
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
+import io.grpc.Status;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
-import io.grpc.stub.StreamObserver;
-import io.streamnative.oxia.proto.OxiaClientGrpc;
-import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientImplBase;
-import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientStub;
+import io.streamnative.oxia.proto.Int32HashRange;
+import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
+import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.OxiaClientImplBase;
+import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
+import io.streamnative.oxia.proto.ShardAssignment;
 import io.streamnative.oxia.proto.ShardAssignments;
 import io.streamnative.oxia.proto.ShardAssignmentsRequest;
+import java.time.Duration;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Function;
-import lombok.SneakyThrows;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
+@ExtendWith(MockitoExtension.class)
 class ShardManagerGrpcTest {
+    BlockingQueue<Flux<ShardAssignments>> responses = new ArrayBlockingQueue<>(10);
 
-    private BlockingQueue<StreamResponse> responses = new ArrayBlockingQueue<>(10);
-    private final ScheduledExecutorService responseSender =
-            Executors.newSingleThreadScheduledExecutor();
-    private final CompletableFuture<Void> test = new CompletableFuture<>();
-    private final AtomicLong shardAssignmentsCount = new AtomicLong();
+    OxiaClientImplBase serviceImpl =
+            new OxiaClientImplBase() {
+                @Override
+                public Flux<ShardAssignments> getShardAssignments(Mono<ShardAssignmentsRequest> request) {
+                    Flux<ShardAssignments> assignments = responses.poll();
+                    if (assignments == null) {
+                        return Flux.error(Status.RESOURCE_EXHAUSTED.asException());
+                    }
+                    return assignments;
+                }
+            };
 
-    private final OxiaClientImplBase serviceImpl =
-            mock(
-                    OxiaClientImplBase.class,
-                    delegatesTo(
-                            new OxiaClientImplBase() {
-                                @Override
-                                @SneakyThrows
-                                public void getShardAssignments(
-                                        ShardAssignmentsRequest request, StreamObserver<ShardAssignments> observer) {
-                                    shardAssignmentsCount.incrementAndGet();
-                                    responseSender.execute(
-                                            () -> {
-                                                var streamDone = false;
-                                                var queue = responses;
-                                                while (!test.isDone() && !streamDone) {
-                                                    try {
-                                                        var r = queue.take();
-                                                        if (r instanceof StreamResponse.Error e) {
-                                                            streamDone = true;
-                                                            queue = null;
-                                                            observer.onError(e.throwable());
-                                                        } else if (r instanceof StreamResponse.Completed c) {
-                                                            streamDone = true;
-                                                            queue = null;
-                                                            observer.onCompleted();
-                                                        } else if (r instanceof StreamResponse.Assignments a) {
-                                                            observer.onNext(a.response);
-                                                        }
-                                                    } catch (InterruptedException e) {
-                                                        throw new RuntimeException(e);
-                                                    }
-                                                }
-                                            });
-                                }
-                            }));
-
-    private Function<String, OxiaClientStub> clientByShardId;
-    private Server server;
-    private ManagedChannel channel;
+    String serverName = InProcessServerBuilder.generateName();
+    Server server;
+    ManagedChannel channel;
+    @Mock Supplier<ReactorOxiaClientStub> stubFactory;
 
     @BeforeEach
-    public void setUp() throws Exception {
+    void beforeEach() throws Exception {
         responses.clear();
-        String serverName = InProcessServerBuilder.generateName();
         server =
                 InProcessServerBuilder.forName(serverName)
                         .directExecutor()
@@ -103,139 +78,89 @@ class ShardManagerGrpcTest {
                         .build()
                         .start();
         channel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
-        clientByShardId = s -> OxiaClientGrpc.newStub(channel);
+        var stub = ReactorOxiaClientGrpc.newReactorStub(channel);
+        doReturn(stub).when(stubFactory).get();
     }
 
     @AfterEach
-    void tearDown() {
-        test.complete(null);
-        server.shutdownNow();
+    void afterEach() {
         channel.shutdownNow();
-        responseSender.shutdownNow();
+        server.shutdownNow();
     }
 
     @Test
-    public void start() throws Exception {
-        try (var shardManager = new ShardManager(clientByShardId, "address")) {
-            var bootstrap = shardManager.start();
-            assertThat(bootstrap).isNotCompleted();
+    void start() {
+        var assignments = ShardAssignments.newBuilder().addAssignments(assignment(0, 0, 3)).build();
+        responses.offer(Flux.just(assignments).concatWith(Flux.never()));
+        try (var shardManager = new ShardManager(stubFactory)) {
+            assertThat(shardManager.start()).succeedsWithin(Duration.ofSeconds(1));
+            assertThat(shardManager.getAll()).containsExactlyInAnyOrder(0L);
+            assertThat(shardManager.leader(0)).isEqualTo("leader0");
+        }
+    }
+
+    @Test
+    void neverStarts() {
+        responses.offer(Flux.never());
+        try (var shardManager = new ShardManager(stubFactory)) {
+            assertThatThrownBy(() -> shardManager.start().get(1, SECONDS))
+                    .isInstanceOf(TimeoutException.class);
             assertThat(shardManager.getAll()).isEmpty();
-            responses.add(assignments(newShardAssignments(1L, 2, 3, "leader 1")));
-            await("bootstrapping").until(bootstrap::isDone);
-            assertThat(bootstrap).isNotCompletedExceptionally();
-            assertThat(shardManager.getAll()).containsOnly(1L);
-            assertThat(shardManager.leader(1)).isEqualTo("leader 1");
         }
     }
 
     @Test
-    public void update() throws Exception {
-        var s1v1 = newShardAssignments(1L, 2, 5, "leader 1");
-        var s1v2 = newShardAssignments(1L, 2, 3, "leader 2");
-        var strategy = new StaticShardStrategy().assign("key1", s1v1).assign("key2", s1v1);
-        try (var shardManager = new ShardManager(strategy, clientByShardId, "address")) {
-            responses.add(assignments(s1v1));
-            shardManager.start().get();
-            assertThat(shardManager.get("key1")).isEqualTo(1L);
-            assertThat(shardManager.get("key2")).isEqualTo(1L);
-            assertThat(shardManager.leader(1)).isEqualTo("leader 1");
-            strategy.assign("key1", s1v2);
-            responses.add(assignments(s1v2));
-            await("application of update")
+    void update() {
+        var assignments0 = ShardAssignments.newBuilder().addAssignments(assignment(0, 0, 3)).build();
+        var assignments1 =
+                ShardAssignments.newBuilder()
+                        .addAssignments(assignment(1, 0, 1))
+                        .addAssignments(assignment(2, 2, 3))
+                        .build();
+        responses.offer(Flux.just(assignments0, assignments1).concatWith(Flux.never()));
+        try (var shardManager = new ShardManager(stubFactory)) {
+            shardManager.start().join();
+            await()
                     .untilAsserted(
                             () -> {
-                                assertThat(shardManager.get("key1")).isEqualTo(1L);
-                                assertThatThrownBy(() -> shardManager.get("key2"))
-                                        .isInstanceOf(NoShardAvailableException.class);
-                                assertThat(shardManager.leader(1L)).isEqualTo("leader 2");
+                                assertThat(shardManager.getAll()).containsExactlyInAnyOrder(1L, 2L);
+                                assertThat(shardManager.leader(1)).isEqualTo("leader1");
+                                assertThat(shardManager.leader(2)).isEqualTo("leader2");
                             });
-            // s1v1 mapped to both k1,k2 -- but s1v2 will only map to k1 -- therefore s1 must have been
-            // updated to s1v2
         }
     }
 
     @Test
-    public void overlap() throws Exception {
-        var s1 = newShardAssignments(1L, 1, 3, "leader 1");
-        var s2 = newShardAssignments(2L, 2, 4, "leader 2");
-        var strategy = new StaticShardStrategy().assign("key1", s1);
-        try (var shardManager = new ShardManager(strategy, clientByShardId, "address")) {
-            responses.add(assignments(s1));
-            shardManager.start().get();
-            assertThat(shardManager.get("key1")).isEqualTo(1L);
-            assertThat(shardManager.leader(1)).isEqualTo("leader 1");
-            strategy.assign("key2", s2);
-            responses.add(assignments(s2));
-            await("removal of shard 1")
-                    .untilAsserted(
-                            () -> {
-                                assertThatThrownBy(() -> shardManager.get("key1"))
-                                        .isInstanceOf(NoShardAvailableException.class);
-                                assertThatThrownBy(() -> shardManager.leader(1L))
-                                        .isInstanceOf(NoShardAvailableException.class);
-                                assertThat(shardManager.get("key2")).isEqualTo(2L);
-                                assertThat(shardManager.leader(2L)).isEqualTo("leader 2");
-                            }
-                            // s1 no longer exists -- it was removed by overlapping s2 -- and thus k1 can no
-                            // longer map to it
-                            );
+    public void recoveryFromError() {
+        responses.offer(Flux.error(Status.UNAVAILABLE.asException()));
+        var assignments = ShardAssignments.newBuilder().addAssignments(assignment(0, 0, 3)).build();
+        responses.offer(Flux.just(assignments).concatWith(Flux.never()));
+        try (var shardManager = new ShardManager(stubFactory)) {
+            assertThat(shardManager.start()).succeedsWithin(Duration.ofSeconds(1));
+            assertThat(shardManager.getAll()).containsExactlyInAnyOrder(0L);
+            assertThat(shardManager.leader(0)).isEqualTo("leader0");
         }
     }
 
     @Test
-    public void recoveryFromError() throws Exception {
-        try (var shardManager = new ShardManager(clientByShardId, "address")) {
-            responses.add(assignments(1, 2, 3, "leader 1"));
-            shardManager.start().get();
-            assertThat(shardManager.leader(1)).isEqualTo("leader 1");
-            responses.add(error());
-            await("next request").untilAsserted(() -> assertThat(shardAssignmentsCount).hasValue(2));
-            responses.add(assignments(1, 2, 3, "leader 2"));
-            await("recovering to leader 2")
-                    .untilAsserted(() -> assertThat(shardManager.leader(1)).isEqualTo("leader 2"));
+    public void recoveryFromEndOfStream() {
+        responses.offer(Flux.empty());
+        var assignments = ShardAssignments.newBuilder().addAssignments(assignment(0, 0, 3)).build();
+        responses.offer(Flux.just(assignments).concatWith(Flux.never()));
+        try (var shardManager = new ShardManager(stubFactory)) {
+            assertThat(shardManager.start()).succeedsWithin(Duration.ofSeconds(1));
+            assertThat(shardManager.getAll()).containsExactlyInAnyOrder(0L);
+            assertThat(shardManager.leader(0)).isEqualTo("leader0");
         }
     }
 
-    @Test
-    public void recoveryFromEndOfStream() throws Exception {
-        try (var shardManager = new ShardManager(clientByShardId, "address")) {
-            var bootstrapped = shardManager.start();
-            await("next request").untilAsserted(() -> assertThat(shardAssignmentsCount).hasValue(1));
-            responses.add(assignments(1L, 2, 3, "leader 1"));
-            bootstrapped.get();
-            assertThat(shardManager.leader(1L)).isEqualTo("leader 1");
-            responses.add(completed());
-            await("next request").untilAsserted(() -> assertThat(shardAssignmentsCount).hasValue(2));
-            responses.add(assignments(1L, 2, 3, "leader 2"));
-            await("recovering to leader 2")
-                    .untilAsserted(() -> assertThat(shardManager.leader(1L)).isEqualTo("leader 2"));
-        }
-    }
-
-    sealed interface StreamResponse
-            permits StreamResponse.Completed, StreamResponse.Assignments, StreamResponse.Error {
-        record Error(Throwable throwable) implements StreamResponse {}
-
-        enum Completed implements StreamResponse {
-            INSTANCE;
-        }
-
-        record Assignments(ShardAssignments response) implements StreamResponse {}
-    }
-
-    static StreamResponse.Assignments assignments(long id, int min, int max, String leader) {
-        return new StreamResponse.Assignments(newShardAssignments(id, min, max, leader));
-    }
-
-    static StreamResponse.Assignments assignments(ShardAssignments r) {
-        return new StreamResponse.Assignments(r);
-    }
-
-    static StreamResponse.Completed completed() {
-        return StreamResponse.Completed.INSTANCE;
-    }
-
-    static StreamResponse.Error error() {
-        return new StreamResponse.Error(new RuntimeException());
+    ShardAssignment assignment(int shardId, int min, int max) {
+        var hashRange =
+                Int32HashRange.newBuilder().setMinHashInclusive(min).setMaxHashInclusive(max).build();
+        return ShardAssignment.newBuilder()
+                .setShardId(shardId)
+                .setLeader("leader" + shardId)
+                .setInt32HashRange(hashRange)
+                .build();
     }
 }

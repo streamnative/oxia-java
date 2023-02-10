@@ -15,13 +15,11 @@
  */
 package io.streamnative.oxia.client.grpc;
 
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import io.grpc.Channel;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
-import io.streamnative.oxia.proto.OxiaClientGrpc;
-import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientBlockingStub;
-import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientStub;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import java.util.concurrent.ConcurrentHashMap;
@@ -34,19 +32,26 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ChannelManager implements Function<String, Channel>, AutoCloseable {
     private final ConcurrentMap<String, ManagedChannel> channels = new ConcurrentHashMap<>();
-    @Getter private final @NonNull StubFactory<OxiaClientStub> stubFactory;
-    @Getter private final @NonNull StubFactory<OxiaClientBlockingStub> blockingStubFactory;
     @Getter private final @NonNull StubFactory<ReactorOxiaClientStub> reactorStubFactory;
 
     public ChannelManager() {
-        stubFactory = stubFactory(this);
-        blockingStubFactory = blockingStubFactory(this);
         reactorStubFactory = reactorStubFactory(this);
     }
 
     @Override
     public void close() throws Exception {
-        channels.values().forEach(ManagedChannel::shutdown);
+        channels.values().forEach(this::shutdown);
+    }
+
+    private void shutdown(ManagedChannel channel) {
+        channel.shutdown();
+        try {
+            if (!channel.awaitTermination(100, MILLISECONDS)) {
+                channel.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            channel.shutdownNow();
+        }
     }
 
     @Override
@@ -58,15 +63,6 @@ public class ChannelManager implements Function<String, Channel>, AutoCloseable 
                         ManagedChannelBuilder.forAddress(serviceAddress.host(), serviceAddress.port())
                                 .usePlaintext()
                                 .build());
-    }
-
-    static StubFactory<OxiaClientStub> stubFactory(@NonNull ChannelManager channelManager) {
-        return new StubFactory<>(channelManager, OxiaClientGrpc::newStub);
-    }
-
-    static StubFactory<OxiaClientBlockingStub> blockingStubFactory(
-            @NonNull ChannelManager channelManager) {
-        return new StubFactory<>(channelManager, OxiaClientGrpc::newBlockingStub);
     }
 
     static StubFactory<ReactorOxiaClientStub> reactorStubFactory(

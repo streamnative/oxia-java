@@ -27,7 +27,8 @@ import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperatio
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
 import io.streamnative.oxia.client.session.SessionManager;
-import io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientBlockingStub;
+import io.streamnative.oxia.proto.GetResponse;
+import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import io.streamnative.oxia.proto.ReadRequest;
 import io.streamnative.oxia.proto.WriteRequest;
 import java.time.Clock;
@@ -37,6 +38,7 @@ import java.util.function.Function;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import reactor.core.publisher.Flux;
 
 public interface Batch {
 
@@ -58,7 +60,7 @@ public interface Batch {
         private final String clientIdentifier;
 
         WriteBatch(
-                @NonNull Function<Long, OxiaClientBlockingStub> stubByShardId,
+                @NonNull Function<Long, ReactorOxiaClientStub> stubByShardId,
                 @NonNull SessionManager sessionManager,
                 @NonNull String clientIdentifier,
                 long shardId,
@@ -86,7 +88,7 @@ public interface Batch {
         @Override
         public void complete() {
             try {
-                var response = getStubByShardId().apply(getShardId()).write(toProto());
+                var response = getStub().write(toProto()).block();
                 for (var i = 0; i < deletes.size(); i++) {
                     deletes.get(i).complete(response.getDeletes(i));
                 }
@@ -127,7 +129,7 @@ public interface Batch {
         }
 
         ReadBatch(
-                @NonNull Function<Long, OxiaClientBlockingStub> stubByShardId,
+                @NonNull Function<Long, ReactorOxiaClientStub> stubByShardId,
                 long shardId,
                 long createTime) {
             super(stubByShardId, shardId, createTime);
@@ -141,13 +143,19 @@ public interface Batch {
         @Override
         public void complete() {
             try {
-                var response = getStubByShardId().apply(getShardId()).read(toProto());
-                for (var i = 0; i < gets.size(); i++) {
-                    gets.get(i).complete(response.getGets(i));
-                }
+                var responses =
+                        getStub()
+                                .read(toProto())
+                                .flatMapSequential(response -> Flux.fromIterable(response.getGetsList()));
+                Flux.fromIterable(gets).zipWith(responses, this::complete).then().block();
             } catch (Throwable batchError) {
                 gets.forEach(g -> g.fail(batchError));
             }
+        }
+
+        private boolean complete(GetOperation operation, GetResponse response) {
+            operation.complete(response);
+            return true;
         }
 
         @NonNull
@@ -161,14 +169,18 @@ public interface Batch {
 
     @RequiredArgsConstructor(access = PRIVATE)
     abstract class BatchBase {
-        @Getter private final @NonNull Function<Long, OxiaClientBlockingStub> stubByShardId;
+        private final @NonNull Function<Long, ReactorOxiaClientStub> stubByShardId;
         @Getter private final long shardId;
         @Getter private final long startTime;
+
+        protected ReactorOxiaClientStub getStub() {
+            return stubByShardId.apply(shardId);
+        }
     }
 
     @RequiredArgsConstructor(access = PACKAGE)
     abstract class BatchFactory implements Function<Long, Batch> {
-        final @NonNull Function<Long, OxiaClientBlockingStub> stubByShardId;
+        final @NonNull Function<Long, ReactorOxiaClientStub> stubByShardId;
 
         @Getter(PACKAGE)
         private final @NonNull ClientConfig config;
@@ -182,7 +194,7 @@ public interface Batch {
         final @NonNull SessionManager sessionManager;
 
         public WriteBatchFactory(
-                @NonNull Function<Long, OxiaClientBlockingStub> stubByShardId,
+                @NonNull Function<Long, ReactorOxiaClientStub> stubByShardId,
                 @NonNull SessionManager sessionManager,
                 @NonNull ClientConfig config,
                 @NonNull Clock clock) {
@@ -199,7 +211,7 @@ public interface Batch {
 
     class ReadBatchFactory extends BatchFactory {
         public ReadBatchFactory(
-                @NonNull Function<Long, OxiaClientBlockingStub> stubByShardId,
+                @NonNull Function<Long, ReactorOxiaClientStub> stubByShardId,
                 @NonNull ClientConfig config,
                 @NonNull Clock clock) {
             super(stubByShardId, config, clock);

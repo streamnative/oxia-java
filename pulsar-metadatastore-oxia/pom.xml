@@ -27,6 +27,7 @@
     </parent>
 
     <artifactId>pulsar-metadatastore-oxia</artifactId>
+    <name>Oxia Metadatastore implementation for Apache Pulsar</name>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
