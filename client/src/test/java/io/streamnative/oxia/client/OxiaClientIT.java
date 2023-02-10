@@ -31,20 +31,28 @@ import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.Notification.KeyCreated;
 import io.streamnative.oxia.client.api.Notification.KeyDeleted;
 import io.streamnative.oxia.client.api.Notification.KeyModified;
+import io.streamnative.oxia.client.api.PutOption;
 import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
 import io.streamnative.oxia.testcontainers.OxiaContainer;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
+@Slf4j
 public class OxiaClientIT {
     @Container
-    private static final OxiaContainer oxia = new OxiaContainer(DEFAULT_IMAGE_NAME).withShards(4);
+    private static final OxiaContainer oxia =
+            new OxiaContainer(DEFAULT_IMAGE_NAME)
+                    .withShards(4)
+                    .withLogConsumer(new Slf4jLogConsumer(LoggerFactory.getLogger("\uD83C\uDFDD️")));
 
     private static AsyncOxiaClient client;
 
@@ -67,7 +75,7 @@ public class OxiaClientIT {
     }
 
     @Test
-    void test() {
+    void test() throws Exception {
         var a = client.put("a", "a".getBytes(UTF_8), IfRecordDoesNotExist);
         var b = client.put("b", "b".getBytes(UTF_8), IfRecordDoesNotExist);
         var c = client.put("c", "c".getBytes(UTF_8));
@@ -137,5 +145,33 @@ public class OxiaClientIT {
 
         // get non-existent key
         assertThat(client.get("z").join()).isNull();
+
+        var identity = getClass().getSimpleName();
+        try (var otherClient =
+                new OxiaClientBuilder(oxia.getServiceAddress())
+                        .notificationCallback(notifications::add)
+                        .clientIdentifier(identity)
+                        .asyncClient()
+                        .join()) {
+            otherClient.put("f", "f".getBytes(), PutOption.AsEphemeralRecord).join();
+            getResult = client.get("f").join();
+            var sessionId = getResult.getVersion().sessionId().get();
+            assertThat(sessionId).isNotNull();
+            assertThat(getResult.getVersion().clientIdentifier().get()).isEqualTo(identity);
+
+            var putResult = otherClient.put("g", "g".getBytes(), PutOption.AsEphemeralRecord).join();
+            assertThat(putResult.version().clientIdentifier().get()).isEqualTo(identity);
+            assertThat(putResult.version().sessionId().get()).isNotNull();
+
+            otherClient.put("h", "h".getBytes()).join();
+        } // otherClient closed
+
+        await()
+                .untilAsserted(
+                        () -> {
+                            assertThat(client.get("f").join()).isNull();
+                        });
+        assertThat(client.get("g").join()).isNull();
+        assertThat(client.get("h").join()).isNotNull();
     }
 }

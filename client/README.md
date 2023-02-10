@@ -45,6 +45,16 @@ try {
 }
 ```
 
+### Put — ephemeral record
+
+```java
+
+var result = client.put(
+"key", value, PutOption.AsEphemeralRecord
+).join();
+
+```
+
 ### Delete — unconditional
 
 ```java

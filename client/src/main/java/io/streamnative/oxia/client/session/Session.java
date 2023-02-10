@@ -77,7 +77,7 @@ public class Session implements AutoCloseable {
                         .timeout(sessionTimeout)
                         .doOnError(
                                 t -> {
-                                    log.error("Failed to keep-alive session: {}", sessionId, t);
+                                    log.error("Failed to keep-alive session: {} shard {}", sessionId, shardId, t);
                                 })
                         .subscribe();
     }
@@ -104,8 +104,7 @@ public class Session implements AutoCloseable {
             var stub = stubByShardId.apply(shardId);
             var request =
                     CreateSessionRequest.newBuilder()
-                            .setSessionTimeoutMs(
-                                    (int) Math.max(config.sessionTimeout().toMillis(), Integer.MAX_VALUE))
+                            .setSessionTimeoutMs((int) config.sessionTimeout().toMillis())
                             .setShardId(longToUint32(shardId))
                             .setClientIdentity(config.clientIdentifier())
                             .build();
