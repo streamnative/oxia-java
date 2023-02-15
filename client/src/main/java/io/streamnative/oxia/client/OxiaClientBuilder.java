@@ -15,14 +15,17 @@
  */
 package io.streamnative.oxia.client;
 
+import static java.time.Duration.ZERO;
 
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.ClientBuilder;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.SyncOxiaClient;
 import java.time.Duration;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
@@ -33,7 +36,7 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
     public static final int DefaultMaxRequestsPerBatch = 1000;
     public static final Duration DefaultRequestTimeout = Duration.ofSeconds(30);
     public static final int DefaultOperationQueueCapacity = 1000;
-    public static final Duration DefaultSessionTimeout = Duration.ofSeconds(30);
+    public static final Duration DefaultSessionTimeout = Duration.ofSeconds(15);
 
     @NonNull private final String serviceAddress;
     private Consumer<Notification> notificationCallback;
@@ -42,6 +45,7 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
     private int maxRequestsPerBatch = DefaultMaxRequestsPerBatch;
     private int operationQueueCapacity = DefaultOperationQueueCapacity;
     @NonNull private Duration sessionTimeout = DefaultSessionTimeout;
+    @NonNull private Supplier<String> clientIdentifier = OxiaClientBuilder::randomClientIdentifier;
 
     @Override
     public @NonNull OxiaClientBuilder notificationCallback(
@@ -51,17 +55,24 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
     }
 
     public @NonNull OxiaClientBuilder requestTimeout(@NonNull Duration requestTimeout) {
+        if (requestTimeout.isNegative() || requestTimeout.equals(ZERO)) {
+            throw new IllegalArgumentException(
+                    "requestTimeout must be greater than zero: " + requestTimeout);
+        }
         this.requestTimeout = requestTimeout;
         return this;
     }
 
     public @NonNull OxiaClientBuilder batchLinger(@NonNull Duration batchLinger) {
+        if (batchLinger.isNegative() || batchLinger.equals(ZERO)) {
+            throw new IllegalArgumentException("batchLinger must be greater than zero: " + batchLinger);
+        }
         this.batchLinger = batchLinger;
         return this;
     }
 
     public @NonNull OxiaClientBuilder maxRequestsPerBatch(int maxRequestsPerBatch) {
-        if (maxRequestsPerBatch < 0) {
+        if (maxRequestsPerBatch <= 0) {
             throw new IllegalArgumentException(
                     "MaxRequestsPerBatch must be greater than zero: " + maxRequestsPerBatch);
         }
@@ -70,7 +81,7 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
     }
 
     public @NonNull OxiaClientBuilder operationQueueCapacity(int operationQueueCapacity) {
-        if (operationQueueCapacity < 0) {
+        if (operationQueueCapacity <= 0) {
             throw new IllegalArgumentException(
                     "operationQueueCapacity must be greater than zero: " + operationQueueCapacity);
         }
@@ -79,7 +90,21 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
     }
 
     public @NonNull OxiaClientBuilder sessionTimeout(@NonNull Duration sessionTimeout) {
+        if (sessionTimeout.isNegative() || sessionTimeout.equals(ZERO)) {
+            throw new IllegalArgumentException(
+                    "SessionTimeout must be greater than zero: " + sessionTimeout);
+        }
         this.sessionTimeout = sessionTimeout;
+        return this;
+    }
+
+    public @NonNull OxiaClientBuilder clientIdentifier(@NonNull String clientIdentifier) {
+        this.clientIdentifier = () -> clientIdentifier;
+        return this;
+    }
+
+    public @NonNull OxiaClientBuilder clientIdentifier(@NonNull Supplier<String> clientIdentifier) {
+        this.clientIdentifier = clientIdentifier;
         return this;
     }
 
@@ -92,11 +117,17 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
                         batchLinger,
                         maxRequestsPerBatch,
                         operationQueueCapacity,
-                        sessionTimeout);
+                        sessionTimeout,
+                        clientIdentifier.get());
+
         return AsyncOxiaClientImpl.newInstance(config);
     }
 
     public @NonNull SyncOxiaClient syncClient() {
         return new SyncOxiaClientImpl(asyncClient().join());
+    }
+
+    public static String randomClientIdentifier() {
+        return "oxia-client-java:" + UUID.randomUUID();
     }
 }

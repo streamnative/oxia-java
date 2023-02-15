@@ -43,6 +43,7 @@ import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
+import io.streamnative.oxia.client.session.Session;
 import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.client.shard.NoShardAvailableException;
 import io.streamnative.oxia.proto.DeleteRangeResponse;
@@ -76,9 +77,11 @@ class BatchTest {
 
     Function<Long, ReactorOxiaClientStub> clientByShardId;
     @Mock SessionManager sessionManager;
+    @Mock Session session;
     long shardId = 1L;
     long sessionId = 1L;
     long startTime = 2L;
+    String clientId = "client-id";
 
     private final OxiaClientImplBase serviceImpl =
             mock(
@@ -128,16 +131,21 @@ class BatchTest {
     class WriteBatchTests {
         WriteBatch batch;
         CompletableFuture<PutResult> putCallable = new CompletableFuture<>();
+        CompletableFuture<PutResult> putEphemeralCallable = new CompletableFuture<>();
         CompletableFuture<Boolean> deleteCallable = new CompletableFuture<>();
         CompletableFuture<Void> deleteRangeCallable = new CompletableFuture<>();
 
         PutOperation put = new PutOperation(putCallable, "", new byte[0], Optional.of(1L), false);
+        PutOperation putEphemeral =
+                new PutOperation(putEphemeralCallable, "", new byte[0], Optional.of(1L), true);
         DeleteOperation delete = new DeleteOperation(deleteCallable, "", Optional.of(1L));
         DeleteRangeOperation deleteRange = new DeleteRangeOperation(deleteRangeCallable, "a", "b");
 
+        String clientIdentifier = "client-id";
+
         @BeforeEach
         void setup() {
-            batch = new WriteBatch(clientByShardId, sessionManager, shardId, startTime);
+            batch = new WriteBatch(clientByShardId, sessionManager, clientIdentifier, shardId, startTime);
         }
 
         @Test
@@ -162,6 +170,9 @@ class BatchTest {
 
         @Test
         public void toProto() {
+            when(session.getSessionId()).thenReturn(sessionId);
+            when(sessionManager.getSession(shardId)).thenReturn(session);
+
             batch.add(put);
             batch.add(delete);
             batch.add(deleteRange);
@@ -169,7 +180,7 @@ class BatchTest {
             assertThat(request)
                     .satisfies(
                             r -> {
-                                assertThat(r.getPutsList()).containsOnly(put.toProto(sessionId));
+                                assertThat(r.getPutsList()).containsOnly(put.toProto(sessionId, clientId));
                                 assertThat(r.getDeletesList()).containsOnly(delete.toProto());
                                 assertThat(r.getDeleteRangesList()).containsOnly(deleteRange.toProto());
                             });
@@ -177,23 +188,29 @@ class BatchTest {
 
         @Test
         public void completeOk() {
+            when(session.getSessionId()).thenReturn(sessionId);
+            when(sessionManager.getSession(shardId)).thenReturn(session);
+
             writeResponses.add(
                     o ->
                             o.onNext(
                                     WriteResponse.newBuilder()
                                             .addPuts(PutResponse.newBuilder().setStatus(UNEXPECTED_VERSION_ID).build())
+                                            .addPuts(PutResponse.newBuilder().setStatus(OK).build())
                                             .addDeletes(DeleteResponse.newBuilder().setStatus(KEY_NOT_FOUND).build())
                                             .addDeleteRanges(DeleteRangeResponse.newBuilder().setStatus(OK).build())
                                             .build()));
             writeResponses.add(StreamObserver::onCompleted);
 
             batch.add(put);
+            batch.add(putEphemeral);
             batch.add(delete);
             batch.add(deleteRange);
 
             batch.complete();
 
             assertThat(putCallable).isCompletedExceptionally();
+            assertThat(putEphemeralCallable).isCompleted();
             assertThatThrownBy(putCallable::get)
                     .hasCauseExactlyInstanceOf(UnexpectedVersionIdException.class);
             assertThat(deleteCallable).isCompletedWithValueMatching(r -> !r);
@@ -202,10 +219,14 @@ class BatchTest {
 
         @Test
         public void completeFail() {
+            when(session.getSessionId()).thenReturn(sessionId);
+            when(sessionManager.getSession(shardId)).thenReturn(session);
+
             var batchError = new RuntimeException();
             writeResponses.add(o -> o.onError(batchError));
 
             batch.add(put);
+            batch.add(putEphemeral);
             batch.add(delete);
             batch.add(deleteRange);
 
@@ -213,6 +234,9 @@ class BatchTest {
 
             assertThat(putCallable).isCompletedExceptionally();
             assertThatThrownBy(putCallable::get).hasCauseInstanceOf(StatusRuntimeException.class);
+            assertThat(putEphemeralCallable).isCompletedExceptionally();
+            assertThatThrownBy(putEphemeralCallable::get)
+                    .hasCauseInstanceOf(StatusRuntimeException.class);
             assertThat(deleteCallable).isCompletedExceptionally();
             assertThatThrownBy(deleteCallable::get).hasCauseInstanceOf(StatusRuntimeException.class);
             assertThat(deleteRangeCallable).isCompletedExceptionally();
@@ -227,6 +251,7 @@ class BatchTest {
                                 throw new NoShardAvailableException(s);
                             },
                             sessionManager,
+                            clientIdentifier,
                             shardId,
                             startTime);
 
@@ -373,7 +398,7 @@ class BatchTest {
 
         @Mock Clock clock;
 
-        ClientConfig config = new ClientConfig("address", n -> {}, ZERO, ZERO, 1, 1, ZERO);
+        ClientConfig config = new ClientConfig("address", n -> {}, ZERO, ZERO, 1, 1, ZERO, "client_id");
 
         @BeforeEach
         void mocking() {

@@ -19,6 +19,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.streamnative.oxia.proto.PutResponse;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class PutResultTest {
@@ -37,6 +38,9 @@ class PutResultTest {
                                                         .setModificationsCount(4L)
                                                         .build())
                                         .build()))
-                .isEqualTo(new PutResult(new io.streamnative.oxia.client.api.Version(1L, 2L, 3L, 4L)));
+                .isEqualTo(
+                        new PutResult(
+                                new io.streamnative.oxia.client.api.Version(
+                                        1L, 2L, 3L, 4L, Optional.empty(), Optional.empty())));
     }
 }

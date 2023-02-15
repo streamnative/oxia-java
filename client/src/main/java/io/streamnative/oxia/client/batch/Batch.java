@@ -57,14 +57,17 @@ public interface Batch {
         @VisibleForTesting final List<DeleteOperation> deletes = new ArrayList<>();
         @VisibleForTesting final List<DeleteRangeOperation> deleteRanges = new ArrayList<>();
         private final SessionManager sessionManager;
+        private final String clientIdentifier;
 
         WriteBatch(
                 @NonNull Function<Long, ReactorOxiaClientStub> stubByShardId,
                 @NonNull SessionManager sessionManager,
+                @NonNull String clientIdentifier,
                 long shardId,
                 long createTime) {
             super(stubByShardId, shardId, createTime);
             this.sessionManager = sessionManager;
+            this.clientIdentifier = clientIdentifier;
         }
 
         public void add(@NonNull Operation<?> operation) {
@@ -104,10 +107,11 @@ public interface Batch {
 
         @NonNull
         WriteRequest toProto() {
-            var sessionId = sessionManager.getSessionId(getShardId());
+            var sessionId = sessionManager.getSession(getShardId()).getSessionId();
             return WriteRequest.newBuilder()
                     .setShardId(longToUint32(getShardId()))
-                    .addAllPuts(puts.stream().map(p -> p.toProto(sessionId)).collect(toList()))
+                    .addAllPuts(
+                            puts.stream().map(p -> p.toProto(sessionId, clientIdentifier)).collect(toList()))
                     .addAllDeletes(deletes.stream().map(DeleteOperation::toProto).collect(toList()))
                     .addAllDeleteRanges(
                             deleteRanges.stream().map(DeleteRangeOperation::toProto).collect(toList()))
@@ -200,7 +204,8 @@ public interface Batch {
 
         @Override
         public @NonNull Batch apply(@NonNull Long shardId) {
-            return new WriteBatch(stubByShardId, sessionManager, shardId, clock.millis());
+            return new WriteBatch(
+                    stubByShardId, sessionManager, getConfig().clientIdentifier(), shardId, clock.millis());
         }
     }
 

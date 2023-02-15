@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.google.protobuf.ByteString;
 import io.streamnative.oxia.proto.GetResponse;
 import io.streamnative.oxia.proto.Version;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class GetResultTest {
@@ -41,6 +42,9 @@ class GetResultTest {
                                                         .build())
                                         .build()))
                 .isEqualTo(
-                        new GetResult(payload, new io.streamnative.oxia.client.api.Version(1L, 2L, 3L, 4L)));
+                        new GetResult(
+                                payload,
+                                new io.streamnative.oxia.client.api.Version(
+                                        1L, 2L, 3L, 4L, Optional.empty(), Optional.empty())));
     }
 }
