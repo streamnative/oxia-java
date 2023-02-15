@@ -37,6 +37,7 @@ public class SessionManager implements AutoCloseable {
 
     private final ConcurrentMap<Long, Session> sessionsByShardId = new ConcurrentHashMap<>();
     private final @NonNull Session.Factory factory;
+    private volatile boolean closed = false;
 
     public SessionManager(
             @NonNull ClientConfig config,
@@ -46,6 +47,9 @@ public class SessionManager implements AutoCloseable {
 
     @NonNull
     public Session getSession(long shardId) {
+        if (closed) {
+            throw new IllegalStateException("session manager has been closed");
+        }
         return sessionsByShardId.computeIfAbsent(
                 shardId,
                 s -> {
@@ -57,14 +61,15 @@ public class SessionManager implements AutoCloseable {
 
     @Override
     public void close() throws Exception {
-        var closed = new ArrayList<Session>();
+        closed = true;
+        var closedSessions = new ArrayList<Session>();
         sessionsByShardId.entrySet().parallelStream()
                 .forEach(
                         entry -> {
                             var session = entry.getValue();
                             try {
                                 session.close();
-                                closed.add(session);
+                                closedSessions.add(session);
                             } catch (Exception e) {
                                 log.error(
                                         "Error closing session {} shard {} ",
@@ -73,7 +78,7 @@ public class SessionManager implements AutoCloseable {
                                         e);
                             }
                         });
-        closed.forEach(s -> sessionsByShardId.remove(s.getSessionId()));
+        closedSessions.forEach(s -> sessionsByShardId.remove(s.getSessionId()));
     }
 
     @VisibleForTesting
