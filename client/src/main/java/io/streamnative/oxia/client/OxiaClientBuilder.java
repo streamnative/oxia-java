@@ -15,8 +15,8 @@
  */
 package io.streamnative.oxia.client;
 
-
 import static java.time.Duration.ZERO;
+
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.ClientBuilder;
 import io.streamnative.oxia.client.api.Notification;
@@ -65,8 +65,7 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
 
     public @NonNull OxiaClientBuilder batchLinger(@NonNull Duration batchLinger) {
         if (batchLinger.isNegative() || batchLinger.equals(ZERO)) {
-            throw new IllegalArgumentException(
-                    "batchLinger must be greater than zero: " + batchLinger);
+            throw new IllegalArgumentException("batchLinger must be greater than zero: " + batchLinger);
         }
         this.batchLinger = batchLinger;
         return this;
