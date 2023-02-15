@@ -16,6 +16,7 @@
 package io.streamnative.oxia.client;
 
 
+import static java.time.Duration.ZERO;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.ClientBuilder;
 import io.streamnative.oxia.client.api.Notification;
@@ -54,17 +55,25 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
     }
 
     public @NonNull OxiaClientBuilder requestTimeout(@NonNull Duration requestTimeout) {
+        if (requestTimeout.isNegative() || requestTimeout.equals(ZERO)) {
+            throw new IllegalArgumentException(
+                    "requestTimeout must be greater than zero: " + requestTimeout);
+        }
         this.requestTimeout = requestTimeout;
         return this;
     }
 
     public @NonNull OxiaClientBuilder batchLinger(@NonNull Duration batchLinger) {
+        if (batchLinger.isNegative() || batchLinger.equals(ZERO)) {
+            throw new IllegalArgumentException(
+                    "batchLinger must be greater than zero: " + batchLinger);
+        }
         this.batchLinger = batchLinger;
         return this;
     }
 
     public @NonNull OxiaClientBuilder maxRequestsPerBatch(int maxRequestsPerBatch) {
-        if (maxRequestsPerBatch < 0) {
+        if (maxRequestsPerBatch <= 0) {
             throw new IllegalArgumentException(
                     "MaxRequestsPerBatch must be greater than zero: " + maxRequestsPerBatch);
         }
@@ -73,7 +82,7 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
     }
 
     public @NonNull OxiaClientBuilder operationQueueCapacity(int operationQueueCapacity) {
-        if (operationQueueCapacity < 0) {
+        if (operationQueueCapacity <= 0) {
             throw new IllegalArgumentException(
                     "operationQueueCapacity must be greater than zero: " + operationQueueCapacity);
         }
@@ -82,7 +91,7 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
     }
 
     public @NonNull OxiaClientBuilder sessionTimeout(@NonNull Duration sessionTimeout) {
-        if (sessionTimeout.isNegative()) {
+        if (sessionTimeout.isNegative() || sessionTimeout.equals(ZERO)) {
             throw new IllegalArgumentException(
                     "SessionTimeout must be greater than zero: " + sessionTimeout);
         }
