@@ -52,7 +52,7 @@ public class OxiaClientIT {
     private static final OxiaContainer oxia =
             new OxiaContainer(DEFAULT_IMAGE_NAME)
                     .withShards(4)
-                    .withLogConsumer(new Slf4jLogConsumer(LoggerFactory.getLogger("\uD83C\uDFDD️")));
+                    .withLogConsumer(new Slf4jLogConsumer(log));
 
     private static AsyncOxiaClient client;
 
