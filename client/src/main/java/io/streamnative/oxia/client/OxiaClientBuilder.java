@@ -20,8 +20,8 @@ import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.ClientBuilder;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.SyncOxiaClient;
-import io.streamnative.oxia.client.session.DefaultClientIdentifier;
 import java.time.Duration;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -44,7 +44,7 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
     private int maxRequestsPerBatch = DefaultMaxRequestsPerBatch;
     private int operationQueueCapacity = DefaultOperationQueueCapacity;
     @NonNull private Duration sessionTimeout = DefaultSessionTimeout;
-    @NonNull private Supplier<String> clientIdentifier = () -> new DefaultClientIdentifier().get();
+    @NonNull private Supplier<String> clientIdentifier = OxiaClientBuilder::randomClientIdentifier;
 
     @Override
     public @NonNull OxiaClientBuilder notificationCallback(
@@ -117,5 +117,9 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
 
     public @NonNull SyncOxiaClient syncClient() {
         return new SyncOxiaClientImpl(asyncClient().join());
+    }
+
+    public static String randomClientIdentifier() {
+        return "oxia-client-java:" + UUID.randomUUID();
     }
 }
