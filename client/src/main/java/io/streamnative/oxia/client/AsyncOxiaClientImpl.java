@@ -20,6 +20,7 @@ import static java.util.stream.Collectors.toList;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.DeleteOption;
 import io.streamnative.oxia.client.api.GetResult;
+import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.PutOption;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.batch.BatchManager;
@@ -29,8 +30,7 @@ import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOpe
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
 import io.streamnative.oxia.client.grpc.ChannelManager;
 import io.streamnative.oxia.client.grpc.ChannelManager.StubFactory;
-import io.streamnative.oxia.client.notify.NotificationManager;
-import io.streamnative.oxia.client.notify.NotificationManagerImpl;
+import io.streamnative.oxia.client.notify.NotificationPublisherFactory;
 import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.client.shard.ShardManager;
 import io.streamnative.oxia.proto.ListRequest;
@@ -38,6 +38,7 @@ import io.streamnative.oxia.proto.ListResponse;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Flow.Publisher;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.AccessLevel;
@@ -54,10 +55,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         Supplier<ReactorOxiaClientStub> stubFactory =
                 () -> reactorStubFactory.apply(config.serviceAddress());
         var shardManager = new ShardManager(stubFactory);
-        var notificationManager =
-                config.notificationCallback() == null
-                        ? NotificationManager.NullObject
-                        : new NotificationManagerImpl(stubFactory, config.notificationCallback());
+        var notificationPublisherFactory = new NotificationPublisherFactory(stubFactory);
 
         Function<Long, String> leaderFn = shardManager::leader;
         var stubByShardId = leaderFn.andThen(reactorStubFactory);
@@ -70,19 +68,18 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                 new AsyncOxiaClientImpl(
                         channelManager,
                         shardManager,
-                        notificationManager,
+                        notificationPublisherFactory,
                         readBatchManager,
                         writeBatchManager,
                         sessionManager,
                         reactorStubFactory);
 
-        return CompletableFuture.allOf(shardManager.start(), notificationManager.start())
-                .thenApply(v -> client);
+        return shardManager.start().thenApply(v -> client);
     }
 
     private final ChannelManager channelManager;
     private final ShardManager shardManager;
-    private final NotificationManager notificationManager;
+    private final NotificationPublisherFactory notificationPublisherFactory;
     private final BatchManager readBatchManager;
     private final BatchManager writeBatchManager;
     private final SessionManager sessionManager;
@@ -144,6 +141,11 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                 .toFuture();
     }
 
+    @Override
+    public @NonNull Publisher<Notification> notificationsStream() {
+        return notificationPublisherFactory.newPublisher();
+    }
+
     private Flux<String> list(
             long shardId, @NonNull String minKeyInclusive, @NonNull String maxKeyExclusive) {
         var leader = shardManager.leader(shardId);
@@ -162,7 +164,6 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         readBatchManager.close();
         writeBatchManager.close();
         sessionManager.close();
-        notificationManager.close();
         shardManager.close();
         channelManager.close();
     }

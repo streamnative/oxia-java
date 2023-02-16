@@ -19,12 +19,14 @@ package io.streamnative.oxia.client;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.DeleteOption;
 import io.streamnative.oxia.client.api.GetResult;
+import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.PutOption;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.SyncOxiaClient;
 import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Flow.Publisher;
 import lombok.AccessLevel;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -99,6 +101,11 @@ class SyncOxiaClientImpl implements SyncOxiaClient {
         } catch (ExecutionException e) {
             throw e.getCause();
         }
+    }
+
+    @Override
+    public @NonNull Publisher<Notification> notificationsStream() {
+        return asyncClient.notificationsStream();
     }
 
     @Override

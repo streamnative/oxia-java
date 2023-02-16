@@ -36,6 +36,8 @@ import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
 import io.streamnative.oxia.testcontainers.OxiaContainer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Flow;
+import java.util.concurrent.Flow.Subscriber;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -56,14 +58,27 @@ public class OxiaClientIT {
     private static AsyncOxiaClient client;
 
     private static List<Notification> notifications = new ArrayList<>();
+    private static Subscriber<Notification> subscriber =
+            new Subscriber<>() {
+                @Override
+                public void onSubscribe(Flow.Subscription subscription) {}
+
+                @Override
+                public void onNext(Notification item) {
+                    notifications.add(item);
+                }
+
+                @Override
+                public void onError(Throwable throwable) {}
+
+                @Override
+                public void onComplete() {}
+            };
 
     @BeforeAll
     static void beforeAll() {
-        client =
-                new OxiaClientBuilder(oxia.getServiceAddress())
-                        .notificationCallback(notifications::add)
-                        .asyncClient()
-                        .join();
+        client = new OxiaClientBuilder(oxia.getServiceAddress()).asyncClient().join();
+        client.notificationsStream().subscribe(subscriber);
     }
 
     @AfterAll
@@ -148,7 +163,6 @@ public class OxiaClientIT {
         var identity = getClass().getSimpleName();
         try (var otherClient =
                 new OxiaClientBuilder(oxia.getServiceAddress())
-                        .notificationCallback(notifications::add)
                         .clientIdentifier(identity)
                         .asyncClient()
                         .join()) {

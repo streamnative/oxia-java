@@ -33,6 +33,9 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Flow.Publisher;
+import java.util.concurrent.Flow.Subscriber;
+import java.util.concurrent.Flow.Subscription;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.metadata.api.GetResult;
 import org.apache.pulsar.metadata.api.MetadataStoreConfig;
@@ -63,15 +66,16 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
                         .clientIdentifier(identity)
                         /* TODO batchingMaxSizeKb: not supported by oxia _yet_ */
                         .sessionTimeout(Duration.ofMillis(metadataStoreConfig.getSessionTimeoutMillis()))
-                        .notificationCallback(this::notificationCallback)
                         .batchLinger(Duration.ofMillis(linger))
                         .maxRequestsPerBatch(metadataStoreConfig.getBatchingMaxOperations())
                         .asyncClient()
                         .get();
+        Publisher<Notification> notificationsStream = client.notificationsStream();
+        notificationsStream.subscribe(new NotificationSubscriber());
         super.registerSyncLister(Optional.ofNullable(metadataStoreConfig.getSynchronizer()));
     }
 
-    private void notificationCallback(Notification notification) {
+    void receivedOxiaNotification(Notification notification) {
         if (notification instanceof Notification.KeyCreated keyCreated) {
             super.receivedNotification(
                     new org.apache.pulsar.metadata.api.Notification(
@@ -99,6 +103,43 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
             }
         } else {
             log.error("Unknown notification type {}", notification);
+        }
+    }
+
+    final class NotificationSubscriber implements Subscriber<Notification>, AutoCloseable {
+        private Subscription subscription;
+
+        @Override
+        public void onSubscribe(Subscription subscription) {
+            this.subscription = subscription;
+            log.debug("Subscribed to notifications stream");
+        }
+
+        @Override
+        public void onNext(Notification notification) {
+            receivedOxiaNotification(notification);
+        }
+
+        @Override
+        public void onError(Throwable throwable) {
+            log.error("Error processing notifications stream", throwable);
+        }
+
+        @Override
+        public void onComplete() {
+            log.debug("Notifications stream is complete");
+        }
+
+        @Override
+        public void close() throws Exception {
+            if (subscription != null) {
+                synchronized (this) {
+                    if (subscription != null) {
+                        subscription.cancel();
+                        subscription = null;
+                    }
+                }
+            }
         }
     }
 

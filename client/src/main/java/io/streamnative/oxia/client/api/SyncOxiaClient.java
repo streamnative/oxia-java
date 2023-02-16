@@ -17,6 +17,7 @@ package io.streamnative.oxia.client.api;
 
 
 import java.util.List;
+import java.util.concurrent.Flow.Publisher;
 import lombok.NonNull;
 
 /** Synchronous client for the Oxia service. */
@@ -91,4 +92,7 @@ public interface SyncOxiaClient extends AutoCloseable {
      */
     @NonNull
     List<String> list(@NonNull String minKeyInclusive, @NonNull String maxKeyExclusive);
+
+    @NonNull
+    Publisher<Notification> notificationsStream();
 }

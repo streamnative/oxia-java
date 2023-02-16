@@ -25,6 +25,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.streamnative.oxia.client.api.DeleteOption;
+import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.batch.BatchManager;
 import io.streamnative.oxia.client.batch.Batcher;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
@@ -33,7 +34,7 @@ import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOpe
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
 import io.streamnative.oxia.client.grpc.ChannelManager;
 import io.streamnative.oxia.client.grpc.ChannelManager.StubFactory;
-import io.streamnative.oxia.client.notify.NotificationManager;
+import io.streamnative.oxia.client.notify.NotificationPublisherFactory;
 import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.client.shard.ShardManager;
 import io.streamnative.oxia.proto.ListRequest;
@@ -41,6 +42,7 @@ import io.streamnative.oxia.proto.ListResponse;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.Flow.Publisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -54,7 +56,8 @@ class AsyncOxiaClientImplTest {
 
     @Mock ChannelManager channelManager;
     @Mock ShardManager shardManager;
-    @Mock NotificationManager notificationManager;
+    @Mock NotificationPublisherFactory notificationPublisherFactory;
+    @Mock Publisher<Notification> publisher;
     @Mock BatchManager readBatchManager;
     @Mock BatchManager writeBatchManager;
     @Mock SessionManager sessionManager;
@@ -69,7 +72,7 @@ class AsyncOxiaClientImplTest {
                 new AsyncOxiaClientImpl(
                         channelManager,
                         shardManager,
-                        notificationManager,
+                        notificationPublisherFactory,
                         readBatchManager,
                         writeBatchManager,
                         sessionManager,
@@ -258,11 +261,20 @@ class AsyncOxiaClientImplTest {
         client.close();
         var inOrder =
                 inOrder(
-                        readBatchManager, writeBatchManager, notificationManager, shardManager, channelManager);
+                        readBatchManager,
+                        writeBatchManager,
+                        notificationPublisherFactory,
+                        shardManager,
+                        channelManager);
         inOrder.verify(readBatchManager).close();
         inOrder.verify(writeBatchManager).close();
-        inOrder.verify(notificationManager).close();
         inOrder.verify(shardManager).close();
         inOrder.verify(channelManager).close();
+    }
+
+    @Test
+    void notificationsStream() {
+        when(notificationPublisherFactory.newPublisher()).thenReturn(publisher);
+        assertThat(client.notificationsStream()).isSameAs(publisher);
     }
 }

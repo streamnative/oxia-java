@@ -18,7 +18,6 @@ package io.streamnative.oxia.client.notify;
 import static io.streamnative.oxia.proto.NotificationType.KEY_CREATED;
 import static io.streamnative.oxia.proto.NotificationType.KEY_DELETED;
 import static io.streamnative.oxia.proto.NotificationType.KEY_MODIFIED;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
@@ -41,7 +40,7 @@ import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.OxiaClientImplBase;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.function.Consumer;
+import java.util.concurrent.Flow.Subscriber;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,7 +52,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @ExtendWith(MockitoExtension.class)
-class NotificationManagerImplTest {
+class NotificationPublisherFactoryTest {
     BlockingQueue<Flux<NotificationBatch>> responses = new ArrayBlockingQueue<>(10);
 
     OxiaClientImplBase serviceImpl =
@@ -73,7 +72,7 @@ class NotificationManagerImplTest {
     Server server;
     ManagedChannel channel;
     @Mock Supplier<ReactorOxiaClientStub> stubFactory;
-    @Mock Consumer<Notification> notificationCallback;
+    @Mock Subscriber<Notification> notificationSubscriber;
 
     @BeforeEach
     void beforeEach() throws Exception {
@@ -104,29 +103,25 @@ class NotificationManagerImplTest {
                         .putNotifications("key3", modified(3L))
                         .build();
         responses.offer(Flux.just(notifications).concatWith(Flux.never()));
-        try (var notificationManager = new NotificationManagerImpl(stubFactory, notificationCallback)) {
-            assertThat(notificationManager.start()).isCompleted();
-            await()
-                    .untilAsserted(
-                            () -> {
-                                verify(notificationCallback).accept(new KeyCreated("key1", 1L));
-                                verify(notificationCallback).accept(new KeyDeleted("key2"));
-                                verify(notificationCallback).accept(new KeyModified("key3", 3L));
-                            });
-        }
+        new NotificationPublisherFactory(stubFactory).newPublisher().subscribe(notificationSubscriber);
+        await()
+                .untilAsserted(
+                        () -> {
+                            verify(notificationSubscriber).onNext(new KeyCreated("key1", 1L));
+                            verify(notificationSubscriber).onNext(new KeyDeleted("key2"));
+                            verify(notificationSubscriber).onNext(new KeyModified("key3", 3L));
+                        });
     }
 
     @Test
     void neverStarts() {
         responses.offer(Flux.never());
-        try (var notificationManager = new NotificationManagerImpl(stubFactory, notificationCallback)) {
-            assertThat(notificationManager.start()).isCompleted();
-            await()
-                    .untilAsserted(
-                            () -> {
-                                verify(notificationCallback, never()).accept(any());
-                            });
-        }
+        new NotificationPublisherFactory(stubFactory).newPublisher().subscribe(notificationSubscriber);
+        await()
+                .untilAsserted(
+                        () -> {
+                            verify(notificationSubscriber, never()).onNext(any());
+                        });
     }
 
     @Test
@@ -135,14 +130,12 @@ class NotificationManagerImplTest {
         var notifications =
                 NotificationBatch.newBuilder().putNotifications("key1", created(1L)).build();
         responses.offer(Flux.just(notifications).concatWith(Flux.never()));
-        try (var notificationManager = new NotificationManagerImpl(stubFactory, notificationCallback)) {
-            assertThat(notificationManager.start()).isCompleted();
-            await()
-                    .untilAsserted(
-                            () -> {
-                                verify(notificationCallback).accept(new KeyCreated("key1", 1L));
-                            });
-        }
+        new NotificationPublisherFactory(stubFactory).newPublisher().subscribe(notificationSubscriber);
+        await()
+                .untilAsserted(
+                        () -> {
+                            verify(notificationSubscriber).onNext(new KeyCreated("key1", 1L));
+                        });
     }
 
     @Test
@@ -151,14 +144,12 @@ class NotificationManagerImplTest {
         var notifications =
                 NotificationBatch.newBuilder().putNotifications("key1", created(1L)).build();
         responses.offer(Flux.just(notifications).concatWith(Flux.never()));
-        try (var notificationManager = new NotificationManagerImpl(stubFactory, notificationCallback)) {
-            assertThat(notificationManager.start()).isCompleted();
-            await()
-                    .untilAsserted(
-                            () -> {
-                                verify(notificationCallback).accept(new KeyCreated("key1", 1L));
-                            });
-        }
+        new NotificationPublisherFactory(stubFactory).newPublisher().subscribe(notificationSubscriber);
+        await()
+                .untilAsserted(
+                        () -> {
+                            verify(notificationSubscriber).onNext(new KeyCreated("key1", 1L));
+                        });
     }
 
     static io.streamnative.oxia.proto.Notification created(long version) {

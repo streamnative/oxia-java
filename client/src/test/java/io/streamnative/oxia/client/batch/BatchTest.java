@@ -398,7 +398,7 @@ class BatchTest {
 
         @Mock Clock clock;
 
-        ClientConfig config = new ClientConfig("address", n -> {}, ZERO, ZERO, 1, 1, ZERO, "client_id");
+        ClientConfig config = new ClientConfig("address", ZERO, ZERO, 1, 1, ZERO, "client_id");
 
         @BeforeEach
         void mocking() {
