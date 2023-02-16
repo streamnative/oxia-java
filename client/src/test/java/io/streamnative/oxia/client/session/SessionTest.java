@@ -62,15 +62,7 @@ class SessionTest {
         StepVerifier.setDefaultTimeout(Duration.ofSeconds(3));
 
         config =
-                new ClientConfig(
-                        "address",
-                        notification -> {},
-                        Duration.ZERO,
-                        Duration.ZERO,
-                        1,
-                        1,
-                        sessionTimeout,
-                        clientId);
+                new ClientConfig("address", Duration.ZERO, Duration.ZERO, 1, 1, sessionTimeout, clientId);
 
         String serverName = InProcessServerBuilder.generateName();
         service = new TestService();

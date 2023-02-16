@@ -17,6 +17,8 @@ package io.streamnative.oxia.client.api;
 
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import lombok.NonNull;
 
 /** Synchronous client for the Oxia service. */
@@ -91,4 +93,15 @@ public interface SyncOxiaClient extends AutoCloseable {
      */
     @NonNull
     List<String> list(@NonNull String minKeyInclusive, @NonNull String maxKeyExclusive);
+
+    /**
+     * Registers a callback to receive Oxia {@link Notification record change notifications}. Multiple
+     * callbacks can be registered.
+     *
+     * @param notificationCallback A callback to receive notifications.
+     * @return A future that will complete when the underlying notifications stream has been
+     *     established.
+     */
+    @NonNull
+    CompletableFuture<Void> notifications(@NonNull Consumer<Notification> notificationCallback);
 }

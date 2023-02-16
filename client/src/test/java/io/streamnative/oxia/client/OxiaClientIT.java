@@ -59,11 +59,8 @@ public class OxiaClientIT {
 
     @BeforeAll
     static void beforeAll() {
-        client =
-                new OxiaClientBuilder(oxia.getServiceAddress())
-                        .notificationCallback(notifications::add)
-                        .asyncClient()
-                        .join();
+        client = new OxiaClientBuilder(oxia.getServiceAddress()).asyncClient().join();
+        client.notifications(notifications::add).join();
     }
 
     @AfterAll
@@ -148,7 +145,6 @@ public class OxiaClientIT {
         var identity = getClass().getSimpleName();
         try (var otherClient =
                 new OxiaClientBuilder(oxia.getServiceAddress())
-                        .notificationCallback(notifications::add)
                         .clientIdentifier(identity)
                         .asyncClient()
                         .join()) {

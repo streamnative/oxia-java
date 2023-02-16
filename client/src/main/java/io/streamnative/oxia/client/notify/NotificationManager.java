@@ -15,23 +15,14 @@
  */
 package io.streamnative.oxia.client.notify;
 
-import static java.util.concurrent.CompletableFuture.completedFuture;
 
+import io.streamnative.oxia.client.api.Notification;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
+import lombok.NonNull;
 
 public interface NotificationManager extends AutoCloseable {
-    CompletableFuture<Void> start();
+    CompletableFuture<Void> startIfRequired();
 
-    NotificationManager NullObject =
-            new NotificationManager() {
-                @Override
-                public CompletableFuture<Void> start() {
-                    return completedFuture(null);
-                }
-
-                @Override
-                public void close() {
-                    // NOOP
-                }
-            };
+    void registerCallback(@NonNull Consumer<Notification> callback);
 }

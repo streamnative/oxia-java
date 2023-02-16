@@ -27,7 +27,9 @@ import io.streamnative.oxia.proto.NotificationsRequest;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
 import java.time.Duration;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import lombok.NonNull;
@@ -38,13 +40,12 @@ import reactor.util.retry.RetryBackoffSpec;
 
 @Slf4j
 public class NotificationManagerImpl extends GrpcResponseStream implements NotificationManager {
-    private final @NonNull Consumer<Notification> notificationCallback;
+    private final Set<Consumer<Notification>> callbacks = ConcurrentHashMap.newKeySet();
+    private CompletableFuture<Void> started;
 
     public NotificationManagerImpl(
-            @NonNull Supplier<ReactorOxiaClientGrpc.ReactorOxiaClientStub> stubFactory,
-            @NonNull Consumer<Notification> notificationCallback) {
+            @NonNull Supplier<ReactorOxiaClientGrpc.ReactorOxiaClientStub> stubFactory) {
         super(stubFactory);
-        this.notificationCallback = notificationCallback;
     }
 
     @Override
@@ -78,6 +79,10 @@ public class NotificationManagerImpl extends GrpcResponseStream implements Notif
                             };
                         })
                 .filter(Objects::nonNull)
-                .forEach(notificationCallback);
+                .forEach(n -> callbacks.parallelStream().forEach(c -> c.accept(n)));
+    }
+
+    public void registerCallback(@NonNull Consumer<Notification> callback) {
+        callbacks.add(callback);
     }
 }

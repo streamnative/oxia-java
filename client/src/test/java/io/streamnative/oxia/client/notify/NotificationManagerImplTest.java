@@ -104,8 +104,9 @@ class NotificationManagerImplTest {
                         .putNotifications("key3", modified(3L))
                         .build();
         responses.offer(Flux.just(notifications).concatWith(Flux.never()));
-        try (var notificationManager = new NotificationManagerImpl(stubFactory, notificationCallback)) {
-            assertThat(notificationManager.start()).isCompleted();
+        try (var notificationManager = new NotificationManagerImpl(stubFactory)) {
+            notificationManager.registerCallback(notificationCallback);
+            assertThat(notificationManager.startIfRequired()).isCompleted();
             await()
                     .untilAsserted(
                             () -> {
@@ -119,8 +120,9 @@ class NotificationManagerImplTest {
     @Test
     void neverStarts() {
         responses.offer(Flux.never());
-        try (var notificationManager = new NotificationManagerImpl(stubFactory, notificationCallback)) {
-            assertThat(notificationManager.start()).isCompleted();
+        try (var notificationManager = new NotificationManagerImpl(stubFactory)) {
+            notificationManager.registerCallback(notificationCallback);
+            assertThat(notificationManager.startIfRequired()).isCompleted();
             await()
                     .untilAsserted(
                             () -> {
@@ -135,8 +137,9 @@ class NotificationManagerImplTest {
         var notifications =
                 NotificationBatch.newBuilder().putNotifications("key1", created(1L)).build();
         responses.offer(Flux.just(notifications).concatWith(Flux.never()));
-        try (var notificationManager = new NotificationManagerImpl(stubFactory, notificationCallback)) {
-            assertThat(notificationManager.start()).isCompleted();
+        try (var notificationManager = new NotificationManagerImpl(stubFactory)) {
+            notificationManager.registerCallback(notificationCallback);
+            assertThat(notificationManager.startIfRequired()).isCompleted();
             await()
                     .untilAsserted(
                             () -> {
@@ -151,8 +154,9 @@ class NotificationManagerImplTest {
         var notifications =
                 NotificationBatch.newBuilder().putNotifications("key1", created(1L)).build();
         responses.offer(Flux.just(notifications).concatWith(Flux.never()));
-        try (var notificationManager = new NotificationManagerImpl(stubFactory, notificationCallback)) {
-            assertThat(notificationManager.start()).isCompleted();
+        try (var notificationManager = new NotificationManagerImpl(stubFactory)) {
+            notificationManager.registerCallback(notificationCallback);
+            assertThat(notificationManager.startIfRequired()).isCompleted();
             await()
                     .untilAsserted(
                             () -> {
