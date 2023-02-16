@@ -79,12 +79,13 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
                         .doBeforeRetry(
                                 signal ->
                                         log.warn("Retrying receiving notifications for shard {}: {}", shardId, signal));
+        var threadName = String.format("shard-%s-notifications", shardId);
         var disposable =
                 stub.getNotifications(request.build())
                         .doOnError(t -> log.warn("Error receiving notifications for shard {}", shardId, t))
                         .retryWhen(retrySpec)
                         .repeat()
-                        .publishOn(Schedulers.newSingle("shard-" + shardId + "-notifications"))
+                        .publishOn(Schedulers.newSingle(threadName))
                         .subscribe(this::notify);
         consumer.accept(disposable);
         return completedFuture(null);

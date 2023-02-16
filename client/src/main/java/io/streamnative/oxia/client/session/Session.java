@@ -32,7 +32,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import reactor.util.retry.Retry;
+import reactor.util.retry.RetryBackoffSpec;
 
 @RequiredArgsConstructor(access = PACKAGE)
 @Slf4j
@@ -69,15 +71,26 @@ public class Session implements AutoCloseable {
     }
 
     void start() {
+        RetryBackoffSpec retrySpec =
+                Retry.backoff(Long.MAX_VALUE, Duration.ofMillis(100))
+                        .doBeforeRetry(
+                                signal ->
+                                        log.warn(
+                                                "Retrying sending keep-alives for session {}:{} - {}",
+                                                sessionId,
+                                                shardId,
+                                                signal));
+        var threadName = String.format("session-%s:%s-keep-alive", sessionId, shardId);
         keepAliveSubscription =
                 stubByShardId
                         .apply(shardId)
                         .keepAlive(Mono.just(heartbeat).repeat().delayElements(heartbeatInterval))
-                        .retryWhen(Retry.backoff(Long.MAX_VALUE, Duration.ofMillis(100L)))
+                        .retryWhen(retrySpec)
                         .timeout(sessionTimeout)
+                        .publishOn(Schedulers.newSingle(threadName))
                         .doOnError(
                                 t -> {
-                                    log.error("Failed to keep-alive session: {} shard {}", sessionId, shardId, t);
+                                    log.error("Failed to keep-alive session: {}:{}", sessionId, shardId, t);
                                 })
                         .subscribe();
     }
