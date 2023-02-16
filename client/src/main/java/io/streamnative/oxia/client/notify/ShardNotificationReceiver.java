@@ -29,7 +29,9 @@ import io.streamnative.oxia.proto.NotificationsRequest;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
 import java.time.Duration;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import lombok.Getter;
@@ -40,20 +42,13 @@ import reactor.util.retry.Retry;
 import reactor.util.retry.RetryBackoffSpec;
 
 @Slf4j
-class ShardNotificationReceiver extends GrpcResponseStream {
+public class NotificationManagerImpl extends GrpcResponseStream implements NotificationManager {
+    private final Set<Consumer<Notification>> callbacks = ConcurrentHashMap.newKeySet();
+    private CompletableFuture<Void> started;
 
-    @Getter(PACKAGE)
-    private final long shardId;
-
-    private final Consumer<Notification> callback;
-
-    ShardNotificationReceiver(
-            @NonNull Supplier<ReactorOxiaClientGrpc.ReactorOxiaClientStub> stubFactory,
-            long shardId,
-            Consumer<Notification> callback) {
+    public NotificationManagerImpl(
+            @NonNull Supplier<ReactorOxiaClientGrpc.ReactorOxiaClientStub> stubFactory) {
         super(stubFactory);
-        this.shardId = shardId;
-        this.callback = callback;
     }
 
     @Override
@@ -91,6 +86,10 @@ class ShardNotificationReceiver extends GrpcResponseStream {
                             };
                         })
                 .filter(Objects::nonNull)
-                .forEach(callback::accept);
+                .forEach(n -> callbacks.parallelStream().forEach(c -> c.accept(n)));
+    }
+
+    public void registerCallback(@NonNull Consumer<Notification> callback) {
+        callbacks.add(callback);
     }
 }
