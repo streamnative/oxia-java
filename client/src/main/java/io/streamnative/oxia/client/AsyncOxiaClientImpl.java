@@ -31,7 +31,6 @@ import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
 import io.streamnative.oxia.client.grpc.ChannelManager;
 import io.streamnative.oxia.client.grpc.ChannelManager.StubFactory;
 import io.streamnative.oxia.client.notify.NotificationManager;
-import io.streamnative.oxia.client.notify.NotificationManagerImpl;
 import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.client.shard.ShardManager;
 import io.streamnative.oxia.proto.ListRequest;
@@ -56,10 +55,10 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         Supplier<ReactorOxiaClientStub> stubFactory =
                 () -> reactorStubFactory.apply(config.serviceAddress());
         var shardManager = new ShardManager(stubFactory);
-        var notificationManager = new NotificationManagerImpl(stubFactory);
 
         Function<Long, String> leaderFn = shardManager::leader;
         var stubByShardId = leaderFn.andThen(reactorStubFactory);
+        var notificationManager = new NotificationManager(stubByShardId, shardManager);
         var readBatchManager = BatchManager.newReadBatchManager(config, stubByShardId);
         var sessionManager = new SessionManager(config, stubByShardId);
         var writeBatchManager =
