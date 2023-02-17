@@ -37,7 +37,6 @@
         <shade.relocation.package>io.streamnative.pulsarmetadatastoreoxia.shaded</shade.relocation.package>
 
         <pulsar.version>2.12.0-SNAPSHOT</pulsar.version>
-        <oxia.java.version>0.0.1-SNAPSHOT</oxia.java.version>
 
         <checkstyle.version>10.3.3</checkstyle.version>
         <lombok.version>1.18.24</lombok.version>
@@ -63,7 +62,7 @@
         <dependency>
             <groupId>io.streamnative.oxia</groupId>
             <artifactId>oxia-client</artifactId>
-            <version>${oxia.java.version}</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.pulsar</groupId>
@@ -98,7 +97,7 @@
         <dependency>
             <groupId>io.streamnative.oxia</groupId>
             <artifactId>oxia-testcontainers</artifactId>
-            <version>${oxia.java.version}</version>
+            <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
