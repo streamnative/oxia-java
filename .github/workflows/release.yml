@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+#      - name: Checkout CI Code
+#        uses: actions/checkout@v3
+#        with:
+#          repository: streamnative/streamnative-ci
+#          token: ${{ secrets.SNBOT_GITHUB_TOKEN }}
+#          path: ci
+#          fetch-depth: 0
+
+      - name: Checkout Project Code
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.SNBOT_GITHUB_TOKEN }}
+          path: code
+          fetch-depth: 0
+
+      - name: Set Up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Package Maven Project And Upload
+#        env:
+#          SNBOT_USER: snbot
+#          SNBOT_PASSWORD: ${{ secrets.SNBOT_GITHUB_TOKEN }}
+#          SNBOT_SECRET_PASSPHRASE: ${{ secrets.SNBOT_SECRET_PASSPHRASE }}
+        run: |
+#          ./ci/.github/bot/setup-git.sh
+          pushd code
+          mvn --no-transfer-progress --batch-mode versions:set -DremoveSnapshot
+          RELEASE_VERSION=$(mvn --no-transfer-progress --batch-mode help:evaluate -Dexpression=project.version -q -DforceStdout)
+          git commit -m "Release v$RELEASE_VERSION" -a
+          git tag v$RELEASE_VERSION
+          mvn --no-transfer-progress --batch-mode clean package -DskipTests
+          gh release create v$RELEASE_VERSION pulsar-metadatastore-oxia/target/pulsar-metadatastore-oxia-*-shaded.jar --verify-tag
+          mvn --no-transfer-progress --batch-mode versions:set -DnextSnapshot
+          SNAPSHOT_VERSION=$(./mvnw --no-transfer-progress --batch-mode help:evaluate -Dexpression=project.version -q -DforceStdout)
+          git commit -m "Next development version v$SNAPSHOT_VERSION" -a
+          git push origin v$RELEASE_VERSION
+          git push
+          popd

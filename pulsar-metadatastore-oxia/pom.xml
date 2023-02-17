@@ -63,7 +63,7 @@
         <dependency>
             <groupId>io.streamnative.oxia</groupId>
             <artifactId>oxia-client</artifactId>
-            <version>${oxia.java.version}</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.pulsar</groupId>
@@ -98,7 +98,7 @@
         <dependency>
             <groupId>io.streamnative.oxia</groupId>
             <artifactId>oxia-testcontainers</artifactId>
-            <version>${oxia.java.version}</version>
+            <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
