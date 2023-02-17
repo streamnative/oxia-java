@@ -17,6 +17,7 @@ package io.streamnative.oxia.client.notify;
 
 import static io.streamnative.oxia.client.api.Notification.KeyModified;
 import static java.util.concurrent.CompletableFuture.completedFuture;
+import static lombok.AccessLevel.PACKAGE;
 
 import io.streamnative.oxia.client.ProtoUtil;
 import io.streamnative.oxia.client.api.Notification;
@@ -31,6 +32,7 @@ import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.Disposable;
@@ -40,7 +42,9 @@ import reactor.util.retry.RetryBackoffSpec;
 @Slf4j
 class ShardNotificationReceiver extends GrpcResponseStream {
 
+    @Getter(PACKAGE)
     private final long shardId;
+
     private final Consumer<Notification> callback;
 
     ShardNotificationReceiver(
