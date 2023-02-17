@@ -67,7 +67,7 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
                         .maxRequestsPerBatch(metadataStoreConfig.getBatchingMaxOperations())
                         .asyncClient()
                         .get();
-        client.notifications(this::notificationCallback).join();
+        client.notifications(this::notificationCallback);
         super.registerSyncLister(Optional.ofNullable(metadataStoreConfig.getSynchronizer()));
     }
 

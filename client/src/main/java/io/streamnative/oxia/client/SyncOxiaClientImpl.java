@@ -25,7 +25,6 @@ import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.SyncOxiaClient;
 import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import lombok.AccessLevel;
@@ -105,9 +104,8 @@ class SyncOxiaClientImpl implements SyncOxiaClient {
     }
 
     @Override
-    public @NonNull CompletableFuture<Void> notifications(
-            @NonNull Consumer<Notification> notificationCallback) {
-        return asyncClient.notifications(notificationCallback);
+    public void notifications(@NonNull Consumer<Notification> notificationCallback) {
+        asyncClient.notifications(notificationCallback);
     }
 
     @Override

@@ -60,7 +60,7 @@ public class OxiaClientIT {
     @BeforeAll
     static void beforeAll() {
         client = new OxiaClientBuilder(oxia.getServiceAddress()).asyncClient().join();
-        client.notifications(notifications::add).join();
+        client.notifications(notifications::add);
     }
 
     @AfterAll

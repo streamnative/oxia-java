@@ -143,10 +143,9 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     }
 
     @Override
-    public @NonNull CompletableFuture<Void> notifications(
-            @NonNull Consumer<Notification> notificationCallback) {
+    public void notifications(@NonNull Consumer<Notification> notificationCallback) {
         notificationManager.registerCallback(notificationCallback);
-        return notificationManager.startIfRequired();
+        notificationManager.startIfRequired();
     }
 
     private Flux<String> list(
