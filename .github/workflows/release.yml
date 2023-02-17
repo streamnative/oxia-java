@@ -10,7 +10,6 @@ jobs:
       - name: Checkout Project Code
         uses: actions/checkout@v3
         with:
-          token: ${{ secrets.SNBOT_GITHUB_TOKEN }}
           path: code
           fetch-depth: 0
 
