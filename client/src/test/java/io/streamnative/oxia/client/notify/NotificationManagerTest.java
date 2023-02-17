@@ -65,8 +65,8 @@ class NotificationManagerTest {
 
         @Mock Function<Long, ShardNotificationReceiver> receiverFactory;
         @Mock ShardManager shardManager;
-        @Mock ShardNotificationReceiver receiver1, receiver2;
-        @Mock Consumer<Notification> callback1, callback2;
+        @Mock ShardNotificationReceiver receiver1;
+        @Mock ShardNotificationReceiver receiver2;
         NotificationManager manager;
         CompositeCallback callback = new CompositeCallback();
 
