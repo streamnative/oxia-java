@@ -7,14 +7,6 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-#      - name: Checkout CI Code
-#        uses: actions/checkout@v3
-#        with:
-#          repository: streamnative/streamnative-ci
-#          token: ${{ secrets.SNBOT_GITHUB_TOKEN }}
-#          path: ci
-#          fetch-depth: 0
-
       - name: Checkout Project Code
         uses: actions/checkout@v3
         with:
@@ -29,12 +21,7 @@ jobs:
           java-version: 17
 
       - name: Package Maven Project And Upload
-#        env:
-#          SNBOT_USER: snbot
-#          SNBOT_PASSWORD: ${{ secrets.SNBOT_GITHUB_TOKEN }}
-#          SNBOT_SECRET_PASSPHRASE: ${{ secrets.SNBOT_SECRET_PASSPHRASE }}
         run: |
-#          ./ci/.github/bot/setup-git.sh
           pushd code
           mvn --no-transfer-progress --batch-mode versions:set -DremoveSnapshot
           RELEASE_VERSION=$(mvn --no-transfer-progress --batch-mode help:evaluate -Dexpression=project.version -q -DforceStdout)
