@@ -144,8 +144,10 @@ class NotificationManagerTest {
         String serverAddress2 = "address2";
         String serverName1 = InProcessServerBuilder.generateName();
         String serverName2 = InProcessServerBuilder.generateName();
-        Server server1, server2;
-        ManagedChannel channel1, channel2;
+        Server server1;
+        Server server2;
+        ManagedChannel channel1;
+        ManagedChannel channel2;
 
         long shardId1 = 1L;
         long shardId2 = 2L;
