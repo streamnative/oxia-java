@@ -33,6 +33,11 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v1
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Package Maven Project And Upload
         env:
           SNBOT_USER: snbot
