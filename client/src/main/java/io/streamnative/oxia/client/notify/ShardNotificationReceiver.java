@@ -18,7 +18,6 @@ package io.streamnative.oxia.client.notify;
 import static io.streamnative.oxia.client.api.Notification.KeyModified;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static lombok.AccessLevel.PACKAGE;
-
 import io.streamnative.oxia.client.ProtoUtil;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.Notification.KeyCreated;
@@ -30,9 +29,7 @@ import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import lombok.Getter;
@@ -45,8 +42,6 @@ import reactor.util.retry.RetryBackoffSpec;
 
 @Slf4j
 public class ShardNotificationReceiver extends GrpcResponseStream {
-    private final Set<Consumer<Notification>> callbacks = ConcurrentHashMap.newKeySet();
-    private CompletableFuture<Void> started;
 
     @Getter(PACKAGE)
     private final long shardId;
@@ -112,11 +107,7 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
                             };
                         })
                 .filter(Objects::nonNull)
-                .forEach(n -> callbacks.parallelStream().forEach(c -> c.accept(n)));
-    }
-
-    public void registerCallback(@NonNull Consumer<Notification> callback) {
-        callbacks.add(callback);
+                .forEach(callback::accept);
     }
 
     public long getOffset() {
