@@ -83,7 +83,7 @@ public class NotificationManager implements AutoCloseable, Consumer<ShardManager
 
     public void registerCallback(@NonNull Consumer<Notification> callback) {
         if (closed) {
-            throw new IllegalStateException("|Notification manager has been closed");
+            throw new IllegalStateException("Notification manager has been closed");
         }
         compositeCallback.add(callback);
     }
