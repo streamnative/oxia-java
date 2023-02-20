@@ -53,7 +53,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @ExtendWith(MockitoExtension.class)
-class NotificationManagerImplTest {
+class ShardNotificationReceiverTest {
     BlockingQueue<Flux<NotificationBatch>> responses = new ArrayBlockingQueue<>(10);
 
     OxiaClientImplBase serviceImpl =
@@ -72,6 +72,8 @@ class NotificationManagerImplTest {
     String serverName = InProcessServerBuilder.generateName();
     Server server;
     ManagedChannel channel;
+
+    long shardId = 1L;
     @Mock Supplier<ReactorOxiaClientStub> stubFactory;
     @Mock Consumer<Notification> notificationCallback;
 
@@ -104,9 +106,9 @@ class NotificationManagerImplTest {
                         .putNotifications("key3", modified(3L))
                         .build();
         responses.offer(Flux.just(notifications).concatWith(Flux.never()));
-        try (var notificationManager = new NotificationManagerImpl(stubFactory)) {
-            notificationManager.registerCallback(notificationCallback);
-            assertThat(notificationManager.startIfRequired()).isCompleted();
+        try (var notificationReceiver =
+                new ShardNotificationReceiver(stubFactory, shardId, notificationCallback)) {
+            assertThat(notificationReceiver.start()).isCompleted();
             await()
                     .untilAsserted(
                             () -> {
@@ -120,9 +122,9 @@ class NotificationManagerImplTest {
     @Test
     void neverStarts() {
         responses.offer(Flux.never());
-        try (var notificationManager = new NotificationManagerImpl(stubFactory)) {
-            notificationManager.registerCallback(notificationCallback);
-            assertThat(notificationManager.startIfRequired()).isCompleted();
+        try (var notificationReceiver =
+                new ShardNotificationReceiver(stubFactory, shardId, notificationCallback)) {
+            assertThat(notificationReceiver.start()).isCompleted();
             await()
                     .untilAsserted(
                             () -> {
@@ -137,9 +139,9 @@ class NotificationManagerImplTest {
         var notifications =
                 NotificationBatch.newBuilder().putNotifications("key1", created(1L)).build();
         responses.offer(Flux.just(notifications).concatWith(Flux.never()));
-        try (var notificationManager = new NotificationManagerImpl(stubFactory)) {
-            notificationManager.registerCallback(notificationCallback);
-            assertThat(notificationManager.startIfRequired()).isCompleted();
+        try (var notificationReceiver =
+                new ShardNotificationReceiver(stubFactory, shardId, notificationCallback)) {
+            assertThat(notificationReceiver.start()).isCompleted();
             await()
                     .untilAsserted(
                             () -> {
@@ -154,9 +156,9 @@ class NotificationManagerImplTest {
         var notifications =
                 NotificationBatch.newBuilder().putNotifications("key1", created(1L)).build();
         responses.offer(Flux.just(notifications).concatWith(Flux.never()));
-        try (var notificationManager = new NotificationManagerImpl(stubFactory)) {
-            notificationManager.registerCallback(notificationCallback);
-            assertThat(notificationManager.startIfRequired()).isCompleted();
+        try (var notificationReceiver =
+                new ShardNotificationReceiver(stubFactory, shardId, notificationCallback)) {
+            assertThat(notificationReceiver.start()).isCompleted();
             await()
                     .untilAsserted(
                             () -> {

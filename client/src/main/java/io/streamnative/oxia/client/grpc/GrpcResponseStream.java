@@ -40,15 +40,6 @@ public abstract class GrpcResponseStream implements AutoCloseable {
         }
     }
 
-    public CompletableFuture<Void> startIfRequired() {
-        synchronized (this) {
-            if (disposable != null) {
-                return CompletableFuture.completedFuture(null);
-            }
-            return start(stubFactory.get(), disposable -> this.disposable = disposable);
-        }
-    }
-
     protected abstract CompletableFuture<Void> start(
             ReactorOxiaClientStub stub, Consumer<Disposable> consumer);
 
