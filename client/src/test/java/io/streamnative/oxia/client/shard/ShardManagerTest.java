@@ -25,6 +25,7 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import io.streamnative.oxia.client.CompositeConsumer;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import io.streamnative.oxia.proto.ShardAssignment;
 import io.streamnative.oxia.proto.ShardAssignments;
@@ -170,7 +171,7 @@ public class ShardManagerTest {
 
         @BeforeEach
         void mocking() {
-            manager = new ShardManager(stubFactory, assignments);
+            manager = new ShardManager(stubFactory, assignments, new CompositeConsumer<>());
         }
 
         @Test

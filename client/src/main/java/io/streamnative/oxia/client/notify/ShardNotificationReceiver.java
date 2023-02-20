@@ -29,15 +29,16 @@ import io.streamnative.oxia.proto.NotificationsRequest;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
 import java.time.Duration;
 import java.util.Objects;
-import java.util.Set;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.Disposable;
+import reactor.core.scheduler.Schedulers;
 import reactor.util.retry.Retry;
 import reactor.util.retry.RetryBackoffSpec;
 
@@ -46,16 +47,37 @@ public class NotificationManagerImpl extends GrpcResponseStream implements Notif
     private final Set<Consumer<Notification>> callbacks = ConcurrentHashMap.newKeySet();
     private CompletableFuture<Void> started;
 
-    public NotificationManagerImpl(
-            @NonNull Supplier<ReactorOxiaClientGrpc.ReactorOxiaClientStub> stubFactory) {
+    @Getter(PACKAGE)
+    private final long shardId;
+    @Getter(PACKAGE)
+    private final String leader;
+
+    private final Consumer<Notification> callback;
+    private Optional<Long> startingOffset = Optional.empty();
+
+    private long offset;
+
+    ShardNotificationReceiver(
+            @NonNull Supplier<ReactorOxiaClientGrpc.ReactorOxiaClientStub> stubFactory,
+            long shardId,
+            @NonNull String leader,
+            Consumer<Notification> callback) {
         super(stubFactory);
+        this.shardId = shardId;
+        this.leader = leader;
+        this.callback = callback;
+    }
+
+    public void start(long offset) {
+        startingOffset = Optional.of(offset);
+        this.start();
     }
 
     @Override
     protected CompletableFuture<Void> start(
             ReactorOxiaClientGrpc.ReactorOxiaClientStub stub, Consumer<Disposable> consumer) {
-        var request =
-                NotificationsRequest.newBuilder().setShardId(ProtoUtil.longToUint32(shardId)).build();
+        var request = NotificationsRequest.newBuilder().setShardId(ProtoUtil.longToUint32(shardId));
+        startingOffset.ifPresent(o -> request.setStartOffsetExclusive(ProtoUtil.longToUint32(o)));
         // TODO filter non-retriables?
         RetryBackoffSpec retrySpec =
                 Retry.backoff(Long.MAX_VALUE, Duration.ofMillis(100))
@@ -63,16 +85,18 @@ public class NotificationManagerImpl extends GrpcResponseStream implements Notif
                                 signal ->
                                         log.warn("Retrying receiving notifications for shard {}: {}", shardId, signal));
         var disposable =
-                stub.getNotifications(request)
+                stub.getNotifications(request.build())
                         .doOnError(t -> log.warn("Error receiving notifications for shard {}", shardId, t))
                         .retryWhen(retrySpec)
                         .repeat()
+                        .publishOn(Schedulers.newSingle("shard-" + shardId + "-notifications"))
                         .subscribe(this::notify);
         consumer.accept(disposable);
         return completedFuture(null);
     }
 
     private void notify(NotificationBatch batch) {
+        offset = Math.max(batch.getOffset(), offset);
         batch.getNotificationsMap().entrySet().stream()
                 .map(
                         e -> {
@@ -91,5 +115,9 @@ public class NotificationManagerImpl extends GrpcResponseStream implements Notif
 
     public void registerCallback(@NonNull Consumer<Notification> callback) {
         callbacks.add(callback);
+    }
+
+    public long getOffset() {
+        return offset;
     }
 }

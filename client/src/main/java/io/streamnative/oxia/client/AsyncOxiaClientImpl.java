@@ -59,7 +59,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
         Function<Long, String> leaderFn = shardManager::leader;
         var stubByShardId = leaderFn.andThen(reactorStubFactory);
-        var notificationManager = new NotificationManager(stubByShardId, shardManager);
+        var notificationManager = new NotificationManager(stubByShardId, leaderFn);
         var readBatchManager = BatchManager.newReadBatchManager(config, stubByShardId);
         var sessionManager = new SessionManager(config, stubByShardId);
         var writeBatchManager =
@@ -145,7 +145,6 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     @Override
     public void notifications(@NonNull Consumer<Notification> notificationCallback) {
         notificationManager.registerCallback(notificationCallback);
-        notificationManager.startIfRequired();
     }
 
     private Flux<String> list(

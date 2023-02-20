@@ -22,6 +22,7 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 
 import com.google.common.annotations.VisibleForTesting;
+import io.streamnative.oxia.client.CompositeConsumer;
 import io.streamnative.oxia.client.grpc.GrpcResponseStream;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import io.streamnative.oxia.proto.ShardAssignments;
@@ -49,16 +50,19 @@ import reactor.util.retry.RetryBackoffSpec;
 @Slf4j
 public class ShardManager extends GrpcResponseStream implements AutoCloseable {
     private final @NonNull Assignments assignments;
+    private final @NonNull CompositeConsumer<Assignments> callbacks;
 
     @VisibleForTesting
     ShardManager(
-            @NonNull Supplier<ReactorOxiaClientStub> stubFactory, @NonNull Assignments assignments) {
+            @NonNull Supplier<ReactorOxiaClientStub> stubFactory, @NonNull Assignments assignments,
+            @NonNull CompositeConsumer<Assignments> callbacks) {
         super(stubFactory);
         this.assignments = assignments;
+        this.callbacks = callbacks;
     }
 
     public ShardManager(@NonNull Supplier<ReactorOxiaClientStub> stubFactory) {
-        this(stubFactory, new Assignments(Xxh332HashRangeShardStrategy));
+        this(stubFactory, new Assignments(Xxh332HashRangeShardStrategy), new CompositeConsumer<>());
     }
 
     @Override
@@ -86,6 +90,7 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
         var updates =
                 shardAssignments.getAssignmentsList().stream().map(Shard::fromProto).collect(toList());
         assignments.update(updates);
+        callbacks.accept(assignments);
     }
 
     public long get(String key) {
@@ -100,8 +105,11 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
         return assignments.leader(shardId);
     }
 
-    @VisibleForTesting
-    static class Assignments {
+    public void addCallback(@NonNull Consumer<Assignments> callback) {
+        callbacks.add(callback);
+    }
+
+    public static class Assignments {
         private final Lock rLock;
         private final Lock wLock;
         private Map<Long, Shard> shards = new HashMap<>();
