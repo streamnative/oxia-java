@@ -52,15 +52,6 @@ public class NotificationManager implements AutoCloseable {
         this.shardManager = shardManager;
     }
 
-    public NotificationManager(
-            @NonNull Function<Long, ReactorOxiaClientStub> stubByShardId,
-            @NonNull ShardManager shardManager) {
-        this.compositeCallback = new CompositeCallback();
-        this.recieverFactory =
-                s -> new ShardNotificationReceiver(() -> stubByShardId.apply(s), s, compositeCallback);
-        this.shardManager = shardManager;
-    }
-
     public CompletableFuture<Void> startIfRequired() {
         start().thenRun(() -> started.complete(null));
         return started;
