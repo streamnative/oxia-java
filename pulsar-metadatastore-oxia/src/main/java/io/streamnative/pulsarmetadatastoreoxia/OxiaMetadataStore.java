@@ -63,11 +63,11 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
                         .clientIdentifier(identity)
                         /* TODO batchingMaxSizeKb: not supported by oxia _yet_ */
                         .sessionTimeout(Duration.ofMillis(metadataStoreConfig.getSessionTimeoutMillis()))
-                        .notificationCallback(this::notificationCallback)
                         .batchLinger(Duration.ofMillis(linger))
                         .maxRequestsPerBatch(metadataStoreConfig.getBatchingMaxOperations())
                         .asyncClient()
                         .get();
+        client.notifications(this::notificationCallback);
         super.registerSyncLister(Optional.ofNullable(metadataStoreConfig.getSynchronizer()));
     }
 

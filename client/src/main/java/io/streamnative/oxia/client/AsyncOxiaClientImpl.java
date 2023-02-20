@@ -20,6 +20,7 @@ import static java.util.stream.Collectors.toList;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.DeleteOption;
 import io.streamnative.oxia.client.api.GetResult;
+import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.PutOption;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.batch.BatchManager;
@@ -38,6 +39,7 @@ import io.streamnative.oxia.proto.ListResponse;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.AccessLevel;
@@ -54,10 +56,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         Supplier<ReactorOxiaClientStub> stubFactory =
                 () -> reactorStubFactory.apply(config.serviceAddress());
         var shardManager = new ShardManager(stubFactory);
-        var notificationManager =
-                config.notificationCallback() == null
-                        ? NotificationManager.NullObject
-                        : new NotificationManagerImpl(stubFactory, config.notificationCallback());
+        var notificationManager = new NotificationManagerImpl(stubFactory);
 
         Function<Long, String> leaderFn = shardManager::leader;
         var stubByShardId = leaderFn.andThen(reactorStubFactory);
@@ -76,8 +75,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                         sessionManager,
                         reactorStubFactory);
 
-        return CompletableFuture.allOf(shardManager.start(), notificationManager.start())
-                .thenApply(v -> client);
+        return shardManager.start().thenApply(v -> client);
     }
 
     private final ChannelManager channelManager;
@@ -142,6 +140,12 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                 .flatMap(shardId -> list(shardId, minKeyInclusive, maxKeyExclusive))
                 .collectList()
                 .toFuture();
+    }
+
+    @Override
+    public void notifications(@NonNull Consumer<Notification> notificationCallback) {
+        notificationManager.registerCallback(notificationCallback);
+        notificationManager.startIfRequired();
     }
 
     private Flux<String> list(

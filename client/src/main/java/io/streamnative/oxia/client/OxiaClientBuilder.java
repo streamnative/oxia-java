@@ -18,19 +18,16 @@ package io.streamnative.oxia.client;
 import static java.time.Duration.ZERO;
 
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
-import io.streamnative.oxia.client.api.ClientBuilder;
-import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.SyncOxiaClient;
 import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
-public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
+public class OxiaClientBuilder {
 
     public static final Duration DefaultBatchLinger = Duration.ofMillis(5);
     public static final int DefaultMaxRequestsPerBatch = 1000;
@@ -39,20 +36,12 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
     public static final Duration DefaultSessionTimeout = Duration.ofSeconds(15);
 
     @NonNull private final String serviceAddress;
-    private Consumer<Notification> notificationCallback;
     @NonNull private Duration requestTimeout = DefaultRequestTimeout;
     @NonNull private Duration batchLinger = DefaultBatchLinger;
     private int maxRequestsPerBatch = DefaultMaxRequestsPerBatch;
     private int operationQueueCapacity = DefaultOperationQueueCapacity;
     @NonNull private Duration sessionTimeout = DefaultSessionTimeout;
     @NonNull private Supplier<String> clientIdentifier = OxiaClientBuilder::randomClientIdentifier;
-
-    @Override
-    public @NonNull OxiaClientBuilder notificationCallback(
-            @NonNull Consumer<Notification> notificationCallback) {
-        this.notificationCallback = notificationCallback;
-        return this;
-    }
 
     public @NonNull OxiaClientBuilder requestTimeout(@NonNull Duration requestTimeout) {
         if (requestTimeout.isNegative() || requestTimeout.equals(ZERO)) {
@@ -112,7 +101,6 @@ public class OxiaClientBuilder implements ClientBuilder<OxiaClientBuilder> {
         var config =
                 new ClientConfig(
                         serviceAddress,
-                        notificationCallback,
                         requestTimeout,
                         batchLinger,
                         maxRequestsPerBatch,

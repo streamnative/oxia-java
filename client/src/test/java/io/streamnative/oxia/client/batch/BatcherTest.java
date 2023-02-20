@@ -62,7 +62,6 @@ class BatcherTest {
     ClientConfig config =
             new ClientConfig(
                     "address",
-                    n -> {},
                     Duration.ofMillis(100),
                     Duration.ofMillis(1000),
                     10,
