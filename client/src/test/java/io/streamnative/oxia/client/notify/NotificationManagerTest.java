@@ -44,6 +44,7 @@ import io.streamnative.oxia.proto.NotificationBatch;
 import io.streamnative.oxia.proto.NotificationsRequest;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -148,7 +149,7 @@ class NotificationManagerTest {
             manager.accept(changes2);
 
             verify(receiver2).close();
-            verify(receiver3).start(shard2offset);
+            verify(receiver3).start(Optional.of(shard2offset));
             verifyNoMoreInteractions(receiver1, receiver2);
         }
 

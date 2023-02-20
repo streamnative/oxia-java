@@ -31,7 +31,7 @@ public abstract class GrpcResponseStream implements AutoCloseable {
 
     private volatile Disposable disposable;
 
-    public CompletableFuture<Void> start() {
+    public @NonNull CompletableFuture<Void> start() {
         synchronized (this) {
             if (disposable != null) {
                 throw new IllegalStateException("Already started");
@@ -40,17 +40,8 @@ public abstract class GrpcResponseStream implements AutoCloseable {
         }
     }
 
-    public CompletableFuture<Void> startIfRequired() {
-        synchronized (this) {
-            if (disposable != null) {
-                return CompletableFuture.completedFuture(null);
-            }
-            return start(stubFactory.get(), disposable -> this.disposable = disposable);
-        }
-    }
-
-    protected abstract CompletableFuture<Void> start(
-            ReactorOxiaClientStub stub, Consumer<Disposable> consumer);
+    protected abstract @NonNull CompletableFuture<Void> start(
+            @NonNull ReactorOxiaClientStub stub, @NonNull Consumer<Disposable> consumer);
 
     @Override
     public void close() {

@@ -49,28 +49,28 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
     @Getter(PACKAGE)
     private final long shardId;
 
-    private final Consumer<Notification> callback;
-    private Optional<Long> startingOffset = Optional.empty();
+    private final @NonNull Consumer<Notification> callback;
+    private @NonNull Optional<Long> startingOffset = Optional.empty();
 
     private long offset;
 
     ShardNotificationReceiver(
             @NonNull Supplier<ReactorOxiaClientStub> stubFactory,
             long shardId,
-            Consumer<Notification> callback) {
+            @NonNull Consumer<Notification> callback) {
         super(stubFactory);
         this.shardId = shardId;
         this.callback = callback;
     }
 
-    public void start(long offset) {
-        startingOffset = Optional.of(offset);
+    public void start(@NonNull Optional<Long> offset) {
+        startingOffset = offset;
         this.start();
     }
 
     @Override
-    protected CompletableFuture<Void> start(
-            ReactorOxiaClientStub stub, Consumer<Disposable> consumer) {
+    protected @NonNull CompletableFuture<Void> start(
+            @NonNull ReactorOxiaClientStub stub, @NonNull Consumer<Disposable> consumer) {
         var request = NotificationsRequest.newBuilder().setShardId(ProtoUtil.longToUint32(shardId));
         startingOffset.ifPresent(o -> request.setStartOffsetExclusive(ProtoUtil.longToUint32(o)));
         // TODO filter non-retriables?
@@ -90,7 +90,7 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
         return completedFuture(null);
     }
 
-    private void notify(NotificationBatch batch) {
+    private void notify(@NonNull NotificationBatch batch) {
         offset = Math.max(batch.getOffset(), offset);
         batch.getNotificationsMap().entrySet().stream()
                 .map(

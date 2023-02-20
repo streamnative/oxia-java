@@ -49,7 +49,7 @@ import reactor.core.publisher.Flux;
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
-    static CompletableFuture<AsyncOxiaClient> newInstance(ClientConfig config) {
+    static @NonNull CompletableFuture<AsyncOxiaClient> newInstance(@NonNull ClientConfig config) {
         var channelManager = new ChannelManager();
         var reactorStubFactory = channelManager.getReactorStubFactory();
         Supplier<ReactorOxiaClientStub> stubFactory =
@@ -78,13 +78,13 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         return shardManager.start().thenApply(v -> client);
     }
 
-    private final ChannelManager channelManager;
-    private final ShardManager shardManager;
-    private final NotificationManager notificationManager;
-    private final BatchManager readBatchManager;
-    private final BatchManager writeBatchManager;
-    private final SessionManager sessionManager;
-    private final StubFactory<ReactorOxiaClientStub> reactorStubFactory;
+    private final @NonNull ChannelManager channelManager;
+    private final @NonNull ShardManager shardManager;
+    private final @NonNull NotificationManager notificationManager;
+    private final @NonNull BatchManager readBatchManager;
+    private final @NonNull BatchManager writeBatchManager;
+    private final @NonNull SessionManager sessionManager;
+    private final @NonNull StubFactory<ReactorOxiaClientStub> reactorStubFactory;
 
     @Override
     public @NonNull CompletableFuture<PutResult> put(
@@ -100,7 +100,8 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     }
 
     @Override
-    public @NonNull CompletableFuture<Boolean> delete(@NonNull String key, DeleteOption... options) {
+    public @NonNull CompletableFuture<Boolean> delete(
+            @NonNull String key, @NonNull DeleteOption... options) {
         var validatedOptions = DeleteOption.validate(options);
         var shardId = shardManager.get(key);
         var callback = new CompletableFuture<Boolean>();
@@ -147,7 +148,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         notificationManager.registerCallback(notificationCallback);
     }
 
-    private Flux<String> list(
+    private @NonNull Flux<String> list(
             long shardId, @NonNull String minKeyInclusive, @NonNull String maxKeyExclusive) {
         var leader = shardManager.leader(shardId);
         var stub = reactorStubFactory.apply(leader);

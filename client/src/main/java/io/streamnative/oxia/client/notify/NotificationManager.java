@@ -23,6 +23,7 @@ import io.streamnative.oxia.client.grpc.ChannelManager.StubFactory;
 import io.streamnative.oxia.client.grpc.GrpcResponseStream;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChanges;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
@@ -35,8 +36,8 @@ import lombok.extern.slf4j.Slf4j;
 public class NotificationManager implements AutoCloseable, Consumer<ShardAssignmentChanges> {
     private final ConcurrentMap<Long, ShardNotificationReceiver> shardReceivers =
             new ConcurrentHashMap<>();
-    private final ShardNotificationReceiver.Factory recieverFactory;
-    private final CompositeConsumer<Notification> compositeCallback;
+    private final @NonNull ShardNotificationReceiver.Factory recieverFactory;
+    private final @NonNull CompositeConsumer<Notification> compositeCallback;
     private volatile boolean closed = false;
 
     public NotificationManager(@NonNull StubFactory<ReactorOxiaClientStub> reactorStubFactory) {
@@ -46,7 +47,7 @@ public class NotificationManager implements AutoCloseable, Consumer<ShardAssignm
     }
 
     @Override
-    public void accept(ShardAssignmentChanges changes) {
+    public void accept(@NonNull ShardAssignmentChanges changes) {
         if (closed) {
             return;
         }
@@ -62,11 +63,11 @@ public class NotificationManager implements AutoCloseable, Consumer<ShardAssignm
                 .reassigned()
                 .forEach(
                         s -> {
-                            var receiver = shardReceivers.remove(s.shardId());
-                            receiver.close();
+                            var receiver = Optional.ofNullable(shardReceivers.remove(s.shardId()));
+                            receiver.ifPresent(GrpcResponseStream::close);
                             shardReceivers
                                     .computeIfAbsent(s.shardId(), id -> recieverFactory.newReceiver(id, s.toLeader()))
-                                    .start(receiver.getOffset());
+                                    .start(receiver.map(ShardNotificationReceiver::getOffset));
                         });
     }
 

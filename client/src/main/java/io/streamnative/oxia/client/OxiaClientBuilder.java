@@ -115,7 +115,7 @@ public class OxiaClientBuilder {
         return new SyncOxiaClientImpl(asyncClient().join());
     }
 
-    public static String randomClientIdentifier() {
+    public static @NonNull String randomClientIdentifier() {
         return "oxia-client-java:" + UUID.randomUUID();
     }
 }
