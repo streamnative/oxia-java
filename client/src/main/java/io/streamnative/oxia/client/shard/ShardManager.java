@@ -16,10 +16,15 @@
 package io.streamnative.oxia.client.shard;
 
 import static io.streamnative.oxia.client.shard.HashRangeShardStrategy.Xxh332HashRangeShardStrategy;
+import static io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChange.Added;
+import static io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChange.Reassigned;
+import static io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChange.Removed;
 import static java.util.Collections.unmodifiableMap;
+import static java.util.Collections.unmodifiableSet;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
+import static java.util.stream.Collectors.toSet;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.streamnative.oxia.client.CompositeConsumer;
@@ -33,6 +38,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -50,13 +56,13 @@ import reactor.util.retry.RetryBackoffSpec;
 @Slf4j
 public class ShardManager extends GrpcResponseStream implements AutoCloseable {
     private final @NonNull Assignments assignments;
-    private final @NonNull CompositeConsumer<Assignments> callbacks;
+    private final @NonNull CompositeConsumer<ShardAssignmentChanges> callbacks;
 
     @VisibleForTesting
     ShardManager(
             @NonNull Supplier<ReactorOxiaClientStub> stubFactory,
             @NonNull Assignments assignments,
-            @NonNull CompositeConsumer<Assignments> callbacks) {
+            @NonNull CompositeConsumer<ShardAssignmentChanges> callbacks) {
         super(stubFactory);
         this.assignments = assignments;
         this.callbacks = callbacks;
@@ -90,8 +96,71 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
     private void updateAssignments(ShardAssignments shardAssignments) {
         var updates =
                 shardAssignments.getAssignmentsList().stream().map(Shard::fromProto).collect(toList());
+        var updatedMap = recomputeShardHashBoundaries(assignments.shards, updates);
+        var changes = computeShardLeaderChanges(assignments.shards, updatedMap);
         assignments.update(updates);
-        callbacks.accept(assignments);
+        callbacks.accept(changes);
+    }
+
+    @VisibleForTesting
+    static Map<Long, Shard> recomputeShardHashBoundaries(
+            Map<Long, Shard> assignments, List<Shard> updates) {
+        var toDelete = new ArrayList<>();
+        updates.forEach(
+                update ->
+                        update
+                                .findOverlapping(assignments.values())
+                                .forEach(
+                                        existing -> {
+                                            log.info("Deleting shard {} as it overlaps with {}", existing, update);
+                                            toDelete.add(existing.id());
+                                        }));
+
+        return unmodifiableMap(
+                Stream.concat(
+                                assignments.entrySet().stream()
+                                        .filter(e -> !toDelete.contains(e.getKey()))
+                                        .map(Map.Entry::getValue),
+                                updates.stream())
+                        .collect(toMap(Shard::id, identity())));
+    }
+
+    @VisibleForTesting
+    static ShardAssignmentChanges computeShardLeaderChanges(
+            Map<Long, Shard> oldAssignments, Map<Long, Shard> newAssignments) {
+        Set<Removed> removed =
+                oldAssignments.entrySet().stream()
+                        .filter(e -> !newAssignments.containsKey(e.getKey()))
+                        .map(e -> new Removed(e.getKey(), e.getValue().leader()))
+                        .collect(toSet());
+        Set<Added> added =
+                newAssignments.entrySet().stream()
+                        .filter(e -> !oldAssignments.containsKey(e.getKey()))
+                        .map(e -> new Added(e.getKey(), e.getValue().leader()))
+                        .collect(toSet());
+        Set<Reassigned> changed =
+                oldAssignments.entrySet().stream()
+                        .filter(e -> newAssignments.containsKey(e.getKey()))
+                        .filter(e -> !newAssignments.get(e.getKey()).leader().equals(e.getValue().leader()))
+                        .map(
+                                e ->
+                                        new Reassigned(
+                                                e.getKey(), e.getValue().leader(), newAssignments.get(e.getKey()).leader()))
+                        .collect(toSet());
+        return new ShardAssignmentChanges(
+                unmodifiableSet(added), unmodifiableSet(removed), unmodifiableSet(changed));
+    }
+
+    public record ShardAssignmentChanges(
+            Set<Added> added, Set<Removed> removed, Set<Reassigned> reassigned) {}
+
+    public sealed interface ShardAssignmentChange permits Added, Removed, Reassigned {
+        record Added(long shardId, @NonNull String leader) implements ShardAssignmentChange {}
+
+        record Removed(long shardId, @NonNull String leader) implements ShardAssignmentChange {}
+
+        record Reassigned(long shardId, @NonNull String fromLeader, @NonNull String toLeader)
+                implements ShardAssignmentChange {}
     }
 
     public long get(String key) {
@@ -106,7 +175,7 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
         return assignments.leader(shardId);
     }
 
-    public void addCallback(@NonNull Consumer<Assignments> callback) {
+    public void addCallback(@NonNull Consumer<ShardAssignmentChanges> callback) {
         callbacks.add(callback);
     }
 
@@ -160,31 +229,10 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
         void update(List<Shard> updates) {
             try {
                 wLock.lock();
-                shards = applyUpdates(shards, updates);
+                shards = recomputeShardHashBoundaries(shards, updates);
             } finally {
                 wLock.unlock();
             }
-        }
-
-        @VisibleForTesting
-        static Map<Long, Shard> applyUpdates(Map<Long, Shard> assignments, List<Shard> updates) {
-            var toDelete = new ArrayList<>();
-            updates.forEach(
-                    update ->
-                            update
-                                    .findOverlapping(assignments.values())
-                                    .forEach(
-                                            existing -> {
-                                                log.info("Deleting shard {} as it overlaps with {}", existing, update);
-                                                toDelete.add(existing.id());
-                                            }));
-            return unmodifiableMap(
-                    Stream.concat(
-                                    assignments.entrySet().stream()
-                                            .filter(e -> !toDelete.contains(e.getKey()))
-                                            .map(Map.Entry::getValue),
-                                    updates.stream())
-                            .collect(toMap(Shard::id, identity())));
         }
     }
 }

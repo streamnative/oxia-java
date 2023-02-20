@@ -15,70 +15,59 @@
  */
 package io.streamnative.oxia.client.notify;
 
-import static java.util.stream.Collectors.toSet;
 import static lombok.AccessLevel.PACKAGE;
 
 import io.streamnative.oxia.client.CompositeConsumer;
 import io.streamnative.oxia.client.api.Notification;
+import io.streamnative.oxia.client.grpc.ChannelManager.StubFactory;
 import io.streamnative.oxia.client.grpc.GrpcResponseStream;
-import io.streamnative.oxia.client.shard.ShardManager;
+import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChanges;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @RequiredArgsConstructor(access = PACKAGE)
 @Slf4j
-public class NotificationManager implements AutoCloseable, Consumer<ShardManager.Assignments> {
+public class NotificationManager implements AutoCloseable, Consumer<ShardAssignmentChanges> {
     private final ConcurrentMap<Long, ShardNotificationReceiver> shardReceivers =
             new ConcurrentHashMap<>();
-    private final Function<Long, ShardNotificationReceiver> recieverFactory;
+    private final ShardNotificationReceiver.Factory recieverFactory;
     private final CompositeConsumer<Notification> compositeCallback;
     private volatile boolean closed = false;
 
-    public NotificationManager(
-            @NonNull Function<Long, ReactorOxiaClientStub> stubByShardId,
-            @NonNull Function<Long, String> leaderByShardId) {
+    public NotificationManager(@NonNull StubFactory<ReactorOxiaClientStub> reactorStubFactory) {
         this.compositeCallback = new CompositeConsumer<>();
         this.recieverFactory =
-                s ->
-                        new ShardNotificationReceiver(
-                                () -> stubByShardId.apply(s), s, leaderByShardId.apply(s), compositeCallback);
+                new ShardNotificationReceiver.Factory(reactorStubFactory, compositeCallback);
     }
 
     @Override
-    public void accept(ShardManager.Assignments assignments) {
+    public void accept(ShardAssignmentChanges changes) {
         if (closed) {
             return;
         }
-        List<Long> shards = assignments.getAll();
-
-        Set<Long> removed =
-                shardReceivers.keySet().stream().filter(s -> !shards.contains(s)).collect(toSet());
-        Set<Long> added =
-                shards.stream().filter(key -> !shardReceivers.containsKey(key)).collect(toSet());
-        Set<Long> changed =
-                shardReceivers.entrySet().stream()
-                        .filter(e -> shards.contains(e.getKey()))
-                        .filter(e -> !assignments.leader(e.getKey()).equals(e.getValue().getLeader()))
-                        .map(Map.Entry::getKey)
-                        .collect(toSet());
-
-        removed.forEach(s -> shardReceivers.remove(s).close());
-        added.forEach(s -> shardReceivers.computeIfAbsent(s, recieverFactory::apply).start());
-        changed.forEach(
-                s -> {
-                    var receiver = shardReceivers.remove(s);
-                    receiver.close();
-                    shardReceivers.computeIfAbsent(s, recieverFactory::apply).start(receiver.getOffset());
-                });
+        changes.removed().forEach(s -> shardReceivers.remove(s.shardId()).close());
+        changes
+                .added()
+                .forEach(
+                        s ->
+                                shardReceivers
+                                        .computeIfAbsent(s.shardId(), id -> recieverFactory.newReceiver(id, s.leader()))
+                                        .start());
+        changes
+                .reassigned()
+                .forEach(
+                        s -> {
+                            var receiver = shardReceivers.remove(s.shardId());
+                            receiver.close();
+                            shardReceivers
+                                    .computeIfAbsent(s.shardId(), id -> recieverFactory.newReceiver(id, s.toLeader()))
+                                    .start(receiver.getOffset());
+                        });
     }
 
     public void registerCallback(@NonNull Consumer<Notification> callback) {

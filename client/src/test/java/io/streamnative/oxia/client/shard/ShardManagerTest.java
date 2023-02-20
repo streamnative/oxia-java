@@ -54,7 +54,7 @@ public class ShardManagerTest {
     class AssignmentsTests {
 
         @Test
-        void applyUpdates() {
+        void recomputeShardHashBoundaries() {
             var existing =
                     Map.of(
                             1L, new Shard(1L, "leader 1", new HashRange(1, 3)),
@@ -71,7 +71,7 @@ public class ShardManagerTest {
                             new Shard(7L, "leader 3", new HashRange(6, 6)), //
                             new Shard(4L, "leader 2", new HashRange(10, 12)) // Merge
                             );
-            var assignments = ShardManager.Assignments.applyUpdates(existing, updates);
+            var assignments = ShardManager.recomputeShardHashBoundaries(existing, updates);
             assertThat(assignments)
                     .satisfies(
                             a -> {
