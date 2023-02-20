@@ -64,33 +64,31 @@ class NotificationManagerTest {
 
         @Mock ShardManager.Assignments assignments;
         @Mock Function<Long, ShardNotificationReceiver> receiverFactory;
-        @Mock ShardManager shardManager;
         @Mock ShardNotificationReceiver receiver1;
         @Mock ShardNotificationReceiver receiver2;
+        @Mock ShardNotificationReceiver receiver3;
         NotificationManager manager;
         CompositeConsumer<Notification> callback = new CompositeConsumer<>();
 
         @BeforeEach
         void setup() {
             manager = new NotificationManager(receiverFactory, callback);
-            when(shardManager.getAll()).thenReturn(List.of(1L, 2L));
             when(receiverFactory.apply(1L)).thenReturn(receiver1);
             when(receiverFactory.apply(2L)).thenReturn(receiver2);
             when(receiver1.start()).thenReturn(CompletableFuture.completedFuture(null));
             when(receiver2.start()).thenReturn(CompletableFuture.completedFuture(null));
-            when(receiver1.getShardId()).thenReturn(1L);
-            when(receiver2.getShardId()).thenReturn(2L);
-            when(receiver1.getLeader()).thenReturn("leader1");
-            when(receiver2.getLeader()).thenReturn("leader2");
+            //            when(receiver1.getShardId()).thenReturn(1L);
+            //            when(receiver2.getShardId()).thenReturn(2L);
+            //            when(receiver1.getLeader()).thenReturn("leader1");
+            //            when(receiver2.getLeader()).thenReturn("leader2");
 
             when(assignments.getAll()).thenReturn(List.of(1L, 2L));
-            when(assignments.leader(1L)).thenReturn("leader1");
-            when(assignments.leader(2L)).thenReturn("leader2");
+            //            when(assignments.leader(1L)).thenReturn("leader1");
+            //            when(assignments.leader(2L)).thenReturn("leader2");
         }
 
         @Test
         void accept() {
-            verify(shardManager).addCallback(manager);
             manager.accept(assignments);
 
             verify(receiver1).start();
@@ -98,8 +96,66 @@ class NotificationManagerTest {
         }
 
         @Test
+        void acceptRemoveShard() {
+            manager.accept(assignments);
+
+            verify(receiver1).start();
+            verify(receiver2).start();
+
+            when(assignments.getAll()).thenReturn(List.of(1L));
+            when(receiver1.getLeader()).thenReturn("leader1");
+            when(assignments.leader(1L)).thenReturn("leader1");
+
+            manager.accept(assignments);
+
+            verify(receiver2).close();
+        }
+
+        @Test
+        void acceptAddShard() {
+            manager.accept(assignments);
+
+            verify(receiver1).start();
+            verify(receiver2).start();
+
+            when(assignments.getAll()).thenReturn(List.of(1L, 2L, 3L));
+            when(receiverFactory.apply(3L)).thenReturn(receiver3);
+            when(receiver3.start()).thenReturn(CompletableFuture.completedFuture(null));
+
+            when(receiver1.getLeader()).thenReturn("leader1");
+            when(receiver2.getLeader()).thenReturn("leader2");
+            when(assignments.leader(1L)).thenReturn("leader1");
+            when(assignments.leader(2L)).thenReturn("leader2");
+
+            manager.accept(assignments);
+
+            verify(receiver3).start();
+        }
+
+        @Test
+        void acceptReassignShard() {
+            manager.accept(assignments);
+
+            verify(receiver1).start();
+            verify(receiver2).start();
+
+            when(receiver1.getLeader()).thenReturn("leader1");
+            when(receiver2.getLeader()).thenReturn("leader2");
+            when(assignments.leader(1L)).thenReturn("leader1");
+            when(assignments.leader(2L)).thenReturn("leader2_2");
+
+            when(receiverFactory.apply(2L)).thenReturn(receiver3);
+            var shard2offset = 1000L;
+            when(receiver2.getOffset()).thenReturn(shard2offset);
+
+            manager.accept(assignments);
+
+            verify(receiver2).close();
+            verify(receiver3).start(shard2offset);
+        }
+
+        @Test
         void close() throws Exception {
-            verify(shardManager).addCallback(manager);
             manager.accept(assignments);
             manager.close();
             verify(receiverFactory).apply(1L);

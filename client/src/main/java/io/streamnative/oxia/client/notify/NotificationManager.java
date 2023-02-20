@@ -62,7 +62,8 @@ public class NotificationManager implements AutoCloseable, Consumer<ShardManager
 
         Set<Long> removed =
                 shardReceivers.keySet().stream().filter(s -> !shards.contains(s)).collect(toSet());
-        Set<Long> added = shards.stream().filter(shardReceivers::containsKey).collect(toSet());
+        Set<Long> added =
+                shards.stream().filter(key -> !shardReceivers.containsKey(key)).collect(toSet());
         Set<Long> changed =
                 shardReceivers.entrySet().stream()
                         .filter(e -> shards.contains(e.getKey()))

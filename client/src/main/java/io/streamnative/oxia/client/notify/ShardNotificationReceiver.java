@@ -18,6 +18,7 @@ package io.streamnative.oxia.client.notify;
 import static io.streamnative.oxia.client.api.Notification.KeyModified;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static lombok.AccessLevel.PACKAGE;
+
 import io.streamnative.oxia.client.ProtoUtil;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.Notification.KeyCreated;
