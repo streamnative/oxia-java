@@ -79,14 +79,7 @@ class NotificationManagerTest {
             when(receiverFactory.apply(2L)).thenReturn(receiver2);
             when(receiver1.start()).thenReturn(CompletableFuture.completedFuture(null));
             when(receiver2.start()).thenReturn(CompletableFuture.completedFuture(null));
-            //            when(receiver1.getShardId()).thenReturn(1L);
-            //            when(receiver2.getShardId()).thenReturn(2L);
-            //            when(receiver1.getLeader()).thenReturn("leader1");
-            //            when(receiver2.getLeader()).thenReturn("leader2");
-
             when(assignments.getAll()).thenReturn(List.of(1L, 2L));
-            //            when(assignments.leader(1L)).thenReturn("leader1");
-            //            when(assignments.leader(2L)).thenReturn("leader2");
         }
 
         @Test
