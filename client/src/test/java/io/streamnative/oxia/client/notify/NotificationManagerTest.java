@@ -19,6 +19,7 @@ import static io.streamnative.oxia.proto.NotificationType.KEY_CREATED;
 import static io.streamnative.oxia.proto.NotificationType.KEY_DELETED;
 import static io.streamnative.oxia.proto.NotificationType.KEY_MODIFIED;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -52,6 +53,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.stubbing.Answer;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -203,8 +205,6 @@ class NotificationManagerTest {
                     }
                 };
 
-        String serverAddress1 = "address1";
-        String serverAddress2 = "address2";
         String serverName1 = InProcessServerBuilder.generateName();
         String serverName2 = InProcessServerBuilder.generateName();
         Server server1;
@@ -215,7 +215,8 @@ class NotificationManagerTest {
         long shardId1 = 1L;
         long shardId2 = 2L;
         @Mock Function<Long, ReactorOxiaClientGrpc.ReactorOxiaClientStub> stubByShardId;
-        @Mock ShardManager shardManager;
+        @Mock Function<Long, String> leaderByShardId;
+        @Mock ShardManager.Assignments assignments;
         @Mock Consumer<Notification> notificationCallback;
 
         @BeforeEach
@@ -240,6 +241,9 @@ class NotificationManagerTest {
             var stub2 = ReactorOxiaClientGrpc.newReactorStub(channel2);
             when(stubByShardId.apply(shardId1)).thenReturn(stub1);
             when(stubByShardId.apply(shardId2)).thenReturn(stub2);
+            when(assignments.getAll()).thenReturn(List.of(shardId1, shardId2));
+            when(leaderByShardId.apply(anyLong()))
+                    .thenAnswer((Answer<String>) i -> "leader" + i.getArguments()[0].toString());
         }
 
         @Test
@@ -253,12 +257,12 @@ class NotificationManagerTest {
             var notifications2 =
                     NotificationBatch.newBuilder().putNotifications("key2", deleted()).build();
 
-            when(shardManager.getAll()).thenReturn(List.of(shardId1, shardId2));
             responses1.offer(Flux.just(notifications1).concatWith(Flux.never()));
             responses2.offer(Flux.just(notifications2).concatWith(Flux.never()));
 
-            try (var manager = new NotificationManager(stubByShardId, shardManager::leader)) {
+            try (var manager = new NotificationManager(stubByShardId, leaderByShardId)) {
                 manager.registerCallback(notificationCallback);
+                manager.accept(assignments);
                 await()
                         .untilAsserted(
                                 () -> {
