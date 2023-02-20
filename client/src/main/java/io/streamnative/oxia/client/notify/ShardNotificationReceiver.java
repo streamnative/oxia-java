@@ -30,8 +30,9 @@ import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import lombok.Getter;
@@ -43,12 +44,13 @@ import reactor.util.retry.Retry;
 import reactor.util.retry.RetryBackoffSpec;
 
 @Slf4j
-public class NotificationManagerImpl extends GrpcResponseStream implements NotificationManager {
+public class ShardNotificationReceiver extends GrpcResponseStream {
     private final Set<Consumer<Notification>> callbacks = ConcurrentHashMap.newKeySet();
     private CompletableFuture<Void> started;
 
     @Getter(PACKAGE)
     private final long shardId;
+
     @Getter(PACKAGE)
     private final String leader;
 

@@ -15,6 +15,7 @@
  */
 package io.streamnative.oxia.client;
 
+
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -31,5 +32,4 @@ public class CompositeConsumer<T> implements Consumer<T> {
     public void accept(T t) {
         callbacks.parallelStream().forEach(c -> c.accept(t));
     }
-
 }

@@ -23,6 +23,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
+
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
 import io.grpc.Status;
@@ -61,16 +62,11 @@ class NotificationManagerTest {
     @DisplayName("Simple lifecycle tests")
     class SimpleLifecycleTest {
 
-        @Mock
-        ShardManager.Assignments assignments;
-        @Mock
-        Function<Long, ShardNotificationReceiver> receiverFactory;
-        @Mock
-        ShardManager shardManager;
-        @Mock
-        ShardNotificationReceiver receiver1;
-        @Mock
-        ShardNotificationReceiver receiver2;
+        @Mock ShardManager.Assignments assignments;
+        @Mock Function<Long, ShardNotificationReceiver> receiverFactory;
+        @Mock ShardManager shardManager;
+        @Mock ShardNotificationReceiver receiver1;
+        @Mock ShardNotificationReceiver receiver2;
         NotificationManager manager;
         CompositeConsumer<Notification> callback = new CompositeConsumer<>();
 
@@ -112,7 +108,8 @@ class NotificationManagerTest {
             verify(receiver1).close();
             verify(receiver2).close();
 
-            assertThatThrownBy(() -> manager.registerCallback(callback)).isInstanceOf(IllegalStateException.class);
+            assertThatThrownBy(() -> manager.registerCallback(callback))
+                    .isInstanceOf(IllegalStateException.class);
 
             manager.accept(assignments);
             verifyNoMoreInteractions(receiverFactory, receiver1, receiver2);
@@ -161,12 +158,9 @@ class NotificationManagerTest {
 
         long shardId1 = 1L;
         long shardId2 = 2L;
-        @Mock
-        Function<Long, ReactorOxiaClientGrpc.ReactorOxiaClientStub> stubByShardId;
-        @Mock
-        ShardManager shardManager;
-        @Mock
-        Consumer<Notification> notificationCallback;
+        @Mock Function<Long, ReactorOxiaClientGrpc.ReactorOxiaClientStub> stubByShardId;
+        @Mock ShardManager shardManager;
+        @Mock Consumer<Notification> notificationCallback;
 
         @BeforeEach
         void beforeEach() throws Exception {

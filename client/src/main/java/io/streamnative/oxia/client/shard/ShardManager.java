@@ -54,7 +54,8 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
 
     @VisibleForTesting
     ShardManager(
-            @NonNull Supplier<ReactorOxiaClientStub> stubFactory, @NonNull Assignments assignments,
+            @NonNull Supplier<ReactorOxiaClientStub> stubFactory,
+            @NonNull Assignments assignments,
             @NonNull CompositeConsumer<Assignments> callbacks) {
         super(stubFactory);
         this.assignments = assignments;
