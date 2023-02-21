@@ -50,6 +50,7 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import reactor.util.retry.Retry;
 import reactor.util.retry.RetryBackoffSpec;
 
@@ -84,6 +85,7 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
                         .doOnError(t -> log.warn("Error receiving shard assignments", t))
                         .retryWhen(retrySpec)
                         .repeat()
+                        .publishOn(Schedulers.newSingle("shard-assignments"))
                         .doOnNext(this::updateAssignments)
                         .publish();
         // Complete after the first response has been processed
