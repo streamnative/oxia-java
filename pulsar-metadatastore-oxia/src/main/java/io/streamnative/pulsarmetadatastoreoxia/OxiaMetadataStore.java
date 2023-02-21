@@ -35,6 +35,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.metadata.api.GetResult;
+import org.apache.pulsar.metadata.api.MetadataEventSynchronizer;
 import org.apache.pulsar.metadata.api.MetadataStoreConfig;
 import org.apache.pulsar.metadata.api.MetadataStoreException;
 import org.apache.pulsar.metadata.api.NotificationType;
@@ -48,6 +49,7 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
     private final AsyncOxiaClient client;
 
     private final String identity;
+    private final Optional<MetadataEventSynchronizer> synchronizer;
 
     OxiaMetadataStore(
             String serviceAddress, MetadataStoreConfig metadataStoreConfig, boolean enableSessionWatcher)
@@ -57,6 +59,7 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
         if (!metadataStoreConfig.isBatchingEnabled()) {
             linger = 0;
         }
+        this.synchronizer = Optional.ofNullable(metadataStoreConfig.getSynchronizer());
         identity = UUID.randomUUID().toString();
         client =
                 new OxiaClientBuilder(serviceAddress)
@@ -65,6 +68,7 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
                         .sessionTimeout(Duration.ofMillis(metadataStoreConfig.getSessionTimeoutMillis()))
                         .batchLinger(Duration.ofMillis(linger))
                         .maxRequestsPerBatch(metadataStoreConfig.getBatchingMaxOperations())
+                        .operationQueueCapacity(4000)
                         .asyncClient()
                         .get();
         client.notifications(this::notificationCallback);
@@ -72,31 +76,24 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
     }
 
     private void notificationCallback(Notification notification) {
+        if (notification.key().startsWith("__oxia") || this.isClosed.get()) {
+            return;
+        }
         if (notification instanceof Notification.KeyCreated keyCreated) {
-            super.receivedNotification(
+            receivedNotification(
                     new org.apache.pulsar.metadata.api.Notification(
                             NotificationType.Created, keyCreated.key()));
-            var parent = parent(keyCreated.key());
-            if (parent != null && parent.length() > 0) {
-                super.receivedNotification(
-                        new org.apache.pulsar.metadata.api.Notification(
-                                NotificationType.ChildrenChanged, parent));
-            }
+            notifyParentChildrenChanged(keyCreated.key());
 
         } else if (notification instanceof Notification.KeyModified keyModified) {
-            super.receivedNotification(
+            receivedNotification(
                     new org.apache.pulsar.metadata.api.Notification(
                             NotificationType.Modified, keyModified.key()));
         } else if (notification instanceof Notification.KeyDeleted keyDeleted) {
-            super.receivedNotification(
+            receivedNotification(
                     new org.apache.pulsar.metadata.api.Notification(
                             NotificationType.Deleted, keyDeleted.key()));
-            var parent = parent(keyDeleted.key());
-            if (parent != null && parent.length() > 0) {
-                super.receivedNotification(
-                        new org.apache.pulsar.metadata.api.Notification(
-                                NotificationType.ChildrenChanged, parent));
-            }
+            notifyParentChildrenChanged(keyDeleted.key());
         } else {
             log.error("Unknown notification type {}", notification);
         }
@@ -120,12 +117,13 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
                 version.createdTimestamp(),
                 version.modifiedTimestamp(),
                 version.sessionId().isPresent(),
-                version.clientIdentifier().stream().anyMatch(identity::equals));
+                version.clientIdentifier().stream().anyMatch(identity::equals),
+                version.modificationsCount() == 0);
     }
 
     @Override
     protected CompletableFuture<List<String>> getChildrenFromStore(String path) {
-        var pathWithSlash = (path.endsWith("/")) ? path : (path + "/");
+        var pathWithSlash = path + "/";
 
         return client
                 .list(pathWithSlash, pathWithSlash + "/")
@@ -189,16 +187,18 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
                     }
                     CompletableFuture<String> actualPath;
                     if (options.contains(CreateOption.Sequential)) {
+                        var parent = parent(path);
+                        var parentPath = parent == null ? "/" : parent;
+
                         actualPath =
                                 client
-                                        .put(counterPath(path), new byte[] {})
+                                        .put(parentPath, new byte[] {})
                                         .thenApply(
                                                 r -> String.format("%s%010d", path, r.version().modificationsCount()));
                         expectedVersion = Optional.of(-1L);
                     } else {
                         actualPath = CompletableFuture.completedFuture(path);
                     }
-                    var ephemeral = options.contains(CreateOption.Ephemeral);
                     var versionCondition =
                             expectedVersion
                                     .map(
@@ -210,7 +210,7 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
                                             })
                                     .orElse(PutOption.Unconditionally);
                     var putOptions =
-                            ephemeral
+                            options.contains(CreateOption.Ephemeral)
                                     ? new PutOption[] {PutOption.AsEphemeralRecord, versionCondition}
                                     : new PutOption[] {versionCondition};
                     return actualPath
@@ -225,13 +225,11 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
     }
 
     private <T> CompletionStage<T> convertException(Throwable ex) {
-        return (ex.getCause() instanceof UnexpectedVersionIdException)
+        return (ex.getCause() instanceof UnexpectedVersionIdException
+                        || ex.getCause() instanceof KeyAlreadyExistsException)
                 ? CompletableFuture.failedFuture(
                         new MetadataStoreException.BadVersionException(ex.getCause()))
-                : (ex.getCause() instanceof KeyAlreadyExistsException)
-                        ? CompletableFuture.failedFuture(
-                                new MetadataStoreException.AlreadyExistsException(ex.getCause()))
-                        : CompletableFuture.failedFuture(ex.getCause());
+                : CompletableFuture.failedFuture(ex.getCause());
     }
 
     private CompletableFuture<Void> createParents(String path) {
@@ -259,10 +257,6 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
                         });
     }
 
-    private String counterPath(String path) {
-        return "_oxia_pulsar/counter/" + path;
-    }
-
     @Override
     public void close() throws Exception {
         if (isClosed.compareAndSet(false, true)) {
@@ -271,6 +265,10 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
             }
             super.close();
         }
+    }
+
+    public Optional<MetadataEventSynchronizer> getMetadataEventSynchronizer() {
+        return synchronizer;
     }
 
     private record PathWithPutResult(String path, PutResult result) {}

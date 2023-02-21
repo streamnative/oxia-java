@@ -18,15 +18,12 @@ package io.streamnative.pulsarmetadatastoreoxia.bookkeeper;
 
 import io.streamnative.oxia.testcontainers.OxiaContainer;
 import io.streamnative.pulsarmetadatastoreoxia.OxiaTestBase;
-import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.metadata.bookkeeper.PulsarRegistrationClientTest;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
-import org.testng.annotations.Ignore;
-import org.testng.annotations.Test;
 
 @Slf4j
 public class OxiaPulsarRegistrationClientTest extends PulsarRegistrationClientTest
@@ -43,32 +40,4 @@ public class OxiaPulsarRegistrationClientTest extends PulsarRegistrationClientTe
     public Object[][] implementations() {
         return impl();
     }
-
-    // TODO -------- Failing tests:
-
-    @Ignore
-    @Test(dataProvider = "impl")
-    public void testGetWritableBookies(String provider, Supplier<String> urlSupplier)
-            throws Exception {}
-
-    @Override
-    @Ignore
-    @Test(dataProvider = "impl")
-    public void testGetReadonlyBookies(String provider, Supplier<String> urlSupplier)
-            throws Exception {}
-
-    @Test(enabled = false) // TODO fix failing test
-    @Override
-    public void testGetBookieServiceInfo(String provider, Supplier<String> urlSupplier)
-            throws Exception {}
-
-    @Test(enabled = false) // TODO fix failing test
-    @Override
-    public void testWatchWritableBookiesSuccess(String provider, Supplier<String> urlSupplier)
-            throws Exception {}
-
-    @Test(enabled = false) // TODO fix failing test
-    @Override
-    public void testWatchReadonlyBookiesSuccess(String provider, Supplier<String> urlSupplier)
-            throws Exception {}
 }

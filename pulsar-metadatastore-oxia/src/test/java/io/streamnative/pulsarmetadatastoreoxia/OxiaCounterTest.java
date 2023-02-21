@@ -21,9 +21,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.apache.pulsar.metadata.CounterTest;
 import org.testng.annotations.DataProvider;
-import org.testng.annotations.Ignore;
 
-@Ignore // TODO fix failing tests
 public class OxiaCounterTest extends CounterTest implements OxiaTestBase {
 
     @Getter @Setter private OxiaContainer container;

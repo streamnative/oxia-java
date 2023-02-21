@@ -22,9 +22,7 @@ import lombok.Setter;
 import org.apache.pulsar.metadata.LeaderElectionTest;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
-import org.testng.annotations.Ignore;
 
-@Ignore // TODO fix failing tests
 public class OxiaLeaderElectionTest extends LeaderElectionTest implements OxiaTestBase {
 
     @Getter @Setter private OxiaContainer container;

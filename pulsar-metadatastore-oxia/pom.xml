@@ -108,6 +108,12 @@
         </dependency>
         <dependency>
             <groupId>org.apache.pulsar</groupId>
+            <artifactId>buildtools</artifactId>
+            <version>${pulsar.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.pulsar</groupId>
             <artifactId>pulsar-metadata</artifactId>
             <version>${pulsar.version}</version>
             <type>test-jar</type>

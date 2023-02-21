@@ -18,15 +18,12 @@ package io.streamnative.pulsarmetadatastoreoxia.bookkeeper;
 
 import io.streamnative.oxia.testcontainers.OxiaContainer;
 import io.streamnative.pulsarmetadatastoreoxia.OxiaTestBase;
-import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.metadata.bookkeeper.PulsarLayoutManagerTest;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
-import org.testng.annotations.Ignore;
-import org.testng.annotations.Test;
 
 @Slf4j
 public class OxiaPulsarLayoutManagerTest extends PulsarLayoutManagerTest implements OxiaTestBase {
@@ -42,11 +39,4 @@ public class OxiaPulsarLayoutManagerTest extends PulsarLayoutManagerTest impleme
     public Object[][] implementations() {
         return impl();
     }
-
-    // TODO -------- Failing tests:
-
-    @Ignore
-    @Test(dataProvider = "impl")
-    public void testReadCreateDeleteLayout(String provider, Supplier<String> urlSupplier)
-            throws Exception {}
 }
