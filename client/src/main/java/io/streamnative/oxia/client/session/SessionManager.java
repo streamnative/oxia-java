@@ -82,29 +82,15 @@ public class SessionManager implements AutoCloseable, Consumer<ShardAssignmentCh
     @Override
     public void accept(@NonNull ShardAssignmentChanges changes) {
         if (!closed) {
-            // Added shards we get a new session when an ephemeral value is put
-            changes
-                    .removed()
-                    .forEach(
-                            s -> {
-                                closeQuietly(sessionsByShardId.remove(s.shardId()));
-                            });
-            changes
-                    .reassigned()
-                    .forEach(
-                            s -> {
-                                closeQuietly(sessionsByShardId.remove(s.shardId()))
-                                        .ifPresent(
-                                                c -> {
-                                                    sessionsByShardId.computeIfAbsent(
-                                                            s.shardId(),
-                                                            id -> {
-                                                                var session = factory.create(id);
-                                                                session.start();
-                                                                return session;
-                                                            });
-                                                });
-                            });
+            // Added shards do not have any sessions to keep alive
+            var removed = changes.removed();
+            removed.forEach(s -> closeQuietly(sessionsByShardId.remove(s.shardId())));
+
+            var reassigned = changes.reassigned();
+            reassigned.forEach(
+                    s ->
+                            closeQuietly(sessionsByShardId.remove(s.shardId()))
+                                    .ifPresent(c -> getSession(s.shardId())));
         }
     }
 
