@@ -33,6 +33,7 @@ import lombok.RequiredArgsConstructor;
 public class ChannelManager implements Function<String, Channel>, AutoCloseable {
     private final ConcurrentMap<String, ManagedChannel> channels = new ConcurrentHashMap<>();
     @Getter private final @NonNull StubFactory<ReactorOxiaClientStub> reactorStubFactory;
+    private volatile boolean closed;
 
     public ChannelManager() {
         reactorStubFactory = reactorStubFactory(this);
@@ -40,6 +41,10 @@ public class ChannelManager implements Function<String, Channel>, AutoCloseable 
 
     @Override
     public void close() throws Exception {
+        if (closed) {
+            return;
+        }
+        closed = true;
         channels.values().forEach(this::shutdown);
     }
 
@@ -56,6 +61,9 @@ public class ChannelManager implements Function<String, Channel>, AutoCloseable 
 
     @Override
     public @NonNull Channel apply(@NonNull String address) {
+        if (closed) {
+            throw new IllegalStateException("Channel manager is closed");
+        }
         var serviceAddress = new ServiceAddress(address);
         return channels.computeIfAbsent(
                 address,

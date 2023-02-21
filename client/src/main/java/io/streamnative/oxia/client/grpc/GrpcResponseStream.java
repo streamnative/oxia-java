@@ -49,6 +49,7 @@ public abstract class GrpcResponseStream implements AutoCloseable {
             synchronized (this) {
                 if (disposable != null) {
                     disposable.dispose();
+                    disposable = null;
                 }
             }
         }

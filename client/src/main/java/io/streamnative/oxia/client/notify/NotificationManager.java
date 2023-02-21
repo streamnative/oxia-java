@@ -80,6 +80,9 @@ public class NotificationManager implements AutoCloseable, Consumer<ShardAssignm
 
     @Override
     public void close() throws Exception {
+        if (closed) {
+            return;
+        }
         closed = true;
         shardReceivers.values().parallelStream().forEach(GrpcResponseStream::close);
     }
