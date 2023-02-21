@@ -64,6 +64,9 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
     }
 
     public void start(@NonNull Optional<Long> offset) {
+        if (offset.isPresent() && offset.get() < 0) {
+            throw new IllegalArgumentException("Invalid offset: " + offset.get());
+        }
         startingOffset = offset;
         this.start();
     }
