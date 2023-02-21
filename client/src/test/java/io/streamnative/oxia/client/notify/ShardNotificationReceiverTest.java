@@ -68,12 +68,12 @@ class ShardNotificationReceiverTest {
                 }
             };
 
-    String serverAddress = "address";
     String serverName = InProcessServerBuilder.generateName();
     Server server;
     ManagedChannel channel;
 
     long shardId = 1L;
+    String leader = "address";
     @Mock Supplier<ReactorOxiaClientStub> stubFactory;
     @Mock Consumer<Notification> notificationCallback;
 

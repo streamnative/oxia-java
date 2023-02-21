@@ -57,6 +57,9 @@ public class BatchManager implements AutoCloseable {
 
     @Override
     public void close() throws Exception {
+        if (closed) {
+            return;
+        }
         closed = true;
         var exceptions =
                 batchersByShardId.values().stream()

@@ -61,6 +61,9 @@ public class SessionManager implements AutoCloseable {
 
     @Override
     public void close() throws Exception {
+        if (closed) {
+            return;
+        }
         closed = true;
         var closedSessions = new ArrayList<Session>();
         sessionsByShardId.entrySet().parallelStream()
@@ -72,7 +75,7 @@ public class SessionManager implements AutoCloseable {
                                 closedSessions.add(session);
                             } catch (Exception e) {
                                 log.error(
-                                        "Error closing session {} shard {} ",
+                                        "Error closing session {} on shard {}",
                                         session.getSessionId(),
                                         entry.getKey(),
                                         e);

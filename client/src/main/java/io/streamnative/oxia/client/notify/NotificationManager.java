@@ -15,79 +15,75 @@
  */
 package io.streamnative.oxia.client.notify;
 
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toMap;
 import static lombok.AccessLevel.PACKAGE;
 
+import io.streamnative.oxia.client.CompositeConsumer;
 import io.streamnative.oxia.client.api.Notification;
+import io.streamnative.oxia.client.grpc.ChannelManager.StubFactory;
 import io.streamnative.oxia.client.grpc.GrpcResponseStream;
-import io.streamnative.oxia.client.shard.ShardManager;
+import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChanges;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @RequiredArgsConstructor(access = PACKAGE)
 @Slf4j
-public class NotificationManager implements AutoCloseable {
+public class NotificationManager implements AutoCloseable, Consumer<ShardAssignmentChanges> {
     private final ConcurrentMap<Long, ShardNotificationReceiver> shardReceivers =
             new ConcurrentHashMap<>();
-    private final ShardManager shardManager;
-    private final Function<Long, ShardNotificationReceiver> recieverFactory;
-    private final CompositeCallback compositeCallback;
-    private final CompletableFuture<Void> started = new CompletableFuture<>();
+    private final @NonNull ShardNotificationReceiver.Factory recieverFactory;
+    private final @NonNull CompositeConsumer<Notification> compositeCallback;
+    private volatile boolean closed = false;
 
-    public NotificationManager(
-            @NonNull Function<Long, ReactorOxiaClientStub> stubByShardId,
-            @NonNull ShardManager shardManager) {
-        this.compositeCallback = new CompositeCallback();
+    public NotificationManager(@NonNull StubFactory<ReactorOxiaClientStub> reactorStubFactory) {
+        this.compositeCallback = new CompositeConsumer<>();
         this.recieverFactory =
-                s -> new ShardNotificationReceiver(() -> stubByShardId.apply(s), s, compositeCallback);
-        this.shardManager = shardManager;
+                new ShardNotificationReceiver.Factory(reactorStubFactory, compositeCallback);
     }
 
-    public CompletableFuture<Void> startIfRequired() {
-        start().thenRun(() -> started.complete(null));
-        return started;
-    }
-
-    CompletableFuture<Void> start() {
-        shardReceivers.putAll(
-                shardManager.getAll().parallelStream()
-                        .map(recieverFactory::apply)
-                        .collect(toMap(ShardNotificationReceiver::getShardId, Function.identity())));
-        return CompletableFuture.allOf(
-                shardReceivers.values().stream()
-                        .map(GrpcResponseStream::start)
-                        .collect(toList())
-                        .toArray(new CompletableFuture[shardReceivers.size()]));
+    @Override
+    public void accept(@NonNull ShardAssignmentChanges changes) {
+        if (closed) {
+            return;
+        }
+        changes.removed().forEach(s -> shardReceivers.remove(s.shardId()).close());
+        changes
+                .added()
+                .forEach(
+                        s ->
+                                shardReceivers
+                                        .computeIfAbsent(s.shardId(), id -> recieverFactory.newReceiver(id, s.leader()))
+                                        .start());
+        changes
+                .reassigned()
+                .forEach(
+                        s -> {
+                            var receiver = Optional.ofNullable(shardReceivers.remove(s.shardId()));
+                            receiver.ifPresent(GrpcResponseStream::close);
+                            shardReceivers
+                                    .computeIfAbsent(s.shardId(), id -> recieverFactory.newReceiver(id, s.toLeader()))
+                                    .start(receiver.map(ShardNotificationReceiver::getOffset));
+                        });
     }
 
     public void registerCallback(@NonNull Consumer<Notification> callback) {
+        if (closed) {
+            throw new IllegalStateException("Notification manager has been closed");
+        }
         compositeCallback.add(callback);
     }
 
     @Override
     public void close() throws Exception {
+        if (closed) {
+            return;
+        }
+        closed = true;
         shardReceivers.values().parallelStream().forEach(GrpcResponseStream::close);
-    }
-
-    static class CompositeCallback implements Consumer<Notification> {
-        final Set<Consumer<Notification>> callbacks = ConcurrentHashMap.newKeySet();
-
-        void add(Consumer<Notification> callback) {
-            callbacks.add(callback);
-        }
-
-        @Override
-        public void accept(Notification notification) {
-            callbacks.parallelStream().forEach(c -> c.accept(notification));
-        }
     }
 }

@@ -94,10 +94,13 @@ var keys = client.list("aMinInc", "bMaxExc").join();
 A stream of record change notifications that can be consumed.
 
 ```java
-var client = new OxiaClientBuilder("localhost:6648")
-  .notificationCallback(
-    notification -> System.out.println("Received notification: " + notification)
-  ).asyncClient().join();
+client.notifications(
+  notification -> switch (notification) {
+    case KeyCreated c -> System.out.println("Created " + c.key() + ":" + c.version());
+    case KeyDeleted d -> System.out.println("Deleted " + d.key());
+    case KeyModified m -> System.out.println("Modified " + m.key() + ":" + m.version());
+  }
+);
 ```
 
 ## Configuration

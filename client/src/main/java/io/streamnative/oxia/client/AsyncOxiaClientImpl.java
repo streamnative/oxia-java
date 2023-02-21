@@ -49,16 +49,17 @@ import reactor.core.publisher.Flux;
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
-    static CompletableFuture<AsyncOxiaClient> newInstance(ClientConfig config) {
+    static @NonNull CompletableFuture<AsyncOxiaClient> newInstance(@NonNull ClientConfig config) {
         var channelManager = new ChannelManager();
         var reactorStubFactory = channelManager.getReactorStubFactory();
         Supplier<ReactorOxiaClientStub> stubFactory =
                 () -> reactorStubFactory.apply(config.serviceAddress());
         var shardManager = new ShardManager(stubFactory);
+        var notificationManager = new NotificationManager(reactorStubFactory);
 
         Function<Long, String> leaderFn = shardManager::leader;
         var stubByShardId = leaderFn.andThen(reactorStubFactory);
-        var notificationManager = new NotificationManager(stubByShardId, shardManager);
+        shardManager.addCallback(notificationManager);
         var readBatchManager = BatchManager.newReadBatchManager(config, stubByShardId);
         var sessionManager = new SessionManager(config, stubByShardId);
         var writeBatchManager =
@@ -77,17 +78,19 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         return shardManager.start().thenApply(v -> client);
     }
 
-    private final ChannelManager channelManager;
-    private final ShardManager shardManager;
-    private final NotificationManager notificationManager;
-    private final BatchManager readBatchManager;
-    private final BatchManager writeBatchManager;
-    private final SessionManager sessionManager;
-    private final StubFactory<ReactorOxiaClientStub> reactorStubFactory;
+    private final @NonNull ChannelManager channelManager;
+    private final @NonNull ShardManager shardManager;
+    private final @NonNull NotificationManager notificationManager;
+    private final @NonNull BatchManager readBatchManager;
+    private final @NonNull BatchManager writeBatchManager;
+    private final @NonNull SessionManager sessionManager;
+    private final @NonNull StubFactory<ReactorOxiaClientStub> reactorStubFactory;
+    private volatile boolean closed;
 
     @Override
     public @NonNull CompletableFuture<PutResult> put(
             @NonNull String key, byte @NonNull [] value, @NonNull PutOption... options) {
+        checkIfClosed();
         var validatedOptions = PutOption.validate(options);
         var shardId = shardManager.get(key);
         var callback = new CompletableFuture<PutResult>();
@@ -99,7 +102,9 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     }
 
     @Override
-    public @NonNull CompletableFuture<Boolean> delete(@NonNull String key, DeleteOption... options) {
+    public @NonNull CompletableFuture<Boolean> delete(
+            @NonNull String key, @NonNull DeleteOption... options) {
+        checkIfClosed();
         var validatedOptions = DeleteOption.validate(options);
         var shardId = shardManager.get(key);
         var callback = new CompletableFuture<Boolean>();
@@ -111,6 +116,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     @Override
     public @NonNull CompletableFuture<Void> deleteRange(
             @NonNull String minKeyInclusive, @NonNull String maxKeyExclusive) {
+        checkIfClosed();
         return CompletableFuture.allOf(
                 shardManager.getAll().stream()
                         .map(writeBatchManager::getBatcher)
@@ -126,6 +132,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
     @Override
     public @NonNull CompletableFuture<GetResult> get(@NonNull String key) {
+        checkIfClosed();
         var shardId = shardManager.get(key);
         var callback = new CompletableFuture<GetResult>();
         readBatchManager.getBatcher(shardId).add(new GetOperation(callback, key));
@@ -135,6 +142,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     @Override
     public @NonNull CompletableFuture<List<String>> list(
             @NonNull String minKeyInclusive, @NonNull String maxKeyExclusive) {
+        checkIfClosed();
         return Flux.fromIterable(shardManager.getAll())
                 .flatMap(shardId -> list(shardId, minKeyInclusive, maxKeyExclusive))
                 .collectList()
@@ -143,12 +151,13 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
     @Override
     public void notifications(@NonNull Consumer<Notification> notificationCallback) {
+        checkIfClosed();
         notificationManager.registerCallback(notificationCallback);
-        notificationManager.startIfRequired();
     }
 
-    private Flux<String> list(
+    private @NonNull Flux<String> list(
             long shardId, @NonNull String minKeyInclusive, @NonNull String maxKeyExclusive) {
+        checkIfClosed();
         var leader = shardManager.leader(shardId);
         var stub = reactorStubFactory.apply(leader);
         var request =
@@ -162,11 +171,21 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
     @Override
     public void close() throws Exception {
+        if (closed) {
+            return;
+        }
+        closed = true;
         readBatchManager.close();
         writeBatchManager.close();
         sessionManager.close();
         notificationManager.close();
         shardManager.close();
         channelManager.close();
+    }
+
+    private void checkIfClosed() {
+        if (closed) {
+            throw new IllegalStateException("Client has been closed");
+        }
     }
 }
