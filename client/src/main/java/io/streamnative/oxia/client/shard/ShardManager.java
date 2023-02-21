@@ -145,9 +145,12 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
                         .filter(e -> newAssignments.containsKey(e.getKey()))
                         .filter(e -> !newAssignments.get(e.getKey()).leader().equals(e.getValue().leader()))
                         .map(
-                                e ->
-                                        new Reassigned(
-                                                e.getKey(), e.getValue().leader(), newAssignments.get(e.getKey()).leader()))
+                                e -> {
+                                    var shardId = e.getKey();
+                                    var oldLeader = e.getValue().leader();
+                                    var newLeader = newAssignments.get(e.getKey()).leader();
+                                    return new Reassigned(shardId, oldLeader, newLeader);
+                                })
                         .collect(toSet());
         return new ShardAssignmentChanges(
                 unmodifiableSet(added), unmodifiableSet(removed), unmodifiableSet(changed));
