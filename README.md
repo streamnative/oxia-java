@@ -35,9 +35,9 @@ Common build actions:
 1. Go to the [release workflow][release-workflow]
 2. Click the gray <kbd>Run workflow</kbd> button on the righthand side
 3. Choose:
-    * **use workflow from**: branch `master`
-    * **Git repository**: `streamnative/oxia-java`
-    * **JDK version**: `17`
+   * **use workflow from**: branch `master`
+   * **Git repository**: `streamnative/oxia-java`
+   * **JDK version**: `17`
 4. Click the green <kbd>Run workflow</kbd> button
 
 ### Questions
@@ -51,3 +51,4 @@ Common build actions:
 [release-workflow]: https://github.com/streamnative/streamnative-ci/actions/workflows/maven-tag-deploy.yml
 [dependencies-file]: https://github.com/streamnative/streamnative-ci/blob/master/images/dependencies.json
 [ci-repo]: https://github.com/streamnative/streamnative-ci
+
