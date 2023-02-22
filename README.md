@@ -30,20 +30,22 @@ Common build actions:
 | Format code                     | `mvn spotless:apply`                     |
 | Generate license headers        | `mvn license:format`                     |
 
-[oxia]: https://github.com/streamnative/oxia
-
 ## Release
 
-1. Go to `https://github.com/streamnative/streamnative-ci/actions/workflows/maven-tag-deploy.yml`
-2. Click `Run workflow` gray button in right side.
-3. Choose `use workflow from` `master`, input `streamnative/oxia-java` in `Git repository`, input `17` `JDK version`
-4. Click `Run worklow` green button
+1. Go to the [release workflow][release-workflow]
+2. Click the gray <kbd>Run workflow</kbd> button on the righthand side
+3. Choose:
+    * **use workflow from**: branch `master`
+    * **Git repository**: `streamnative/oxia-java`
+    * **JDK version**: `17`
+4. Click the green <kbd>Run workflow</kbd> button
 
-> **Q:** Why do we publish it in `streamnative-ci` ?
->
-> **A:** `streamnative-ci` repo has some secrets and scripts to use streamnative bot account.
->
-> **Q:** What can I do if want to put the release `nar` package to `pulsar-cloud` image ?
->
-> **A:** Ask EE team to add the release version in `images/dependencies.json` of `streamnative-ci` repo.
+### Questions
 
+* **Q: _Why do we publish it in `streamnative-ci`?_**<br/>
+  **A:** `streamnative-ci` repo has some secrets and scripts to use streamnative bot account
+* **Q: _What can I do if want to put the release `nar` package to `pulsar-cloud` image?_**<br/>
+  **A:** Ask EE team to add the release version in `images/dependencies.json` of `streamnative-ci` repo
+
+[oxia]: https://github.com/streamnative/oxia
+[release-workflow]: https://github.com/streamnative/streamnative-ci/actions/workflows/maven-tag-deploy.yml
