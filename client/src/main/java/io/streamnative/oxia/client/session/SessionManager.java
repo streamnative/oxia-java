@@ -20,12 +20,15 @@ import static lombok.AccessLevel.PACKAGE;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.streamnative.oxia.client.ClientConfig;
+import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChanges;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +36,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RequiredArgsConstructor(access = PACKAGE)
-public class SessionManager implements AutoCloseable {
+public class SessionManager implements AutoCloseable, Consumer<ShardAssignmentChanges> {
 
     private final ConcurrentMap<Long, Session> sessionsByShardId = new ConcurrentHashMap<>();
     private final @NonNull Session.Factory factory;
@@ -67,25 +70,39 @@ public class SessionManager implements AutoCloseable {
         closed = true;
         var closedSessions = new ArrayList<Session>();
         sessionsByShardId.entrySet().parallelStream()
-                .forEach(
-                        entry -> {
-                            var session = entry.getValue();
-                            try {
-                                session.close();
-                                closedSessions.add(session);
-                            } catch (Exception e) {
-                                log.error(
-                                        "Error closing session {} on shard {}",
-                                        session.getSessionId(),
-                                        entry.getKey(),
-                                        e);
-                            }
-                        });
+                .forEach(entry -> closeQuietly(entry.getValue()).ifPresent(closedSessions::add));
         closedSessions.forEach(s -> sessionsByShardId.remove(s.getSessionId()));
     }
 
     @VisibleForTesting
     Map<Long, Session> sessions() {
         return unmodifiableMap(new HashMap<>(sessionsByShardId));
+    }
+
+    @Override
+    public void accept(@NonNull ShardAssignmentChanges changes) {
+        if (!closed) {
+            // Added shards do not have any sessions to keep alive
+            var removed = changes.removed();
+            removed.forEach(s -> closeQuietly(sessionsByShardId.remove(s.shardId())));
+
+            var reassigned = changes.reassigned();
+            reassigned.forEach(
+                    s ->
+                            closeQuietly(sessionsByShardId.remove(s.shardId()))
+                                    .ifPresent(c -> getSession(s.shardId())));
+        }
+    }
+
+    @VisibleForTesting
+    static Optional<Session> closeQuietly(Session session) {
+        if (session != null) {
+            try {
+                session.close();
+            } catch (Exception e) {
+                log.error("Error closing session {}", session.getSessionId(), e);
+            }
+        }
+        return Optional.ofNullable(session);
     }
 }

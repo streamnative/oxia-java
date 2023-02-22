@@ -18,11 +18,16 @@ package io.streamnative.oxia.client.session;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChange.Reassigned;
+import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChange.Removed;
+import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChanges;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -79,5 +84,41 @@ class SessionManagerTest {
                             assertThat(manager.sessions()).doesNotContainKey(shardId);
                         });
         assertThatThrownBy(() -> manager.getSession(shardId)).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void accept() throws Exception {
+        Session session21 = mock(Session.class);
+        Session session22 = mock(Session.class);
+        var shardId1 = 1L;
+        var shardId2 = 2L;
+        when(factory.create(shardId1)).thenReturn(session);
+        when(factory.create(shardId2)).thenReturn(session21, session22);
+
+        assertThat(manager.getSession(shardId1)).isSameAs(session);
+        assertThat(manager.getSession(shardId2)).isSameAs(session21);
+
+        manager.accept(
+                new ShardAssignmentChanges(
+                        Set.of(),
+                        Set.of(new Removed(shardId1, "leader1")),
+                        Set.of(new Reassigned(shardId2, "leader2", "leader3"))));
+
+        assertThat(manager.sessions()).doesNotContainKey(shardId1);
+        assertThat(manager.getSession(shardId2)).isSameAs(session22);
+        verify(session).close();
+    }
+
+    @Test
+    void closeQuietly() throws Exception {
+        var value = SessionManager.closeQuietly(session);
+        assertThat(value).containsSame(session);
+        verify(session).close();
+    }
+
+    @Test
+    void closeQuietlyNull() throws Exception {
+        var value = SessionManager.closeQuietly(null);
+        assertThat(value).isEmpty();
     }
 }
