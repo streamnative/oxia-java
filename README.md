@@ -45,7 +45,7 @@ Common build actions:
 * **Q: _Why do we publish it in `streamnative-ci`?_**<br/>
   **A:** `streamnative-ci` repo has some secrets and scripts to use streamnative bot account
 * **Q: _What can I do if want to put the release `nar` package to `pulsar-cloud` image?_**<br/>
-  **A:** Ask the EE team to add the release version in the [`images/dependencies.json`][dependencies-file] file of th [`streamnative-ci`][ci-repo] repo
+  **A:** Ask the EE team to add the release version in the [`images/dependencies.json`][dependencies-file] file in the [`streamnative-ci`][ci-repo] repo
 
 [oxia]: https://github.com/streamnative/oxia
 [release-workflow]: https://github.com/streamnative/streamnative-ci/actions/workflows/maven-tag-deploy.yml
