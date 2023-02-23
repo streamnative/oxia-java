@@ -86,11 +86,17 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 }
             }
 
-            PutRequest toProto(long sessionId, @NonNull String clientIdentifier) {
+            PutRequest toProto(@NonNull Optional<SessionInfo> sessionInfo) {
                 var builder = PutRequest.newBuilder().setKey(key).setValue(ByteString.copyFrom(value));
                 expectedVersionId.ifPresent(builder::setExpectedVersionId);
                 if (ephemeral) {
-                    builder.setSessionId(sessionId).setClientIdentity(clientIdentifier);
+                    if (sessionInfo.isPresent()) {
+                        builder
+                                .setSessionId(sessionInfo.get().sessionId())
+                                .setClientIdentity(sessionInfo.get().clientIdentifier());
+                    } else {
+                        throw new IllegalStateException("session context required for ephemeral operation");
+                    }
                 }
                 return builder.build();
             }
@@ -130,6 +136,8 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 result = 31 * result + Arrays.hashCode(value);
                 return result;
             }
+
+            record SessionInfo(long sessionId, @NonNull String clientIdentifier) {}
         }
 
         record DeleteOperation(

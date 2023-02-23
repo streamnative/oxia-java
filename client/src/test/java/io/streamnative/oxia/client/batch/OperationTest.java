@@ -35,6 +35,7 @@ import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
+import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation.SessionInfo;
 import io.streamnative.oxia.proto.DeleteRangeResponse;
 import io.streamnative.oxia.proto.DeleteResponse;
 import io.streamnative.oxia.proto.GetResponse;
@@ -147,6 +148,7 @@ class OperationTest {
         PutOperation op = new PutOperation(callback, "key", payload, Optional.of(10L), false);
         long sessionId = 0L;
         String clientId = "client-id";
+        SessionInfo sessionInfo = new SessionInfo(sessionId, clientId);
 
         @Test
         void constructInvalidExpectedVersionId() {
@@ -162,7 +164,7 @@ class OperationTest {
         @Test
         void toProtoNoExpectedVersion() {
             var op = new PutOperation(callback, "key", payload, Optional.empty(), false);
-            var request = op.toProto(sessionId, clientId);
+            var request = op.toProto(Optional.empty());
             assertThat(request)
                     .satisfies(
                             r -> {
@@ -177,7 +179,7 @@ class OperationTest {
         @Test
         void toProtoExpectedVersion() {
             var op = new PutOperation(callback, "key", payload, Optional.of(1L), false);
-            var request = op.toProto(sessionId, clientId);
+            var request = op.toProto(Optional.empty());
             assertThat(request)
                     .satisfies(
                             r -> {
@@ -192,7 +194,7 @@ class OperationTest {
         @Test
         void toProtoNoExistingVersion() {
             var op = new PutOperation(callback, "key", payload, Optional.of(KeyNotExists), false);
-            var request = op.toProto(sessionId, clientId);
+            var request = op.toProto(Optional.empty());
             assertThat(request)
                     .satisfies(
                             r -> {
@@ -201,6 +203,21 @@ class OperationTest {
                                 assertThat(r.getExpectedVersionId()).isEqualTo(KeyNotExists);
                                 assertThat(r.hasSessionId()).isFalse();
                                 assertThat(r.hasClientIdentity()).isFalse();
+                            });
+        }
+
+        @Test
+        void toProtoEphemeral() {
+            var op = new PutOperation(callback, "key", payload, Optional.empty(), true);
+            var request = op.toProto(Optional.of(sessionInfo));
+            assertThat(request)
+                    .satisfies(
+                            r -> {
+                                assertThat(r.getKey()).isEqualTo(op.key());
+                                assertThat(r.getValue().toByteArray()).isEqualTo(op.value());
+                                assertThat(r.hasExpectedVersionId()).isFalse();
+                                assertThat(r.getSessionId()).isEqualTo(sessionId);
+                                assertThat(r.getClientIdentity()).isEqualTo(clientId);
                             });
         }
 
