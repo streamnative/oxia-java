@@ -26,6 +26,7 @@ import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
+import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation.SessionInfo;
 import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.proto.GetResponse;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
@@ -34,6 +35,7 @@ import io.streamnative.oxia.proto.WriteRequest;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
 import lombok.Getter;
 import lombok.NonNull;
@@ -58,6 +60,7 @@ public interface Batch {
         @VisibleForTesting final List<DeleteRangeOperation> deleteRanges = new ArrayList<>();
         private final SessionManager sessionManager;
         private final String clientIdentifier;
+        private boolean containsEphemeral;
 
         WriteBatch(
                 @NonNull Function<Long, ReactorOxiaClientStub> stubByShardId,
@@ -73,6 +76,7 @@ public interface Batch {
         public void add(@NonNull Operation<?> operation) {
             if (operation instanceof PutOperation p) {
                 puts.add(p);
+                containsEphemeral |= p.ephemeral();
             } else if (operation instanceof DeleteOperation d) {
                 deletes.add(d);
             } else if (operation instanceof DeleteRangeOperation r) {
@@ -107,11 +111,18 @@ public interface Batch {
 
         @NonNull
         WriteRequest toProto() {
-            var sessionId = sessionManager.getSession(getShardId()).getSessionId();
+            Optional<SessionInfo> sessionInfo;
+            if (containsEphemeral) {
+                sessionInfo =
+                        Optional.of(
+                                new SessionInfo(
+                                        sessionManager.getSession(getShardId()).getSessionId(), clientIdentifier));
+            } else {
+                sessionInfo = Optional.empty();
+            }
             return WriteRequest.newBuilder()
                     .setShardId(longToUint32(getShardId()))
-                    .addAllPuts(
-                            puts.stream().map(p -> p.toProto(sessionId, clientIdentifier)).collect(toList()))
+                    .addAllPuts(puts.stream().map(p -> p.toProto(sessionInfo)).collect(toList()))
                     .addAllDeletes(deletes.stream().map(DeleteOperation::toProto).collect(toList()))
                     .addAllDeleteRanges(
                             deleteRanges.stream().map(DeleteRangeOperation::toProto).collect(toList()))

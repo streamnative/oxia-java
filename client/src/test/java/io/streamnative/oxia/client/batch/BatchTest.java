@@ -43,6 +43,7 @@ import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
+import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation.SessionInfo;
 import io.streamnative.oxia.client.session.Session;
 import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.client.shard.NoShardAvailableException;
@@ -142,6 +143,7 @@ class BatchTest {
         DeleteRangeOperation deleteRange = new DeleteRangeOperation(deleteRangeCallable, "a", "b");
 
         String clientIdentifier = "client-id";
+        SessionInfo sessionInfo = new SessionInfo(sessionId, clientIdentifier);
 
         @BeforeEach
         void setup() {
@@ -170,9 +172,6 @@ class BatchTest {
 
         @Test
         public void toProto() {
-            when(session.getSessionId()).thenReturn(sessionId);
-            when(sessionManager.getSession(shardId)).thenReturn(session);
-
             batch.add(put);
             batch.add(delete);
             batch.add(deleteRange);
@@ -180,7 +179,7 @@ class BatchTest {
             assertThat(request)
                     .satisfies(
                             r -> {
-                                assertThat(r.getPutsList()).containsOnly(put.toProto(sessionId, clientId));
+                                assertThat(r.getPutsList()).containsOnly(put.toProto(Optional.of(sessionInfo)));
                                 assertThat(r.getDeletesList()).containsOnly(delete.toProto());
                                 assertThat(r.getDeleteRangesList()).containsOnly(deleteRange.toProto());
                             });
