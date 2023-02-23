@@ -46,6 +46,14 @@
         <module>pulsar-metadatastore-oxia</module>
     </modules>
 
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/streamnative/oxia-java</url>
+        </repository>
+    </distributionManagement>
+
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
@@ -378,4 +386,5 @@
             </plugin>
         </plugins>
     </build>
+
 </project>
