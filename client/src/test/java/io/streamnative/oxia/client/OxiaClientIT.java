@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client;
 
-import static io.streamnative.oxia.client.api.PutOption.AsEphemeralRecord;
 import static io.streamnative.oxia.client.api.PutOption.IfRecordDoesNotExist;
 import static io.streamnative.oxia.client.api.PutOption.ifVersionIdEquals;
 import static io.streamnative.oxia.testcontainers.OxiaContainer.DEFAULT_IMAGE_NAME;
@@ -32,6 +31,7 @@ import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.Notification.KeyCreated;
 import io.streamnative.oxia.client.api.Notification.KeyDeleted;
 import io.streamnative.oxia.client.api.Notification.KeyModified;
+import io.streamnative.oxia.client.api.PutOption;
 import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
 import io.streamnative.oxia.testcontainers.OxiaContainer;
 import java.util.ArrayList;
@@ -59,7 +59,7 @@ public class OxiaClientIT {
 
     @BeforeAll
     static void beforeAll() {
-        client = createClient();
+        client = new OxiaClientBuilder(oxia.getServiceAddress()).asyncClient().join();
         client.notifications(notifications::add);
     }
 
@@ -68,10 +68,6 @@ public class OxiaClientIT {
         if (client != null) {
             client.close();
         }
-    }
-
-    private static AsyncOxiaClient createClient() {
-        return new OxiaClientBuilder(oxia.getServiceAddress()).asyncClient().join();
     }
 
     @Test
@@ -152,13 +148,13 @@ public class OxiaClientIT {
                         .clientIdentifier(identity)
                         .asyncClient()
                         .join()) {
-            otherClient.put("f", "f".getBytes(), AsEphemeralRecord).join();
+            otherClient.put("f", "f".getBytes(), PutOption.AsEphemeralRecord).join();
             getResult = client.get("f").join();
             var sessionId = getResult.getVersion().sessionId().get();
             assertThat(sessionId).isNotNull();
             assertThat(getResult.getVersion().clientIdentifier().get()).isEqualTo(identity);
 
-            var putResult = otherClient.put("g", "g".getBytes(), AsEphemeralRecord).join();
+            var putResult = otherClient.put("g", "g".getBytes(), PutOption.AsEphemeralRecord).join();
             assertThat(putResult.version().clientIdentifier().get()).isEqualTo(identity);
             assertThat(putResult.version().sessionId().get()).isNotNull();
 
@@ -172,20 +168,5 @@ public class OxiaClientIT {
                         });
         assertThat(client.get("g").join()).isNull();
         assertThat(client.get("h").join()).isNotNull();
-    }
-
-    @Test
-    void ephemeral() throws Exception {
-        var key = "ephemeral";
-        var value = key.getBytes(UTF_8);
-        client.put(key, value, AsEphemeralRecord).join();
-
-        assertThat(client.get(key).join().getValue()).containsExactly(value);
-
-        client.close();
-
-        client = createClient();
-
-        assertThat(client.get(key).join()).isNull();
     }
 }
