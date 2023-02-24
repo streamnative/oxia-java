@@ -37,6 +37,7 @@ import java.time.Duration;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,6 +56,7 @@ class ShardManagerGrpcTest {
             new OxiaClientImplBase() {
                 @Override
                 public Flux<ShardAssignments> getShardAssignments(Mono<ShardAssignmentsRequest> request) {
+                    requests.incrementAndGet();
                     Flux<ShardAssignments> assignments = responses.poll();
                     if (assignments == null) {
                         return Flux.error(Status.RESOURCE_EXHAUSTED.asException());
@@ -62,6 +64,7 @@ class ShardManagerGrpcTest {
                     return assignments;
                 }
             };
+    AtomicInteger requests = new AtomicInteger();
 
     String serverName = InProcessServerBuilder.generateName();
     Server server;
@@ -70,6 +73,7 @@ class ShardManagerGrpcTest {
 
     @BeforeEach
     void beforeEach() throws Exception {
+        requests.set(0);
         responses.clear();
         server =
                 InProcessServerBuilder.forName(serverName)
@@ -140,6 +144,7 @@ class ShardManagerGrpcTest {
             assertThat(shardManager.getAll()).containsExactlyInAnyOrder(0L);
             assertThat(shardManager.leader(0)).isEqualTo("leader0");
         }
+        assertThat(requests).hasValue(2);
     }
 
     @Test
@@ -152,6 +157,7 @@ class ShardManagerGrpcTest {
             assertThat(shardManager.getAll()).containsExactlyInAnyOrder(0L);
             assertThat(shardManager.leader(0)).isEqualTo("leader0");
         }
+        assertThat(requests).hasValue(2);
     }
 
     ShardAssignment assignment(int shardId, int min, int max) {
