@@ -82,12 +82,11 @@ public class Session implements AutoCloseable {
                                                 signal));
         var threadName = String.format("session-%s:%s-keep-alive", sessionId, shardId);
 
-        var stub = stubByShardId.apply(shardId);
         keepAliveSubscription =
                 Mono.just(heartbeat)
                         .repeat()
                         .delayElements(heartbeatInterval)
-                        .flatMap(stub::keepAlive)
+                        .flatMap(hb -> stubByShardId.apply(shardId).keepAlive(hb))
                         .retryWhen(retrySpec)
                         .timeout(sessionTimeout)
                         .publishOn(Schedulers.newSingle(threadName))
