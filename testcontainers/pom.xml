@@ -22,7 +22,7 @@
     <parent>
         <groupId>io.streamnative.oxia</groupId>
         <artifactId>oxia-java</artifactId>
-        <version>0.0.4</version>
+        <version>0.0.5-SNAPSHOT</version>
     </parent>
 
     <artifactId>oxia-testcontainers</artifactId>
