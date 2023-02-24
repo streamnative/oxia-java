@@ -39,6 +39,7 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.Disposable;
+import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.retry.Retry;
 import reactor.util.retry.RetryBackoffSpec;
@@ -84,7 +85,7 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
                                         log.warn("Retrying receiving notifications for shard {}: {}", shardId, signal));
         var threadName = String.format("shard-%s-notifications", shardId);
         var disposable =
-                stub.getNotifications(request.build())
+                Flux.defer(() -> stub.getNotifications(request.build()))
                         .doOnError(t -> log.warn("Error receiving notifications for shard {}", shardId, t))
                         .retryWhen(retrySpec)
                         .repeat()

@@ -49,6 +49,7 @@ import java.util.stream.Stream;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.Disposable;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.retry.Retry;
@@ -81,7 +82,7 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
                 Retry.backoff(Long.MAX_VALUE, Duration.ofMillis(100))
                         .doBeforeRetry(signal -> log.warn("Retrying receiving shard assignments: {}", signal));
         var assignmentsFlux =
-                stub.getShardAssignments(ShardAssignmentsRequest.getDefaultInstance())
+                Flux.defer(() -> stub.getShardAssignments(ShardAssignmentsRequest.getDefaultInstance()))
                         .doOnError(t -> log.warn("Error receiving shard assignments", t))
                         .retryWhen(retrySpec)
                         .repeat()

@@ -41,6 +41,7 @@ import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.OxiaClientImplBase;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.AfterEach;
@@ -60,6 +61,7 @@ class ShardNotificationReceiverTest {
             new OxiaClientImplBase() {
                 @Override
                 public Flux<NotificationBatch> getNotifications(Mono<NotificationsRequest> request) {
+                    requests.incrementAndGet();
                     Flux<NotificationBatch> assignments = responses.poll();
                     if (assignments == null) {
                         return Flux.error(Status.RESOURCE_EXHAUSTED.asException());
@@ -67,6 +69,7 @@ class ShardNotificationReceiverTest {
                     return assignments;
                 }
             };
+    AtomicInteger requests = new AtomicInteger();
 
     String serverName = InProcessServerBuilder.generateName();
     Server server;
@@ -79,6 +82,7 @@ class ShardNotificationReceiverTest {
 
     @BeforeEach
     void beforeEach() throws Exception {
+        requests.set(0);
         responses.clear();
         server =
                 InProcessServerBuilder.forName(serverName)
@@ -148,6 +152,7 @@ class ShardNotificationReceiverTest {
                                 verify(notificationCallback).accept(new KeyCreated("key1", 1L));
                             });
         }
+        assertThat(requests).hasValue(2);
     }
 
     @Test
@@ -165,6 +170,7 @@ class ShardNotificationReceiverTest {
                                 verify(notificationCallback).accept(new KeyCreated("key1", 1L));
                             });
         }
+        assertThat(requests).hasValue(2);
     }
 
     static io.streamnative.oxia.proto.Notification created(long version) {
