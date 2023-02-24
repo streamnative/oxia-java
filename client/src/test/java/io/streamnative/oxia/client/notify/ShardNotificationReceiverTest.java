@@ -82,6 +82,7 @@ class ShardNotificationReceiverTest {
 
     @BeforeEach
     void beforeEach() throws Exception {
+        requests.set(0);
         responses.clear();
         server =
                 InProcessServerBuilder.forName(serverName)
