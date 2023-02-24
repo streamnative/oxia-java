@@ -39,7 +39,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -113,20 +112,16 @@ class SessionTest {
         AtomicBoolean closed = new AtomicBoolean(false);
 
         @Override
-        public Mono<KeepAliveResponse> keepAlive(Flux<SessionHeartbeat> request) {
-            return request
-                    .hide()
-                    .doOnEach(
-                            h -> {
-                                if (!closed.get()) {
-                                    signals.add(h.get());
-                                } else {
-                                    signalsAfterClosed.add(h.get());
-                                }
-                            })
-                    .hide()
-                    .then()
-                    .map(v -> KeepAliveResponse.getDefaultInstance());
+        public Mono<KeepAliveResponse> keepAlive(Mono<SessionHeartbeat> request) {
+            return request.map(
+                    heartbeat -> {
+                        if (!closed.get()) {
+                            signals.add(heartbeat);
+                        } else {
+                            signalsAfterClosed.add(heartbeat);
+                        }
+                        return KeepAliveResponse.getDefaultInstance();
+                    });
         }
 
         @Override
