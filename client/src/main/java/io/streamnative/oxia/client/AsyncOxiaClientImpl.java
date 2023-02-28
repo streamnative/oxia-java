@@ -30,12 +30,15 @@ import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOpe
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
 import io.streamnative.oxia.client.grpc.ChannelManager;
 import io.streamnative.oxia.client.grpc.ChannelManager.StubFactory;
+import io.streamnative.oxia.client.metrics.BatchMetrics;
+import io.streamnative.oxia.client.metrics.OperationMetrics;
 import io.streamnative.oxia.client.notify.NotificationManager;
 import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.client.shard.ShardManager;
 import io.streamnative.oxia.proto.ListRequest;
 import io.streamnative.oxia.proto.ListResponse;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
+import java.time.Clock;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
@@ -60,11 +63,13 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         Function<Long, String> leaderFn = shardManager::leader;
         var stubByShardId = leaderFn.andThen(reactorStubFactory);
         shardManager.addCallback(notificationManager);
-        var readBatchManager = BatchManager.newReadBatchManager(config, stubByShardId);
+        var batchMetrics = BatchMetrics.create(Clock.systemUTC(), config.metrics());
+        var readBatchManager = BatchManager.newReadBatchManager(config, stubByShardId, batchMetrics);
         var sessionManager = new SessionManager(config, stubByShardId);
         shardManager.addCallback(sessionManager);
         var writeBatchManager =
-                BatchManager.newWriteBatchManager(config, stubByShardId, sessionManager);
+                BatchManager.newWriteBatchManager(config, stubByShardId, sessionManager, batchMetrics);
+        var operationMetrics = OperationMetrics.create(Clock.systemUTC(), config.metrics());
 
         var client =
                 new AsyncOxiaClientImpl(
@@ -74,7 +79,8 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                         readBatchManager,
                         writeBatchManager,
                         sessionManager,
-                        reactorStubFactory);
+                        reactorStubFactory,
+                        operationMetrics);
 
         return shardManager.start().thenApply(v -> client);
     }
@@ -86,12 +92,14 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     private final @NonNull BatchManager writeBatchManager;
     private final @NonNull SessionManager sessionManager;
     private final @NonNull StubFactory<ReactorOxiaClientStub> reactorStubFactory;
+    private final @NonNull OperationMetrics metrics;
     private volatile boolean closed;
 
     @Override
     public @NonNull CompletableFuture<PutResult> put(
             @NonNull String key, byte @NonNull [] value, @NonNull PutOption... options) {
         checkIfClosed();
+        var sample = metrics.recordPut(value.length);
         var validatedOptions = PutOption.validate(options);
         var shardId = shardManager.get(key);
         var callback = new CompletableFuture<PutResult>();
@@ -99,55 +107,61 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         var op =
                 new PutOperation(callback, key, value, versionId, PutOption.toEphemeral(validatedOptions));
         writeBatchManager.getBatcher(shardId).add(op);
-        return callback;
+        return callback.whenComplete(sample);
     }
 
     @Override
     public @NonNull CompletableFuture<Boolean> delete(
             @NonNull String key, @NonNull DeleteOption... options) {
         checkIfClosed();
+        var sample = metrics.recordDelete();
         var validatedOptions = DeleteOption.validate(options);
         var shardId = shardManager.get(key);
         var callback = new CompletableFuture<Boolean>();
         var versionId = DeleteOption.toVersionId(validatedOptions);
         writeBatchManager.getBatcher(shardId).add(new DeleteOperation(callback, key, versionId));
-        return callback;
+        return callback.whenComplete(sample);
     }
 
     @Override
     public @NonNull CompletableFuture<Void> deleteRange(
             @NonNull String minKeyInclusive, @NonNull String maxKeyExclusive) {
         checkIfClosed();
+        var sample = metrics.recordDeleteRange();
         return CompletableFuture.allOf(
-                shardManager.getAll().stream()
-                        .map(writeBatchManager::getBatcher)
-                        .map(
-                                b -> {
-                                    var callback = new CompletableFuture<Void>();
-                                    b.add(new DeleteRangeOperation(callback, minKeyInclusive, maxKeyExclusive));
-                                    return callback;
-                                })
-                        .collect(toList())
-                        .toArray(new CompletableFuture[0]));
+                        shardManager.getAll().stream()
+                                .map(writeBatchManager::getBatcher)
+                                .map(
+                                        b -> {
+                                            var callback = new CompletableFuture<Void>();
+                                            b.add(new DeleteRangeOperation(callback, minKeyInclusive, maxKeyExclusive));
+                                            return callback;
+                                        })
+                                .collect(toList())
+                                .toArray(new CompletableFuture[0]))
+                .whenComplete(sample);
     }
 
     @Override
     public @NonNull CompletableFuture<GetResult> get(@NonNull String key) {
         checkIfClosed();
+        var sample = metrics.recordGet();
         var shardId = shardManager.get(key);
         var callback = new CompletableFuture<GetResult>();
         readBatchManager.getBatcher(shardId).add(new GetOperation(callback, key));
-        return callback;
+        return callback.whenComplete(sample);
     }
 
     @Override
     public @NonNull CompletableFuture<List<String>> list(
             @NonNull String minKeyInclusive, @NonNull String maxKeyExclusive) {
         checkIfClosed();
+        var sample = metrics.recordList();
         return Flux.fromIterable(shardManager.getAll())
                 .flatMap(shardId -> list(shardId, minKeyInclusive, maxKeyExclusive))
                 .collectList()
-                .toFuture();
+                .toFuture()
+                .whenComplete(sample);
     }
 
     @Override

@@ -42,6 +42,8 @@
 
     <modules>
         <module>client</module>
+        <module>client-metrics-api</module>
+        <module>client-metrics-opentelemetry</module>
         <module>testcontainers</module>
         <module>pulsar-metadatastore-oxia</module>
     </modules>
