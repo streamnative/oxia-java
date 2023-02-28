@@ -28,7 +28,7 @@ public interface Metrics {
     }
 
     enum Unit {
-        DIMENSIONLESS,
+        NONE,
         BYTES,
         MILLISECONDS
     }
