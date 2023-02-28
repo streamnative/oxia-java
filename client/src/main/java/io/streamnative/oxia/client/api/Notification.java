@@ -21,6 +21,12 @@ import lombok.NonNull;
 /** A notification from an Oxia server indicating a change to a record associated with a key. */
 public sealed interface Notification
         permits Notification.KeyCreated, Notification.KeyModified, Notification.KeyDeleted {
+
+    /**
+     * @return The key of the record.
+     */
+    String key();
+
     /**
      * A record associated with the key has been created.
      *

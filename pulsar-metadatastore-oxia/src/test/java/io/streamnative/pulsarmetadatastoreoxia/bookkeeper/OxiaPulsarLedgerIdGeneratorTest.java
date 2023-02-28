@@ -18,7 +18,6 @@ package io.streamnative.pulsarmetadatastoreoxia.bookkeeper;
 
 import io.streamnative.oxia.testcontainers.OxiaContainer;
 import io.streamnative.pulsarmetadatastoreoxia.OxiaTestBase;
-import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -43,16 +42,4 @@ public class OxiaPulsarLedgerIdGeneratorTest extends PulsarLedgerIdGeneratorTest
     @Ignore
     @Test
     public void testGenerateLedgerIdWithZkPrefix() throws Exception {}
-
-    // TODO -------- Failing tests:
-
-    @Ignore
-    @Test(dataProvider = "impl")
-    public void testGenerateLedgerId(String provider, Supplier<String> urlSupplier)
-            throws Exception {}
-
-    @Test(enabled = false) // TODO fix failing test
-    @Override
-    public void testEnsureCounterIsNotResetWithContainerNodes(
-            String provider, Supplier<String> urlSupplier) throws Exception {}
 }

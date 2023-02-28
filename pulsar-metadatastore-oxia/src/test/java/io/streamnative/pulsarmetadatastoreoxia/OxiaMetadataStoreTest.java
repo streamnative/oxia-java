@@ -42,29 +42,30 @@ public class OxiaMetadataStoreTest extends MetadataStoreTest implements OxiaTest
         return impl();
     }
 
-    // TODO -------- Failing tests:
+    // TODO -------- Renamed tests so they run before others (should "preserve-order" instead)
+
+    @Test(dataProvider = "impl")
+    public void aaaEmptyStoreTest(String provider, Supplier<String> urlSupplier) throws Exception {
+        super.emptyStoreTest(provider, urlSupplier);
+    }
 
     @Ignore
     @Test(dataProvider = "impl")
     public void emptyStoreTest(String provider, Supplier<String> urlSupplier) throws Exception {}
 
+    @Test(dataProvider = "impl")
+    public void aaaTestGetChildren(String provider, Supplier<String> urlSupplier) throws Exception {
+        super.testGetChildren(provider, urlSupplier);
+    }
+
     @Ignore
     @Test(dataProvider = "impl")
-    public void insertionTestWithExpectedVersion(String provider, Supplier<String> urlSupplier)
-            throws Exception {}
+    public void testGetChildren(String provider, Supplier<String> urlSupplier) throws Exception {}
+
+    // TODO -------- Failing tests:
 
     @Ignore
     @Test(dataProvider = "impl")
     public void testDeleteUnusedDirectories(String provider, Supplier<String> urlSupplier)
-            throws Exception {}
-
-    @Ignore(
-            "This is a test ordering issue. If others run before this, they create more nodes than this test expects")
-    @Test(dataProvider = "impl")
-    public void testGetChildren(String provider, Supplier<String> urlSupplier) throws Exception {}
-
-    @Test(enabled = false) // TODO fix failing test
-    @Override
-    public void notificationListeners(String provider, Supplier<String> urlSupplier)
             throws Exception {}
 }

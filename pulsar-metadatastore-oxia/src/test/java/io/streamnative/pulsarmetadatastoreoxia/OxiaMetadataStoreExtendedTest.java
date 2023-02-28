@@ -23,9 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.metadata.MetadataStoreExtendedTest;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
-import org.testng.annotations.Ignore;
 
-@Ignore // TODO fix failing tests
 @Slf4j
 public class OxiaMetadataStoreExtendedTest extends MetadataStoreExtendedTest
         implements OxiaTestBase {
