@@ -22,6 +22,8 @@ import static lombok.AccessLevel.PRIVATE;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.streamnative.oxia.client.ClientConfig;
+import io.streamnative.oxia.client.api.OperationTooLargeException;
+import io.streamnative.oxia.client.api.OxiaException;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
@@ -32,6 +34,7 @@ import io.streamnative.oxia.proto.GetResponse;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import io.streamnative.oxia.proto.ReadRequest;
 import io.streamnative.oxia.proto.WriteRequest;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,6 +51,8 @@ public interface Batch {
 
     void add(@NonNull Operation<?> operation);
 
+    boolean canAdd(@NonNull Operation<?> operation) throws OxiaException;
+
     int size();
 
     long getShardId();
@@ -60,17 +65,34 @@ public interface Batch {
         @VisibleForTesting final List<DeleteRangeOperation> deleteRanges = new ArrayList<>();
         private final SessionManager sessionManager;
         private final String clientIdentifier;
+        private final int maxBatchSize;
         private boolean containsEphemeral;
+        private int byteSize;
 
         WriteBatch(
                 @NonNull Function<Long, ReactorOxiaClientStub> stubByShardId,
                 @NonNull SessionManager sessionManager,
                 @NonNull String clientIdentifier,
                 long shardId,
-                long createTime) {
+                long createTime,
+                int maxBatchSize) {
             super(stubByShardId, shardId, createTime);
             this.sessionManager = sessionManager;
             this.clientIdentifier = clientIdentifier;
+            this.byteSize = 0;
+            this.maxBatchSize = maxBatchSize;
+        }
+
+        int sizeOf(@NonNull Operation<?> operation) {
+            if (operation instanceof PutOperation p) {
+                return p.key().getBytes(StandardCharsets.UTF_8).length + p.value().length;
+            } else if (operation instanceof DeleteOperation d) {
+                return d.key().getBytes(StandardCharsets.UTF_8).length;
+            } else if (operation instanceof DeleteRangeOperation r) {
+                return r.minKeyInclusive().getBytes(StandardCharsets.UTF_8).length
+                        + r.maxKeyInclusive().getBytes(StandardCharsets.UTF_8).length;
+            }
+            return 0;
         }
 
         public void add(@NonNull Operation<?> operation) {
@@ -82,6 +104,16 @@ public interface Batch {
             } else if (operation instanceof DeleteRangeOperation r) {
                 deleteRanges.add(r);
             }
+            byteSize += sizeOf(operation);
+        }
+
+        @Override
+        public boolean canAdd(@NonNull Operation<?> operation) throws OxiaException {
+            int size = sizeOf(operation);
+            if (size > maxBatchSize) {
+                throw new OperationTooLargeException();
+            }
+            return byteSize + size <= maxBatchSize;
         }
 
         @Override
@@ -132,6 +164,11 @@ public interface Batch {
 
     final class ReadBatch extends BatchBase implements Batch {
         @VisibleForTesting final List<GetOperation> gets = new ArrayList<>();
+
+        @Override
+        public boolean canAdd(@NonNull Operation<?> operation) {
+            return true;
+        }
 
         public void add(@NonNull Operation<?> operation) {
             if (operation instanceof GetOperation g) {
@@ -216,7 +253,12 @@ public interface Batch {
         @Override
         public @NonNull Batch apply(@NonNull Long shardId) {
             return new WriteBatch(
-                    stubByShardId, sessionManager, getConfig().clientIdentifier(), shardId, clock.millis());
+                    stubByShardId,
+                    sessionManager,
+                    getConfig().clientIdentifier(),
+                    shardId,
+                    clock.millis(),
+                    getConfig().maxBatchSize());
         }
     }
 

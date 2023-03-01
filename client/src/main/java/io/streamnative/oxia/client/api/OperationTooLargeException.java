@@ -13,18 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.streamnative.oxia.client;
+package io.streamnative.oxia.client.api;
 
-
-import java.time.Duration;
-import lombok.NonNull;
-
-public record ClientConfig(
-        @NonNull String serviceAddress,
-        @NonNull Duration requestTimeout,
-        @NonNull Duration batchLinger,
-        int maxRequestsPerBatch,
-        int operationQueueCapacity,
-        @NonNull Duration sessionTimeout,
-        @NonNull String clientIdentifier,
-        int maxBatchSize) {}
+/** The operation is too large and can not be serialized with the current maxBatchSize value. */
+public class OperationTooLargeException extends OxiaException {
+    public OperationTooLargeException() {
+        super("Operation is too large and can not fit maxBatchSize.");
+    }
+}

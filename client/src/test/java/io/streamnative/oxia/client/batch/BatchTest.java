@@ -147,7 +147,9 @@ class BatchTest {
 
         @BeforeEach
         void setup() {
-            batch = new WriteBatch(clientByShardId, sessionManager, clientIdentifier, shardId, startTime);
+            batch =
+                    new WriteBatch(
+                            clientByShardId, sessionManager, clientIdentifier, shardId, startTime, 1024 * 1024);
         }
 
         @Test
@@ -252,7 +254,8 @@ class BatchTest {
                             sessionManager,
                             clientIdentifier,
                             shardId,
-                            startTime);
+                            startTime,
+                            1024 * 1024);
 
             batch.add(put);
             batch.add(delete);
@@ -397,7 +400,8 @@ class BatchTest {
 
         @Mock Clock clock;
 
-        ClientConfig config = new ClientConfig("address", ZERO, ZERO, 1, 1, ZERO, "client_id");
+        ClientConfig config =
+                new ClientConfig("address", ZERO, ZERO, 1, 1, ZERO, "client_id", 1024 * 1024);
 
         @BeforeEach
         void mocking() {

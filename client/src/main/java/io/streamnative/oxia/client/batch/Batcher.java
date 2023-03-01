@@ -83,7 +83,16 @@ public class Batcher implements Runnable, AutoCloseable {
                         batch = batchFactory.apply(shardId);
                         lingerBudgetMs = config.batchLinger().toMillis();
                     }
-                    batch.add(operation);
+                    try {
+                        if (!batch.canAdd(operation)) {
+                            batch.complete();
+                            batch = batchFactory.apply(shardId);
+                            lingerBudgetMs = config.batchLinger().toMillis();
+                        }
+                        batch.add(operation);
+                    } catch (Exception e) {
+                        operation.fail(e);
+                    }
                 }
 
                 if (batch != null) {
