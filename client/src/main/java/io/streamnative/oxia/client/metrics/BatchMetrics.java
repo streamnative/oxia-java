@@ -16,8 +16,8 @@
 package io.streamnative.oxia.client.metrics;
 
 import static io.streamnative.oxia.client.metrics.api.Metrics.Unit.BYTES;
-import static io.streamnative.oxia.client.metrics.api.Metrics.Unit.DIMENSIONLESS;
 import static io.streamnative.oxia.client.metrics.api.Metrics.Unit.MILLISECONDS;
+import static io.streamnative.oxia.client.metrics.api.Metrics.Unit.NONE;
 import static io.streamnative.oxia.client.metrics.api.Metrics.attributes;
 import static lombok.AccessLevel.PACKAGE;
 
@@ -38,7 +38,7 @@ public class BatchMetrics {
         var timerTotal = metrics.histogram("oxia_client_batch_total_timer", MILLISECONDS);
         var timerExec = metrics.histogram("oxia_client_batch_exec_timer", MILLISECONDS);
         var size = metrics.histogram("oxia_client_batch_size", BYTES);
-        var count = metrics.histogram("oxia_client_batch_requests", DIMENSIONLESS);
+        var count = metrics.histogram("oxia_client_batch_requests", NONE);
         return new BatchMetrics(clock, timerTotal, timerExec, size, count);
     }
 

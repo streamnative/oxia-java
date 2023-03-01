@@ -16,8 +16,8 @@
 package io.streamnative.oxia.client.metrics;
 
 import static io.streamnative.oxia.client.metrics.api.Metrics.Unit.BYTES;
-import static io.streamnative.oxia.client.metrics.api.Metrics.Unit.DIMENSIONLESS;
 import static io.streamnative.oxia.client.metrics.api.Metrics.Unit.MILLISECONDS;
+import static io.streamnative.oxia.client.metrics.api.Metrics.Unit.NONE;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -50,7 +50,7 @@ class BatchMetricsTest {
         when(metrics.histogram("oxia_client_batch_total_timer", MILLISECONDS)).thenReturn(timerTotal);
         when(metrics.histogram("oxia_client_batch_exec_timer", MILLISECONDS)).thenReturn(timerExec);
         when(metrics.histogram("oxia_client_batch_size", BYTES)).thenReturn(size);
-        when(metrics.histogram("oxia_client_batch_requests", DIMENSIONLESS)).thenReturn(count);
+        when(metrics.histogram("oxia_client_batch_requests", NONE)).thenReturn(count);
 
         batchMetrics = BatchMetrics.create(clock, metrics);
 
