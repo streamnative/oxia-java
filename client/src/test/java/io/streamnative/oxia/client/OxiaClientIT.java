@@ -17,6 +17,7 @@ package io.streamnative.oxia.client;
 
 import static io.streamnative.oxia.client.api.PutOption.IfRecordDoesNotExist;
 import static io.streamnative.oxia.client.api.PutOption.ifVersionIdEquals;
+import static io.streamnative.oxia.testcontainers.OxiaContainer.DEFAULT_IMAGE_NAME;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.concurrent.CompletableFuture.allOf;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -42,14 +43,13 @@ import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 @Testcontainers
 @Slf4j
 public class OxiaClientIT {
     @Container
     private static final OxiaContainer oxia =
-            new OxiaContainer(DockerImageName.parse("oxia:latest"))
+            new OxiaContainer(DEFAULT_IMAGE_NAME)
                     .withShards(4)
                     .withLogConsumer(new Slf4jLogConsumer(log));
 
