@@ -421,8 +421,8 @@ class OperationTest {
         @Test
         void toProto() {
             var request = op.toProto();
-            assertThat(request.getStartInclusive()).isEqualTo(op.minKeyInclusive());
-            assertThat(request.getEndExclusive()).isEqualTo(op.maxKeyInclusive());
+            assertThat(request.getStartInclusive()).isEqualTo(op.startKeyInclusive());
+            assertThat(request.getEndExclusive()).isEqualTo(op.endKeyExclusive());
         }
 
         @Test

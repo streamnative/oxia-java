@@ -125,21 +125,21 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
     @Override
     public @NonNull CompletableFuture<Void> deleteRange(
-            @NonNull String minKeyInclusive, @NonNull String maxKeyExclusive) {
+            @NonNull String startKeyInclusive, @NonNull String endKeyExclusive) {
         checkIfClosed();
         var sample = metrics.recordDeleteRange();
-        return CompletableFuture.allOf(
-                        shardManager.getAll().stream()
-                                .map(writeBatchManager::getBatcher)
-                                .map(
-                                        b -> {
-                                            var callback = new CompletableFuture<Void>();
-                                            b.add(new DeleteRangeOperation(callback, minKeyInclusive, maxKeyExclusive));
-                                            return callback;
-                                        })
-                                .collect(toList())
-                                .toArray(new CompletableFuture[0]))
-                .whenComplete(sample);
+        var shardDeletes =
+                shardManager.getAll().stream()
+                        .map(writeBatchManager::getBatcher)
+                        .map(
+                                b -> {
+                                    var callback = new CompletableFuture<Void>();
+                                    b.add(new DeleteRangeOperation(callback, startKeyInclusive, endKeyExclusive));
+                                    return callback;
+                                })
+                        .collect(toList())
+                        .toArray(new CompletableFuture[0]);
+        return CompletableFuture.allOf(shardDeletes).whenComplete(sample);
     }
 
     @Override
@@ -154,11 +154,11 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
     @Override
     public @NonNull CompletableFuture<List<String>> list(
-            @NonNull String minKeyInclusive, @NonNull String maxKeyExclusive) {
+            @NonNull String startKeyInclusive, @NonNull String endKeyExclusive) {
         checkIfClosed();
         var sample = metrics.recordList();
         return Flux.fromIterable(shardManager.getAll())
-                .flatMap(shardId -> list(shardId, minKeyInclusive, maxKeyExclusive))
+                .flatMap(shardId -> list(shardId, startKeyInclusive, endKeyExclusive))
                 .collectList()
                 .toFuture()
                 .whenComplete(sample);
@@ -171,15 +171,15 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     }
 
     private @NonNull Flux<String> list(
-            long shardId, @NonNull String minKeyInclusive, @NonNull String maxKeyExclusive) {
+            long shardId, @NonNull String startKeyInclusive, @NonNull String endKeyExclusive) {
         checkIfClosed();
         var leader = shardManager.leader(shardId);
         var stub = reactorStubFactory.apply(leader);
         var request =
                 ListRequest.newBuilder()
                         .setShardId(ProtoUtil.longToUint32(shardId))
-                        .setStartInclusive(minKeyInclusive)
-                        .setEndExclusive(maxKeyExclusive)
+                        .setStartInclusive(startKeyInclusive)
+                        .setEndExclusive(endKeyExclusive)
                         .build();
         return stub.list(request).flatMapIterable(ListResponse::getKeysList);
     }

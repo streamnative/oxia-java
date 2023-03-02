@@ -65,15 +65,15 @@ public interface AsyncOxiaClient extends AutoCloseable {
      * href="https://github.com/streamnative/oxia/blob/main/docs/oxia-key-sorting.md">Oxia
      * documentation</a>.
      *
-     * @param minKeyInclusive The key that declares start of the range, and is <b>included</b> from
+     * @param startKeyInclusive The key that declares start of the range, and is <b>included</b> from
      *     the range.
-     * @param maxKeyExclusive The key that declares the end of the range, and is <b>excluded</b> from
+     * @param endKeyExclusive The key that declares the end of the range, and is <b>excluded</b> from
      *     the range.
      * @return A future that completes when the delete call has returned.
      */
     @NonNull
     CompletableFuture<Void> deleteRange(
-            @NonNull String minKeyInclusive, @NonNull String maxKeyExclusive);
+            @NonNull String startKeyInclusive, @NonNull String endKeyExclusive);
 
     /**
      * Returns the record associated with the specified key. The returned value includes the value,
@@ -92,16 +92,16 @@ public interface AsyncOxiaClient extends AutoCloseable {
      * href="https://github.com/streamnative/oxia/blob/main/docs/oxia-key-sorting.md">Oxia
      * documentation</a>.
      *
-     * @param minKeyInclusive The key that declares start of the range, and is <b>included</b> from
+     * @param startKeyInclusive The key that declares start of the range, and is <b>included</b> from
      *     the range.
-     * @param maxKeyExclusive The key that declares the end of the range, and is <b>excluded</b> from
+     * @param endKeyExclusive The key that declares the end of the range, and is <b>excluded</b> from
      *     the range.
      * @return The list of keys that exist within the specified range or an empty list if there were
      *     none. Supplied via a future.
      */
     @NonNull
     CompletableFuture<List<String>> list(
-            @NonNull String minKeyInclusive, @NonNull String maxKeyExclusive);
+            @NonNull String startKeyInclusive, @NonNull String endKeyExclusive);
 
     /**
      * Registers a callback to receive Oxia {@link Notification record change notifications}. Multiple
