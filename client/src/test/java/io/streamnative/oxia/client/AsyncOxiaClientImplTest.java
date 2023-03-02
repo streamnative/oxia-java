@@ -166,8 +166,8 @@ class AsyncOxiaClientImplTest {
         var opCaptor1 = ArgumentCaptor.forClass(DeleteRangeOperation.class);
         var opCaptor2 = ArgumentCaptor.forClass(DeleteRangeOperation.class);
         var opCaptor3 = ArgumentCaptor.forClass(DeleteRangeOperation.class);
-        var min = "a-min";
-        var max = "z-max";
+        var startInclusive = "a-startInclusive";
+        var endExclusive = "z-endExclusive";
         when(shardManager.getAll()).thenReturn(List.of(1L, 2L, 3L));
         when(writeBatchManager.getBatcher(1L)).thenReturn(batcher1);
         when(writeBatchManager.getBatcher(2L)).thenReturn(batcher2);
@@ -175,30 +175,30 @@ class AsyncOxiaClientImplTest {
         doNothing().when(batcher1).add(opCaptor1.capture());
         doNothing().when(batcher2).add(opCaptor2.capture());
         doNothing().when(batcher3).add(opCaptor3.capture());
-        var result = client.deleteRange(min, max);
+        var result = client.deleteRange(startInclusive, endExclusive);
         assertThat(result).isNotCompleted();
 
         assertThat(opCaptor1.getValue())
                 .satisfies(
                         o -> {
-                            assertThat(o.minKeyInclusive()).isEqualTo(min);
-                            assertThat(o.maxKeyInclusive()).isEqualTo(max);
+                            assertThat(o.startKeyInclusive()).isEqualTo(startInclusive);
+                            assertThat(o.endKeyExclusive()).isEqualTo(endExclusive);
                             assertThat(o.callback()).isNotCompleted();
                         });
 
         assertThat(opCaptor2.getValue())
                 .satisfies(
                         o -> {
-                            assertThat(o.minKeyInclusive()).isEqualTo(min);
-                            assertThat(o.maxKeyInclusive()).isEqualTo(max);
+                            assertThat(o.startKeyInclusive()).isEqualTo(startInclusive);
+                            assertThat(o.endKeyExclusive()).isEqualTo(endExclusive);
                             assertThat(o.callback()).isNotCompleted();
                         });
 
         assertThat(opCaptor3.getValue())
                 .satisfies(
                         o -> {
-                            assertThat(o.minKeyInclusive()).isEqualTo(min);
-                            assertThat(o.maxKeyInclusive()).isEqualTo(max);
+                            assertThat(o.startKeyInclusive()).isEqualTo(startInclusive);
+                            assertThat(o.endKeyExclusive()).isEqualTo(endExclusive);
                             assertThat(o.callback()).isNotCompleted();
                         });
 

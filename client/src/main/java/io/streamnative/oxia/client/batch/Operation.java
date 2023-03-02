@@ -176,13 +176,13 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
 
         record DeleteRangeOperation(
                 @NonNull CompletableFuture<Void> callback,
-                @NonNull String minKeyInclusive,
-                @NonNull String maxKeyInclusive)
+                @NonNull String startKeyInclusive,
+                @NonNull String endKeyExclusive)
                 implements WriteOperation<Void> {
             DeleteRangeRequest toProto() {
                 return DeleteRangeRequest.newBuilder()
-                        .setStartInclusive(minKeyInclusive)
-                        .setEndExclusive(maxKeyInclusive)
+                        .setStartInclusive(startKeyInclusive)
+                        .setEndExclusive(endKeyExclusive)
                         .build();
             }
 
