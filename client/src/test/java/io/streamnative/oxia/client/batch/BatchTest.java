@@ -437,7 +437,7 @@ class BatchTest {
 
         ClientConfig config =
                 new ClientConfig(
-                        "address", ZERO, ZERO, 1, 1, 0, ZERO, "client_id", 1024 * 1024, Metrics.nullObject);
+                        "address", ZERO, ZERO, 1, 1024 * 1024, 1, 0, ZERO, "client_id", Metrics.nullObject);
 
         @BeforeEach
         void mocking() {
