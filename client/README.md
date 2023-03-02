@@ -112,7 +112,7 @@ client.notifications(
 | `requestTimeout`         |           30s | GRPC Request timeout                                                       |
 | `batchLinger`            |           5ms | Max time to wait for new operations before closing batch.                  |
 | `maxRequestsPerBatch`    |         1,000 | Max number of operations in a batch.                                       |
-| `maxBatchSize`           |     1,048,576 | Max byte size of a batch (approximate).                                    |
+| `maxBatchSize`           |          4MiB | Max byte size of a batch (approximate).                                    |
 | `operationQueueCapacity` |         1,000 | Number of operations that can be buffered prior to batching.               |
 | `recordCacheCapacity`    |        10,000 | Number or records that can be cached by the client (`0` disables caching). |
 | `sessionTimeout`         |           15s | Period of inactivity after which session will be closed.                   |
