@@ -19,6 +19,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static lombok.AccessLevel.PACKAGE;
 
 import io.streamnative.oxia.client.ClientConfig;
+import io.streamnative.oxia.client.metrics.BatchMetrics;
 import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import java.time.Clock;
@@ -107,17 +108,22 @@ public class Batcher implements Runnable, AutoCloseable {
     static @NonNull Function<Long, Batcher> newReadBatcherFactory(
             @NonNull ClientConfig config,
             @NonNull Function<Long, ReactorOxiaClientStub> stubByShardId,
-            Clock clock) {
-        return s -> new Batcher(config, s, new Batch.ReadBatchFactory(stubByShardId, config, clock));
+            Clock clock,
+            BatchMetrics metrics) {
+        return s ->
+                new Batcher(config, s, new Batch.ReadBatchFactory(stubByShardId, config, clock, metrics));
     }
 
     static @NonNull Function<Long, Batcher> newWriteBatcherFactory(
             @NonNull ClientConfig config,
             @NonNull Function<Long, ReactorOxiaClientStub> stubByShardId,
             @NonNull SessionManager sessionManager,
-            Clock clock) {
+            Clock clock,
+            BatchMetrics metrics) {
         return s ->
                 new Batcher(
-                        config, s, new Batch.WriteBatchFactory(stubByShardId, sessionManager, config, clock));
+                        config,
+                        s,
+                        new Batch.WriteBatchFactory(stubByShardId, sessionManager, config, clock, metrics));
     }
 }

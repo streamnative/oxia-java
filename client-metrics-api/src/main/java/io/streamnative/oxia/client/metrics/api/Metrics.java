@@ -13,19 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.streamnative.oxia.client;
+package io.streamnative.oxia.client.metrics.api;
 
 
-import io.streamnative.oxia.client.metrics.api.Metrics;
-import java.time.Duration;
-import lombok.NonNull;
+import java.util.Map;
 
-public record ClientConfig(
-        @NonNull String serviceAddress,
-        @NonNull Duration requestTimeout,
-        @NonNull Duration batchLinger,
-        int maxRequestsPerBatch,
-        int operationQueueCapacity,
-        @NonNull Duration sessionTimeout,
-        @NonNull String clientIdentifier,
-        @NonNull Metrics metrics) {}
+public interface Metrics {
+    Metrics nullObject = (name, unit) -> (value, attributes) -> {};
+
+    Histogram histogram(String name, Unit unit);
+
+    interface Histogram {
+        void record(long value, Map<String, String> attributes);
+    }
+
+    enum Unit {
+        NONE,
+        BYTES,
+        MILLISECONDS
+    }
+
+    static Map<String, String> attributes(String type, Throwable t) {
+        return Map.of("type", type, "result", t == null ? "success" : "failure");
+    }
+}
