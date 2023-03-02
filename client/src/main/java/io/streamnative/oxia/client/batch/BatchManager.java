@@ -20,6 +20,7 @@ import static java.util.stream.Collectors.toList;
 import static lombok.AccessLevel.PACKAGE;
 
 import io.streamnative.oxia.client.ClientConfig;
+import io.streamnative.oxia.client.metrics.BatchMetrics;
 import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import java.time.Clock;
@@ -97,16 +98,20 @@ public class BatchManager implements AutoCloseable {
     }
 
     public static @NonNull BatchManager newReadBatchManager(
-            @NonNull ClientConfig config, @NonNull Function<Long, ReactorOxiaClientStub> stubByShardId) {
+            @NonNull ClientConfig config,
+            @NonNull Function<Long, ReactorOxiaClientStub> stubByShardId,
+            BatchMetrics metrics) {
         return new BatchManager(
-                Batcher.newReadBatcherFactory(config, stubByShardId, Clock.systemUTC()));
+                Batcher.newReadBatcherFactory(config, stubByShardId, Clock.systemUTC(), metrics));
     }
 
     public static @NonNull BatchManager newWriteBatchManager(
             @NonNull ClientConfig config,
             @NonNull Function<Long, ReactorOxiaClientStub> stubByShardId,
-            @NonNull SessionManager sessionManager) {
+            @NonNull SessionManager sessionManager,
+            BatchMetrics metrics) {
         return new BatchManager(
-                Batcher.newWriteBatcherFactory(config, stubByShardId, sessionManager, Clock.systemUTC()));
+                Batcher.newWriteBatcherFactory(
+                        config, stubByShardId, sessionManager, Clock.systemUTC(), metrics));
     }
 }

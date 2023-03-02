@@ -19,6 +19,7 @@ import static java.time.Duration.ZERO;
 
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.SyncOxiaClient;
+import io.streamnative.oxia.client.metrics.api.Metrics;
 import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -42,6 +43,7 @@ public class OxiaClientBuilder {
     private int operationQueueCapacity = DefaultOperationQueueCapacity;
     @NonNull private Duration sessionTimeout = DefaultSessionTimeout;
     @NonNull private Supplier<String> clientIdentifier = OxiaClientBuilder::randomClientIdentifier;
+    @NonNull private Metrics metrics = Metrics.nullObject;
 
     public @NonNull OxiaClientBuilder requestTimeout(@NonNull Duration requestTimeout) {
         if (requestTimeout.isNegative() || requestTimeout.equals(ZERO)) {
@@ -97,6 +99,11 @@ public class OxiaClientBuilder {
         return this;
     }
 
+    public @NonNull OxiaClientBuilder metrics(@NonNull Metrics metrics) {
+        this.metrics = metrics;
+        return this;
+    }
+
     public @NonNull CompletableFuture<AsyncOxiaClient> asyncClient() {
         var config =
                 new ClientConfig(
@@ -106,7 +113,8 @@ public class OxiaClientBuilder {
                         maxRequestsPerBatch,
                         operationQueueCapacity,
                         sessionTimeout,
-                        clientIdentifier.get());
+                        clientIdentifier.get(),
+                        metrics);
 
         return AsyncOxiaClientImpl.newInstance(config);
     }
