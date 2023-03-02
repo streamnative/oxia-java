@@ -128,18 +128,18 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
             @NonNull String startKeyInclusive, @NonNull String endKeyExclusive) {
         checkIfClosed();
         var sample = metrics.recordDeleteRange();
-        return CompletableFuture.allOf(
-                        shardManager.getAll().stream()
-                                .map(writeBatchManager::getBatcher)
-                                .map(
-                                        b -> {
-                                            var callback = new CompletableFuture<Void>();
-                                            b.add(new DeleteRangeOperation(callback, startKeyInclusive, endKeyExclusive));
-                                            return callback;
-                                        })
-                                .collect(toList())
-                                .toArray(new CompletableFuture[0]))
-                .whenComplete(sample);
+        var shardDeletes =
+                shardManager.getAll().stream()
+                        .map(writeBatchManager::getBatcher)
+                        .map(
+                                b -> {
+                                    var callback = new CompletableFuture<Void>();
+                                    b.add(new DeleteRangeOperation(callback, startKeyInclusive, endKeyExclusive));
+                                    return callback;
+                                })
+                        .collect(toList())
+                        .toArray(new CompletableFuture[0]);
+        return CompletableFuture.allOf(shardDeletes).whenComplete(sample);
     }
 
     @Override
