@@ -322,6 +322,10 @@
                             <shadedClassifierName>shaded</shadedClassifierName>
                             <relocations>
                                 <relocation>
+                                    <pattern>com.github.ben-manes.caffeine</pattern>
+                                    <shadedPattern>${shade.relocation.package}.com.github.ben-manes.caffeine</shadedPattern>
+                                </relocation>
+                                <relocation>
                                     <pattern>com.google</pattern>
                                     <shadedPattern>${shade.relocation.package}.com.google</shadedPattern>
                                 </relocation>
