@@ -19,6 +19,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
@@ -32,11 +33,15 @@ import static org.mockito.Mockito.when;
 
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.api.GetResult;
+import io.streamnative.oxia.client.api.OperationTooLargeException;
+import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.batch.Batch.BatchFactory;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.metrics.api.Metrics;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
@@ -66,6 +71,7 @@ class BatcherTest {
                     Duration.ofMillis(100),
                     Duration.ofMillis(1000),
                     10,
+                    1024 * 1024,
                     5,
                     0,
                     Duration.ofMillis(1000),
@@ -87,11 +93,12 @@ class BatcherTest {
     }
 
     @Test
-    void createBatchAndAdd() {
+    void createBatchAndAdd() throws Exception {
         var callback = new CompletableFuture<GetResult>();
         Operation<?> op = new GetOperation(callback, "key");
         when(batchFactory.apply(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(1);
+        when(batch.canAdd(any())).thenReturn(true);
         executor.execute(() -> batcher.run());
         batcher.add(op);
         await().untilAsserted(() -> verify(batch).add(op));
@@ -99,11 +106,12 @@ class BatcherTest {
     }
 
     @Test
-    void completeBatchOnFull() {
+    void completeBatchOnFull() throws Exception {
         var callback = new CompletableFuture<GetResult>();
         Operation<?> op = new GetOperation(callback, "key");
         when(batchFactory.apply(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(config.maxRequestsPerBatch());
+        when(batch.canAdd(any())).thenReturn(true);
         executor.execute(() -> batcher.run());
         batcher.add(op);
         await().untilAsserted(() -> verify(batch).complete());
@@ -111,11 +119,53 @@ class BatcherTest {
     }
 
     @Test
-    void completeBatchOnFullThenNewBatch() {
+    void addWhenNextDoesNotFit() throws Exception {
+        var callback = new CompletableFuture<PutResult>();
+        Operation<?> op =
+                new Operation.WriteOperation.PutOperation(
+                        callback, "key", "value".getBytes(StandardCharsets.UTF_8), Optional.empty(), false);
+        when(batchFactory.apply(shardId)).thenReturn(batch);
+        when(batch.size()).thenReturn(config.maxRequestsPerBatch(), 1);
+        when(batch.canAdd(any())).thenReturn(false).thenReturn(true);
+        executor.execute(() -> batcher.run());
+        batcher.add(op);
+        await()
+                .untilAsserted(
+                        () -> {
+                            verify(batchFactory, times(2)).apply(shardId);
+                            verify(batch).add(op);
+                        });
+        verifyNoInteractions(clock);
+    }
+
+    @Test
+    void addWhenTooLarge() throws Exception {
+        var callback = new CompletableFuture<PutResult>();
+        Operation<?> op =
+                new Operation.WriteOperation.PutOperation(
+                        callback, "key", "value".getBytes(StandardCharsets.UTF_8), Optional.empty(), false);
+        when(batchFactory.apply(shardId)).thenReturn(batch);
+        when(batch.size()).thenReturn(config.maxRequestsPerBatch(), 1);
+        when(batch.canAdd(any())).thenThrow(OperationTooLargeException.class);
+        executor.execute(() -> batcher.run());
+        batcher.add(op);
+        await()
+                .untilAsserted(
+                        () -> {
+                            assertThat(op.callback().isCompletedExceptionally()).isTrue();
+                            verify(batchFactory).apply(shardId);
+                            verify(batch, never()).add(any());
+                        });
+        verifyNoInteractions(clock);
+    }
+
+    @Test
+    void completeBatchOnFullThenNewBatch() throws Exception {
         var callback = new CompletableFuture<GetResult>();
         Operation<?> op = new GetOperation(callback, "key");
         when(batchFactory.apply(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(config.maxRequestsPerBatch(), 1);
+        when(batch.canAdd(any())).thenReturn(true);
         executor.execute(() -> batcher.run());
         batcher.add(op);
         await().untilAsserted(() -> verify(batch).complete());
@@ -130,11 +180,12 @@ class BatcherTest {
     }
 
     @Test
-    void completeBatchOnLingerExpiration() {
+    void completeBatchOnLingerExpiration() throws Exception {
         var callback = new CompletableFuture<GetResult>();
         Operation<?> op = new GetOperation(callback, "key");
         when(batchFactory.apply(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(1);
+        when(batch.canAdd(any())).thenReturn(true);
         when(batch.getStartTime()).thenReturn(0L);
         when(clock.millis()).thenReturn(0L, config.batchLinger().toMillis());
         executor.execute(() -> batcher.run());
@@ -145,11 +196,12 @@ class BatcherTest {
     }
 
     @Test
-    void completeBatchOnLingerExpirationMulti() {
+    void completeBatchOnLingerExpirationMulti() throws Exception {
         var callback = new CompletableFuture<GetResult>();
         Operation<?> op = new GetOperation(callback, "key");
         when(batchFactory.apply(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(1);
+        when(batch.canAdd(any())).thenReturn(true);
         when(batch.getStartTime()).thenReturn(0L);
         when(clock.millis()).thenReturn(0L, 100L, 200L, config.batchLinger().toMillis());
         executor.execute(() -> batcher.run());

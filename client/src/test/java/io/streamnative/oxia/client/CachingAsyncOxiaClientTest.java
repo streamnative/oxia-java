@@ -109,7 +109,8 @@ class CachingAsyncOxiaClientTest {
         var result = CompletableFuture.completedFuture(get);
         when(delegate.get("a")).thenReturn(result);
         var config =
-                new ClientConfig("localhost:8080", ZERO, ZERO, 1, 1, 1, ZERO, "id", Metrics.nullObject);
+                new ClientConfig(
+                        "localhost:8080", ZERO, ZERO, 1, 1024 * 1024, 1, 1, ZERO, "id", Metrics.nullObject);
         client = new CachingAsyncOxiaClient(config, delegate);
         assertThat(client.get("a").get()).isEqualTo(get);
         assertThat(client.get("a").get()).isEqualTo(get);
