@@ -67,6 +67,7 @@ class BatcherTest {
                     Duration.ofMillis(1000),
                     10,
                     5,
+                    0,
                     Duration.ofMillis(1000),
                     "client_id",
                     Metrics.nullObject);
