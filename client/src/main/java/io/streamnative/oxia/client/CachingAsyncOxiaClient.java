@@ -34,11 +34,18 @@ class CachingAsyncOxiaClient implements AsyncOxiaClient {
     private final @NonNull AsyncLoadingCache<String, GetResult> recordCache;
 
     CachingAsyncOxiaClient(@NonNull ClientConfig config, @NonNull AsyncOxiaClient delegate) {
-        this.delegate = delegate;
-        recordCache =
+        this(
+                delegate,
                 Caffeine.newBuilder()
                         .maximumSize(config.recordCacheCapacity())
-                        .buildAsync((key, executor) -> delegate.get(key));
+                        .buildAsync((key, executor) -> delegate.get(key)));
+    }
+
+    CachingAsyncOxiaClient(
+            @NonNull AsyncOxiaClient delegate,
+            @NonNull AsyncLoadingCache<String, GetResult> recordCache) {
+        this.delegate = delegate;
+        this.recordCache = recordCache;
         delegate.notifications(n -> recordCache.synchronous().invalidate(n.key()));
     }
 
@@ -52,7 +59,7 @@ class CachingAsyncOxiaClient implements AsyncOxiaClient {
     @Override
     public @NonNull CompletableFuture<Boolean> delete(
             @NonNull String key, @NonNull DeleteOption... options) {
-        recordCache.synchronous ().invalidate(key);
+        recordCache.synchronous().invalidate(key);
         return delegate.delete(key, options);
     }
 
