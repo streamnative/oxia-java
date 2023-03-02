@@ -23,6 +23,7 @@ import io.grpc.Server;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
 import io.streamnative.oxia.client.ClientConfig;
+import io.streamnative.oxia.client.metrics.api.Metrics;
 import io.streamnative.oxia.proto.CloseSessionRequest;
 import io.streamnative.oxia.proto.CloseSessionResponse;
 import io.streamnative.oxia.proto.KeepAliveResponse;
@@ -62,7 +63,16 @@ class SessionTest {
 
         config =
                 new ClientConfig(
-                        "address", Duration.ZERO, Duration.ZERO, 1, 1, sessionTimeout, clientId, 1024 * 1024);
+                        "address",
+                        Duration.ZERO,
+                        Duration.ZERO,
+                        1,
+                        1024 * 1024,
+                        1,
+                        0,
+                        sessionTimeout,
+                        clientId,
+                        Metrics.nullObject);
 
         String serverName = InProcessServerBuilder.generateName();
         service = new TestService();

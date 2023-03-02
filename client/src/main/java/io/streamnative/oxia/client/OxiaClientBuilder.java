@@ -19,6 +19,7 @@ import static java.time.Duration.ZERO;
 
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.SyncOxiaClient;
+import io.streamnative.oxia.client.metrics.api.Metrics;
 import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -35,6 +36,7 @@ public class OxiaClientBuilder {
     public static final Duration DefaultRequestTimeout = Duration.ofSeconds(30);
     public static final int DefaultOperationQueueCapacity = 1000;
     public static final Duration DefaultSessionTimeout = Duration.ofSeconds(15);
+    public static final int DefaultRecordCacheCapacity = 10_000;
 
     @NonNull private final String serviceAddress;
     @NonNull private Duration requestTimeout = DefaultRequestTimeout;
@@ -42,8 +44,10 @@ public class OxiaClientBuilder {
     private int maxRequestsPerBatch = DefaultMaxRequestsPerBatch;
     private int maxBatchSize = DefaultMaxBatchSize;
     private int operationQueueCapacity = DefaultOperationQueueCapacity;
+    private int recordCacheCapacity = DefaultRecordCacheCapacity;
     @NonNull private Duration sessionTimeout = DefaultSessionTimeout;
     @NonNull private Supplier<String> clientIdentifier = OxiaClientBuilder::randomClientIdentifier;
+    @NonNull private Metrics metrics = Metrics.nullObject;
 
     public @NonNull OxiaClientBuilder requestTimeout(@NonNull Duration requestTimeout) {
         if (requestTimeout.isNegative() || requestTimeout.equals(ZERO)) {
@@ -88,6 +92,15 @@ public class OxiaClientBuilder {
         return this;
     }
 
+    public @NonNull OxiaClientBuilder recordCacheCapacity(int recordCacheCapacity) {
+        if (recordCacheCapacity <= 0) {
+            throw new IllegalArgumentException(
+                    "recordCacheCapacity must be greater than zero: " + recordCacheCapacity);
+        }
+        this.recordCacheCapacity = recordCacheCapacity;
+        return this;
+    }
+
     public @NonNull OxiaClientBuilder sessionTimeout(@NonNull Duration sessionTimeout) {
         if (sessionTimeout.isNegative() || sessionTimeout.equals(ZERO)) {
             throw new IllegalArgumentException(
@@ -107,6 +120,11 @@ public class OxiaClientBuilder {
         return this;
     }
 
+    public @NonNull OxiaClientBuilder metrics(@NonNull Metrics metrics) {
+        this.metrics = metrics;
+        return this;
+    }
+
     public @NonNull CompletableFuture<AsyncOxiaClient> asyncClient() {
         var config =
                 new ClientConfig(
@@ -114,12 +132,19 @@ public class OxiaClientBuilder {
                         requestTimeout,
                         batchLinger,
                         maxRequestsPerBatch,
+                        maxBatchSize,
                         operationQueueCapacity,
+                        recordCacheCapacity,
                         sessionTimeout,
                         clientIdentifier.get(),
-                        maxBatchSize);
-
-        return AsyncOxiaClientImpl.newInstance(config);
+                        metrics
+                );
+        var async = AsyncOxiaClientImpl.newInstance(config);
+        if (config.recordCacheCapacity() > 0) {
+            return async.thenApply(a -> new CachingAsyncOxiaClient(config, a));
+        } else {
+            return async;
+        }
     }
 
     public @NonNull SyncOxiaClient syncClient() {

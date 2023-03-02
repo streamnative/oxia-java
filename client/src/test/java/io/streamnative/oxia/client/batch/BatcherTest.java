@@ -37,6 +37,7 @@ import io.streamnative.oxia.client.api.OperationTooLargeException;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.batch.Batch.BatchFactory;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
+import io.streamnative.oxia.client.metrics.api.Metrics;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
@@ -70,10 +71,12 @@ class BatcherTest {
                     Duration.ofMillis(100),
                     Duration.ofMillis(1000),
                     10,
+                    1024 * 1024,
                     5,
+                    0,
                     Duration.ofMillis(1000),
                     "client_id",
-                    1024 * 1024);
+                    Metrics.nullObject);
 
     BlockingQueue<Operation<?>> queue = new ArrayBlockingQueue<>(config.operationQueueCapacity());
     ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();

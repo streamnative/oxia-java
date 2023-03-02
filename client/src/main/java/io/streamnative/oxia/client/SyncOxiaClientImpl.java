@@ -66,9 +66,9 @@ class SyncOxiaClientImpl implements SyncOxiaClient {
 
     @SneakyThrows
     @Override
-    public void deleteRange(@NonNull String minKeyInclusive, @NonNull String maxKeyExclusive) {
+    public void deleteRange(@NonNull String startKeyInclusive, @NonNull String endKeyExclusive) {
         try {
-            asyncClient.deleteRange(minKeyInclusive, maxKeyExclusive).get();
+            asyncClient.deleteRange(startKeyInclusive, endKeyExclusive).get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
@@ -93,9 +93,9 @@ class SyncOxiaClientImpl implements SyncOxiaClient {
     @SneakyThrows
     @Override
     public @NonNull List<String> list(
-            @NonNull String minKeyInclusive, @NonNull String maxKeyExclusive) {
+            @NonNull String startKeyInclusive, @NonNull String endKeyExclusive) {
         try {
-            return asyncClient.list(minKeyInclusive, maxKeyExclusive).get();
+            return asyncClient.list(startKeyInclusive, endKeyExclusive).get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);

@@ -63,6 +63,15 @@ class OxiaClientBuilderTest {
     }
 
     @Test
+    void recordCacheCapacity() {
+        assertThatThrownBy(() -> builder.recordCacheCapacity(0))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> builder.recordCacheCapacity(-1))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatNoException().isThrownBy(() -> builder.recordCacheCapacity(1));
+    }
+
+    @Test
     void sessionTimeout() {
         assertThatThrownBy(() -> builder.sessionTimeout(ZERO))
                 .isInstanceOf(IllegalArgumentException.class);
