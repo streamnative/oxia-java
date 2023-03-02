@@ -45,25 +45,15 @@ class CachingAsyncOxiaClient implements AsyncOxiaClient {
     @Override
     public @NonNull CompletableFuture<PutResult> put(
             @NonNull String key, byte @NonNull [] value, @NonNull PutOption... options) {
-        return delegate
-                .put(key, value, options)
-                .thenApply(
-                        p -> {
-                            recordCache.synchronous().invalidate(key);
-                            return p;
-                        });
+        recordCache.synchronous().invalidate(key);
+        return delegate.put(key, value, options);
     }
 
     @Override
     public @NonNull CompletableFuture<Boolean> delete(
             @NonNull String key, @NonNull DeleteOption... options) {
-        return delegate
-                .delete(key, options)
-                .thenApply(
-                        b -> {
-                            recordCache.synchronous().invalidate(key);
-                            return b;
-                        });
+        recordCache.synchronous ().invalidate(key);
+        return delegate.delete(key, options);
     }
 
     @Override
