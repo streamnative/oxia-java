@@ -35,12 +35,14 @@ public class OxiaClientBuilder {
     public static final Duration DefaultRequestTimeout = Duration.ofSeconds(30);
     public static final int DefaultOperationQueueCapacity = 1000;
     public static final Duration DefaultSessionTimeout = Duration.ofSeconds(15);
+    public static final int DefaultRecordCacheCapacity = 10_000;
 
     @NonNull private final String serviceAddress;
     @NonNull private Duration requestTimeout = DefaultRequestTimeout;
     @NonNull private Duration batchLinger = DefaultBatchLinger;
     private int maxRequestsPerBatch = DefaultMaxRequestsPerBatch;
     private int operationQueueCapacity = DefaultOperationQueueCapacity;
+    private int recordCacheCapacity = DefaultRecordCacheCapacity;
     @NonNull private Duration sessionTimeout = DefaultSessionTimeout;
     @NonNull private Supplier<String> clientIdentifier = OxiaClientBuilder::randomClientIdentifier;
     @NonNull private Metrics metrics = Metrics.nullObject;
@@ -80,6 +82,15 @@ public class OxiaClientBuilder {
         return this;
     }
 
+    public @NonNull OxiaClientBuilder recordCacheCapacity(int recordCacheCapacity) {
+        if (recordCacheCapacity <= 0) {
+            throw new IllegalArgumentException(
+                    "recordCacheCapacity must be greater than zero: " + recordCacheCapacity);
+        }
+        this.recordCacheCapacity = recordCacheCapacity;
+        return this;
+    }
+
     public @NonNull OxiaClientBuilder sessionTimeout(@NonNull Duration sessionTimeout) {
         if (sessionTimeout.isNegative() || sessionTimeout.equals(ZERO)) {
             throw new IllegalArgumentException(
@@ -112,11 +123,17 @@ public class OxiaClientBuilder {
                         batchLinger,
                         maxRequestsPerBatch,
                         operationQueueCapacity,
+                        recordCacheCapacity,
                         sessionTimeout,
                         clientIdentifier.get(),
                         metrics);
 
-        return AsyncOxiaClientImpl.newInstance(config);
+        var async = AsyncOxiaClientImpl.newInstance(config);
+        if (config.recordCacheCapacity() > 0) {
+            return async.thenApply(a -> new CachingAsyncOxiaClient(config, a));
+        } else {
+            return async;
+        }
     }
 
     public @NonNull SyncOxiaClient syncClient() {

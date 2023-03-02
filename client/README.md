@@ -7,6 +7,7 @@ A JDK based client for [Oxia][oxia].
 - Request batching
 - Asynchronous operation
 - Notifications callback
+- Record caching
 
 ## Usage
 
