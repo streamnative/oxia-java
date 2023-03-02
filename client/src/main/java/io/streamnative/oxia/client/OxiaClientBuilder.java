@@ -137,8 +137,7 @@ public class OxiaClientBuilder {
                         recordCacheCapacity,
                         sessionTimeout,
                         clientIdentifier.get(),
-                        metrics
-                );
+                        metrics);
         var async = AsyncOxiaClientImpl.newInstance(config);
         if (config.recordCacheCapacity() > 0) {
             return async.thenApply(a -> new CachingAsyncOxiaClient(config, a));

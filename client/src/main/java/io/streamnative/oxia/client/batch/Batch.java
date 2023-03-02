@@ -93,8 +93,8 @@ public interface Batch {
             } else if (operation instanceof DeleteOperation d) {
                 return d.key().getBytes(StandardCharsets.UTF_8).length;
             } else if (operation instanceof DeleteRangeOperation r) {
-                return r.minKeyInclusive().getBytes(StandardCharsets.UTF_8).length
-                        + r.maxKeyInclusive().getBytes(StandardCharsets.UTF_8).length;
+                return r.startKeyInclusive().getBytes(StandardCharsets.UTF_8).length
+                        + r.endKeyExclusive().getBytes(StandardCharsets.UTF_8).length;
             }
             return 0;
         }

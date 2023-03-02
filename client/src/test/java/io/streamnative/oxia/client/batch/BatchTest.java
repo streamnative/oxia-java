@@ -153,7 +153,13 @@ class BatchTest {
         void setup() {
             batch =
                     new WriteBatch(
-                            clientByShardId, sessionManager, clientIdentifier, shardId, startTime, 1024 * 1024, sample);
+                            clientByShardId,
+                            sessionManager,
+                            clientIdentifier,
+                            shardId,
+                            startTime,
+                            1024 * 1024,
+                            sample);
         }
 
         @Test
@@ -430,7 +436,8 @@ class BatchTest {
         @Mock BatchMetrics metrics;
 
         ClientConfig config =
-                new ClientConfig("address", ZERO, ZERO, 1, 1, 0, ZERO, "client_id", 1024 * 1024, Metrics.nullObject);
+                new ClientConfig(
+                        "address", ZERO, ZERO, 1, 1, 0, ZERO, "client_id", 1024 * 1024, Metrics.nullObject);
 
         @BeforeEach
         void mocking() {
