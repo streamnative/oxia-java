@@ -68,6 +68,7 @@ class SessionTest {
                         Duration.ZERO,
                         1,
                         1,
+                        0,
                         sessionTimeout,
                         clientId,
                         Metrics.nullObject);
