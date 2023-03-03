@@ -19,7 +19,8 @@ package io.streamnative.oxia.client.metrics.api;
 import java.util.Map;
 
 public interface Metrics {
-    Metrics nullObject = (name, unit) -> (value, attributes) -> {};
+
+    Metrics nullObject = NullObject.INSTANCE;
 
     Histogram histogram(String name, Unit unit);
 
@@ -34,6 +35,25 @@ public interface Metrics {
     }
 
     static Map<String, String> attributes(String type, Throwable t) {
-        return Map.of("type", type, "result", t == null ? "success" : "failure");
+        return attributes(type, t == null);
     }
+
+    static Map<String, String> attributes(String type, boolean success) {
+        return Map.of("type", type, "result", success ? "success" : "failure");
+    }
+
+    static Map<String, String> attributes(String type) {
+        return attributes(type, true);
+    }
+}
+
+enum NullObject implements Metrics {
+    INSTANCE {
+        @Override
+        public Histogram histogram(String name, Unit unit) {
+            return nullHistogram;
+        }
+    };
+
+    final Histogram nullHistogram = (value, attributes) -> {};
 }

@@ -15,6 +15,7 @@
  */
 package io.streamnative.oxia.client;
 
+import static lombok.AccessLevel.PACKAGE;
 
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -24,28 +25,28 @@ import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.PutOption;
 import io.streamnative.oxia.client.api.PutResult;
+import io.streamnative.oxia.client.metrics.CacheMetrics;
+import io.streamnative.oxia.client.metrics.api.Metrics;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 
 class CachingAsyncOxiaClient implements AsyncOxiaClient {
     private final @NonNull AsyncOxiaClient delegate;
     private final @NonNull AsyncLoadingCache<String, GetResult> recordCache;
 
-    CachingAsyncOxiaClient(ClientConfig config, AsyncOxiaClient delegate) {
-        this(
-                delegate,
-                Caffeine.newBuilder()
-                        .maximumSize(config.recordCacheCapacity())
-                        .buildAsync((key, executor) -> delegate.get(key)));
+    CachingAsyncOxiaClient(@NonNull ClientConfig config, @NonNull AsyncOxiaClient delegate) {
+        this(config, delegate, new CacheFactory(config, delegate));
     }
 
     CachingAsyncOxiaClient(
+            @NonNull ClientConfig config,
             @NonNull AsyncOxiaClient delegate,
-            @NonNull AsyncLoadingCache<String, GetResult> recordCache) {
+            @NonNull CacheFactory cacheFactory) {
         this.delegate = delegate;
-        this.recordCache = recordCache;
+        this.recordCache = cacheFactory.newInstance(config, delegate);
         delegate.notifications(n -> recordCache.synchronous().invalidate(n.key()));
     }
 
@@ -88,5 +89,21 @@ class CachingAsyncOxiaClient implements AsyncOxiaClient {
     @Override
     public void close() throws Exception {
         delegate.close();
+    }
+
+    @RequiredArgsConstructor(access = PACKAGE)
+    static class CacheFactory {
+        private final @NonNull ClientConfig config;
+        private final @NonNull AsyncOxiaClient delegate;
+
+        @NonNull
+        AsyncLoadingCache<String, GetResult> newInstance(
+                @NonNull ClientConfig config, @NonNull AsyncOxiaClient delegate) {
+            var builder = Caffeine.newBuilder().maximumSize(config.recordCacheCapacity());
+            if (config.metrics() != Metrics.nullObject) {
+                builder.recordStats(() -> CacheMetrics.create(config.metrics()));
+            }
+            return builder.buildAsync((key, executor) -> delegate.get(key));
+        }
     }
 }
