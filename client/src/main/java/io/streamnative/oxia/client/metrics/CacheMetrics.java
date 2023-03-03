@@ -63,7 +63,7 @@ public class CacheMetrics implements StatsCounter {
 
     @Override
     public void recordEviction(@NonNegative int weight, RemovalCause removalCause) {
-        var attributes = attributes("eviction_weight");
+        var attributes = attributes("eviction");
         attributes.put(
                 "removal_cause", removalCause == null ? "unknown" : removalCause.name().toLowerCase());
         evictions.record(weight, attributes);
