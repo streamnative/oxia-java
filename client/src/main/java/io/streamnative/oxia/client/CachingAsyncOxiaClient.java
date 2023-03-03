@@ -30,6 +30,7 @@ import io.streamnative.oxia.client.metrics.api.Metrics;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
@@ -38,15 +39,14 @@ class CachingAsyncOxiaClient implements AsyncOxiaClient {
     private final @NonNull AsyncLoadingCache<String, GetResult> recordCache;
 
     CachingAsyncOxiaClient(@NonNull ClientConfig config, @NonNull AsyncOxiaClient delegate) {
-        this(config, delegate, new CacheFactory(config, delegate));
+        this(delegate, new CacheFactory(config, delegate));
     }
 
     CachingAsyncOxiaClient(
-            @NonNull ClientConfig config,
             @NonNull AsyncOxiaClient delegate,
-            @NonNull CacheFactory cacheFactory) {
+            @NonNull Supplier<AsyncLoadingCache<String, GetResult>> cacheFactory) {
         this.delegate = delegate;
-        this.recordCache = cacheFactory.newInstance(config, delegate);
+        this.recordCache = cacheFactory.get();
         delegate.notifications(n -> recordCache.synchronous().invalidate(n.key()));
     }
 
@@ -92,13 +92,12 @@ class CachingAsyncOxiaClient implements AsyncOxiaClient {
     }
 
     @RequiredArgsConstructor(access = PACKAGE)
-    static class CacheFactory {
+    static class CacheFactory implements Supplier<AsyncLoadingCache<String, GetResult>> {
         private final @NonNull ClientConfig config;
         private final @NonNull AsyncOxiaClient delegate;
 
         @NonNull
-        AsyncLoadingCache<String, GetResult> newInstance(
-                @NonNull ClientConfig config, @NonNull AsyncOxiaClient delegate) {
+        public AsyncLoadingCache<String, GetResult> get() {
             var builder = Caffeine.newBuilder().maximumSize(config.recordCacheCapacity());
             if (config.metrics() != Metrics.nullObject) {
                 builder.recordStats(() -> CacheMetrics.create(config.metrics()));

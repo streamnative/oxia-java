@@ -58,7 +58,7 @@ class CachingAsyncOxiaClientTest {
 
     @BeforeEach
     void setUp() {
-        client = new CachingAsyncOxiaClient(delegate, cache);
+        client = new CachingAsyncOxiaClient(delegate, () -> cache);
     }
 
     @Test
