@@ -94,18 +94,19 @@ metrics have two attributes - type & result.
 
 ### Cache Level
 
-| Name                            | Description                                       |
-|---------------------------------|---------------------------------------------------|
-| `oxia_client_cache_load_timer`  | The time it took to load a record in to the cache |
-| `oxia_client_cache_hits`        | Counts of cache hits and misses                   |
-| `oxia_client_cache_evictions`   | Counts of record evictions from the cache         |
+|              Name              |                    Description                    |
+|--------------------------------|---------------------------------------------------|
+| `oxia_client_cache_load_timer` | The time it took to load a record in to the cache |
+| `oxia_client_cache_hits`       | Counts of cache hits and misses                   |
+| `oxia_client_cache_evictions`  | Counts of record evictions from the cache         |
 
 #### Attributes
 
-| Name            | Description                     | Values                                                 | Notes                            |
+|      Name       |           Description           |                         Values                         |              Notes               |
 |-----------------|---------------------------------|--------------------------------------------------------|----------------------------------|
 | `type`          | The operation type              | `load`, `hit`, `eviction`                              |                                  |
 | `result`        | The operation result            | `success`, `failure`                                   |                                  |
 | `removal_cause` | See: [`RemovalCause`][caffeine] | `explicit`, `replaced`, `collected`, `expired`, `size` | Applies to `type: eviction` only |
 
-   [caffeine]: https://github.com/ben-manes/caffeine/blob/master/caffeine/src/main/java/com/github/benmanes/caffeine/cache/RemovalCause.java
+[caffeine]: https://github.com/ben-manes/caffeine/blob/master/caffeine/src/main/java/com/github/benmanes/caffeine/cache/RemovalCause.java
+
