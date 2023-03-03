@@ -38,7 +38,7 @@ class CachingAsyncOxiaClient implements AsyncOxiaClient {
     private final @NonNull AsyncOxiaClient delegate;
     private final @NonNull AsyncLoadingCache<String, GetResult> recordCache;
 
-    CachingAsyncOxiaClient(@NonNull ClientConfig config, @NonNull AsyncOxiaClient delegate) {
+    CachingAsyncOxiaClient(ClientConfig config, AsyncOxiaClient delegate) {
         this(delegate, new CacheFactory(config, delegate));
     }
 
