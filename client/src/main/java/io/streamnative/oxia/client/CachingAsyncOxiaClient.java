@@ -97,7 +97,7 @@ class CachingAsyncOxiaClient implements AsyncOxiaClient {
         private final @NonNull AsyncOxiaClient delegate;
         private final @NonNull Supplier<CacheMetrics> cacheMetricsFactory;
 
-        CacheFactory(@NonNull ClientConfig config, @NonNull AsyncOxiaClient delegate) {
+        CacheFactory(ClientConfig config, AsyncOxiaClient delegate) {
             this(config, delegate, () -> CacheMetrics.create(config.metrics()));
         }
 
