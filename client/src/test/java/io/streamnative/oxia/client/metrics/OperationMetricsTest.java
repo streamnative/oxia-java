@@ -61,7 +61,7 @@ class OperationMetricsTest {
     @MethodSource("args")
     void put(Throwable t, String result) {
         var sample = operationMetrics.recordPut(1L);
-        sample.accept(new PutResult(new Version(1, 2, 3, 4, empty(), empty())), t);
+        sample.stop(new PutResult(new Version(1, 2, 3, 4, empty(), empty())), t);
 
         verify(timer).record(2L, Map.of("type", "put", "result", result));
         verify(size).record(1L, Map.of("type", "put", "result", result));
@@ -71,7 +71,7 @@ class OperationMetricsTest {
     @MethodSource("args")
     void delete(Throwable t, String result) {
         var sample = operationMetrics.recordDelete();
-        sample.accept(true, t);
+        sample.stop(true, t);
 
         verify(timer).record(2L, Map.of("type", "delete", "result", result));
         verifyNoInteractions(size);
@@ -81,7 +81,7 @@ class OperationMetricsTest {
     @MethodSource("args")
     void deleteRange(Throwable t, String result) {
         var sample = operationMetrics.recordDeleteRange();
-        sample.accept(null, t);
+        sample.stop(null, t);
 
         verify(timer).record(2L, Map.of("type", "delete_range", "result", result));
         verifyNoInteractions(size);
@@ -91,7 +91,7 @@ class OperationMetricsTest {
     @MethodSource("args")
     void get(Throwable t, String result) {
         var sample = operationMetrics.recordGet();
-        sample.accept(new GetResult(new byte[1], new Version(1, 2, 3, 4, empty(), empty())), t);
+        sample.stop(new GetResult(new byte[1], new Version(1, 2, 3, 4, empty(), empty())), t);
 
         verify(timer).record(2L, Map.of("type", "get", "result", result));
         verify(size).record(1L, Map.of("type", "get", "result", result));
@@ -101,7 +101,7 @@ class OperationMetricsTest {
     @MethodSource("args")
     void list(Throwable t, String result) {
         var sample = operationMetrics.recordList();
-        sample.accept(List.of(), t);
+        sample.stop(List.of(), t);
 
         verify(timer).record(2L, Map.of("type", "list", "result", result));
         verifyNoInteractions(size);

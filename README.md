@@ -52,3 +52,42 @@ Common build actions:
 [dependencies-file]: https://github.com/streamnative/streamnative-ci/blob/master/images/dependencies.json
 [ci-repo]: https://github.com/streamnative/streamnative-ci
 
+## Metrics
+
+The Oxia Java client collects various metrics about the operations being performed. There is an
+[API](client-metrics-api/src/main/java/io/streamnative/oxia/client/metrics/api/Metrics.java) and an OpenTelemetry
+[implementation](client-metrics-opentelemetry/src/main/java/io/streamnative/oxia/client/metrics/opentelemetry/OpenTelemetryMetrics.java)
+is provided.
+
+There are two levels at which metrics are captured - at the individual operation level and at the batch level. All
+metrics have two attributes - type & result.
+
+### Operation Level
+
+|             Name              | Description                                                                    |
+|-------------------------------|--------------------------------------------------------------------------------|
+| `oxia_client_operation_timer` | The time an operation takes to be executed from request submission to response |
+| `oxia_client_operation_size`  | The record value size. Only applicable for `put` and `get`                     |
+
+#### Attributes
+
+| Name     | Description          | Values                                         |
+|----------|----------------------|------------------------------------------------|
+| `type`   | The operation type   | `put`, `delete`, `delete_range`, `get`, `list` |
+| `result` | The operation result | `success`, `failure`                           |
+
+### Batch Level
+
+|              Name               | Description                                                        |
+|---------------------------------|--------------------------------------------------------------------|
+| `oxia_client_batch_total_timer` | The time a batch takes to be completed from creation to response   |
+| `oxia_client_batch_exec_timer`  | The time a batch takes to be completed from submission to response |
+| `oxia_client_batch_size`        | The size of all the record values in a batch                       |
+| `oxia_client_batch_requests`    | The count of requests in a batch                                   |
+
+#### Attributes
+
+| Name     | Description           | Values               |
+|----------|-----------------------|----------------------|
+| `type`   | The operation type    | `write`, `read`      |
+| `result` | The operation result  | `success`, `failure` |

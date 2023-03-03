@@ -39,6 +39,7 @@ import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
 import io.streamnative.oxia.client.grpc.ChannelManager;
 import io.streamnative.oxia.client.grpc.ChannelManager.StubFactory;
 import io.streamnative.oxia.client.metrics.OperationMetrics;
+import io.streamnative.oxia.client.metrics.OperationMetrics.Sample;
 import io.streamnative.oxia.client.notify.NotificationManager;
 import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.client.shard.ShardManager;
@@ -47,7 +48,6 @@ import io.streamnative.oxia.proto.ListResponse;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import java.time.Duration;
 import java.util.List;
-import java.util.function.BiConsumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -85,7 +85,7 @@ class AsyncOxiaClientImplTest {
     }
 
     @Test
-    void put(@Mock BiConsumer<PutResult, Throwable> sample) {
+    void put(@Mock Sample<PutResult> sample) {
         var opCaptor = ArgumentCaptor.forClass(PutOperation.class);
         var shardId = 1L;
         var key = "key";
@@ -104,12 +104,12 @@ class AsyncOxiaClientImplTest {
                             assertThat(o.value()).isEqualTo(value);
                             var putResult = new PutResult(new Version(1, 2, 3, 4, empty(), empty()));
                             o.callback().complete(putResult);
-                            verify(sample).accept(putResult, null);
+                            verify(sample).stop(putResult, null);
                         });
     }
 
     @Test
-    void putExpectedVersion(@Mock BiConsumer<PutResult, Throwable> sample) {
+    void putExpectedVersion(@Mock Sample<PutResult> sample) {
         var opCaptor = ArgumentCaptor.forClass(PutOperation.class);
         var shardId = 1L;
         var key = "key";
@@ -131,7 +131,7 @@ class AsyncOxiaClientImplTest {
     }
 
     @Test
-    void delete(@Mock BiConsumer<Boolean, Throwable> sample) {
+    void delete(@Mock Sample<Boolean> sample) {
         var opCaptor = ArgumentCaptor.forClass(DeleteOperation.class);
         var shardId = 1L;
         var key = "key";
@@ -147,12 +147,12 @@ class AsyncOxiaClientImplTest {
                             assertThat(o.key()).isEqualTo(key);
                             assertThat(o.expectedVersionId()).isEmpty();
                             o.callback().complete(true);
-                            verify(sample).accept(true, null);
+                            verify(sample).stop(true, null);
                         });
     }
 
     @Test
-    void deleteExpectedVersion(@Mock BiConsumer<Boolean, Throwable> sample) {
+    void deleteExpectedVersion(@Mock Sample<Boolean> sample) {
         var opCaptor = ArgumentCaptor.forClass(DeleteOperation.class);
         var shardId = 1L;
         var key = "key";
@@ -172,7 +172,7 @@ class AsyncOxiaClientImplTest {
     }
 
     @Test
-    void deleteRange(@Mock BiConsumer<Void, Throwable> sample) {
+    void deleteRange(@Mock Sample<Void> sample) {
         var batcher1 = mock(Batcher.class);
         var batcher2 = mock(Batcher.class);
         var batcher3 = mock(Batcher.class);
@@ -220,11 +220,11 @@ class AsyncOxiaClientImplTest {
         opCaptor2.getValue().callback().complete(null);
         opCaptor3.getValue().callback().complete(null);
         assertThat(result).isCompleted();
-        verify(sample).accept(null, null);
+        verify(sample).stop(null, null);
     }
 
     @Test
-    void get(@Mock BiConsumer<GetResult, Throwable> sample) {
+    void get(@Mock Sample<GetResult> sample) {
         var opCaptor = ArgumentCaptor.forClass(GetOperation.class);
         var shardId = 1L;
         var key = "key";
@@ -240,7 +240,7 @@ class AsyncOxiaClientImplTest {
                             assertThat(o.key()).isEqualTo(key);
                             var getResult = new GetResult(new byte[1], new Version(1, 2, 3, 4, empty(), empty()));
                             o.callback().complete(getResult);
-                            verify(sample).accept(getResult, null);
+                            verify(sample).stop(getResult, null);
                         });
     }
 
@@ -248,7 +248,7 @@ class AsyncOxiaClientImplTest {
     void list(
             @Mock ReactorOxiaClientStub stub0,
             @Mock ReactorOxiaClientStub stub1,
-            @Mock BiConsumer<List<String>, Throwable> sample) {
+            @Mock Sample<List<String>> sample) {
         when(metrics.recordList()).thenReturn(sample);
         when(shardManager.getAll()).thenReturn(List.of(0L, 1L));
         setupListStub(0L, "leader0", stub0);
@@ -259,7 +259,7 @@ class AsyncOxiaClientImplTest {
         assertThat(list)
                 .containsExactlyInAnyOrder("0-a", "0-b", "0-c", "0-d", "1-a", "1-b", "1-c", "1-d");
 
-        verify(sample).accept(list, null);
+        verify(sample).stop(list, null);
     }
 
     private void setupListStub(long shardId, String leader, ReactorOxiaClientStub stub) {
