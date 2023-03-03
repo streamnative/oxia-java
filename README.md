@@ -64,21 +64,21 @@ metrics have two attributes - type & result.
 
 ### Operation Level
 
-|             Name              | Description                                                                    |
+|             Name              |                                  Description                                   |
 |-------------------------------|--------------------------------------------------------------------------------|
 | `oxia_client_operation_timer` | The time an operation takes to be executed from request submission to response |
 | `oxia_client_operation_size`  | The record value size. Only applicable for `put` and `get`                     |
 
 #### Attributes
 
-| Name     | Description          | Values                                         |
+|   Name   |     Description      |                     Values                     |
 |----------|----------------------|------------------------------------------------|
 | `type`   | The operation type   | `put`, `delete`, `delete_range`, `get`, `list` |
 | `result` | The operation result | `success`, `failure`                           |
 
 ### Batch Level
 
-|              Name               | Description                                                        |
+|              Name               |                            Description                             |
 |---------------------------------|--------------------------------------------------------------------|
 | `oxia_client_batch_total_timer` | The time a batch takes to be completed from creation to response   |
 | `oxia_client_batch_exec_timer`  | The time a batch takes to be completed from submission to response |
@@ -87,7 +87,8 @@ metrics have two attributes - type & result.
 
 #### Attributes
 
-| Name     | Description           | Values               |
-|----------|-----------------------|----------------------|
-| `type`   | The operation type    | `write`, `read`      |
-| `result` | The operation result  | `success`, `failure` |
+|   Name   |     Description      |        Values        |
+|----------|----------------------|----------------------|
+| `type`   | The operation type   | `write`, `read`      |
+| `result` | The operation result | `success`, `failure` |
+
