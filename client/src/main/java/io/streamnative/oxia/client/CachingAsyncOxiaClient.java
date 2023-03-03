@@ -95,12 +95,17 @@ class CachingAsyncOxiaClient implements AsyncOxiaClient {
     static class CacheFactory implements Supplier<AsyncLoadingCache<String, GetResult>> {
         private final @NonNull ClientConfig config;
         private final @NonNull AsyncOxiaClient delegate;
+        private final @NonNull Supplier<CacheMetrics> cacheMetricsFactory;
+
+        CacheFactory(@NonNull ClientConfig config, @NonNull AsyncOxiaClient delegate) {
+            this(config, delegate, () -> CacheMetrics.create(config.metrics()));
+        }
 
         @NonNull
         public AsyncLoadingCache<String, GetResult> get() {
             var builder = Caffeine.newBuilder().maximumSize(config.recordCacheCapacity());
             if (config.metrics() != Metrics.nullObject) {
-                builder.recordStats(() -> CacheMetrics.create(config.metrics()));
+                builder.recordStats(cacheMetricsFactory::get);
             }
             return builder.buildAsync((key, executor) -> delegate.get(key));
         }

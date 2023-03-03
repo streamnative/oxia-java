@@ -18,13 +18,16 @@ package io.streamnative.oxia.client;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.time.Duration.ZERO;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
 import com.github.benmanes.caffeine.cache.LoadingCache;
+import io.streamnative.oxia.client.CachingAsyncOxiaClient.CacheFactory;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.Notification;
@@ -33,6 +36,7 @@ import io.streamnative.oxia.client.api.Notification.KeyDeleted;
 import io.streamnative.oxia.client.api.Notification.KeyModified;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.Version;
+import io.streamnative.oxia.client.metrics.CacheMetrics;
 import io.streamnative.oxia.client.metrics.api.Metrics;
 import java.util.List;
 import java.util.Optional;
@@ -103,21 +107,28 @@ class CachingAsyncOxiaClientTest {
 
     @Test
     void get() throws Exception {
+        var metrics = mock(Metrics.class);
+        var cacheMetrics = mock(CacheMetrics.class);
+        var config =
+                new ClientConfig("localhost:8080", ZERO, ZERO, 1, 1024 * 1024, 1, 1, ZERO, "id", metrics);
+        var cacheFactory = new CacheFactory(config, delegate, () -> cacheMetrics);
+
         var value = "value".getBytes(UTF_8);
         var version = new Version(1L, 2L, 3L, 4L, Optional.empty(), Optional.empty());
         var get = new GetResult(value, version);
         var result = CompletableFuture.completedFuture(get);
         when(delegate.get("a")).thenReturn(result);
-        var config =
-                new ClientConfig(
-                        "localhost:8080", ZERO, ZERO, 1, 1024 * 1024, 1, 1, ZERO, "id", Metrics.nullObject);
-        client = new CachingAsyncOxiaClient(config, delegate);
+        client = new CachingAsyncOxiaClient(delegate, cacheFactory);
         assertThat(client.get("a").get()).isEqualTo(get);
         assertThat(client.get("a").get()).isEqualTo(get);
         assertThat(client.get("a").get()).isEqualTo(get);
         assertThat(client.get("a").get()).isEqualTo(get);
         assertThat(client.get("a").get()).isEqualTo(get);
         verify(delegate, times(1)).get("a");
+
+        verify(cacheMetrics, times(1)).recordMisses(1);
+        verify(cacheMetrics, times(1)).recordLoadSuccess(anyLong());
+        verify(cacheMetrics, times(4)).recordHits(1);
     }
 
     @Test
