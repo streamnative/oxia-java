@@ -107,7 +107,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         var op =
                 new PutOperation(callback, key, value, versionId, PutOption.toEphemeral(validatedOptions));
         writeBatchManager.getBatcher(shardId).add(op);
-        return callback.whenComplete(sample);
+        return callback.whenComplete(sample::stop);
     }
 
     @Override
@@ -120,7 +120,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         var callback = new CompletableFuture<Boolean>();
         var versionId = DeleteOption.toVersionId(validatedOptions);
         writeBatchManager.getBatcher(shardId).add(new DeleteOperation(callback, key, versionId));
-        return callback.whenComplete(sample);
+        return callback.whenComplete(sample::stop);
     }
 
     @Override
@@ -139,7 +139,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                                 })
                         .collect(toList())
                         .toArray(new CompletableFuture[0]);
-        return CompletableFuture.allOf(shardDeletes).whenComplete(sample);
+        return CompletableFuture.allOf(shardDeletes).whenComplete(sample::stop);
     }
 
     @Override
@@ -149,7 +149,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         var shardId = shardManager.get(key);
         var callback = new CompletableFuture<GetResult>();
         readBatchManager.getBatcher(shardId).add(new GetOperation(callback, key));
-        return callback.whenComplete(sample);
+        return callback.whenComplete(sample::stop);
     }
 
     @Override
@@ -161,7 +161,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                 .flatMap(shardId -> list(shardId, startKeyInclusive, endKeyExclusive))
                 .collectList()
                 .toFuture()
-                .whenComplete(sample);
+                .whenComplete(sample::stop);
     }
 
     @Override

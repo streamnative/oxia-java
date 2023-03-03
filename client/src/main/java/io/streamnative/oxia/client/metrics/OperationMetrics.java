@@ -42,19 +42,19 @@ public class OperationMetrics {
         return new OperationMetrics(clock, timer, size);
     }
 
-    public BiConsumer<PutResult, Throwable> recordPut(long valueSize) {
+    public Sample<PutResult> recordPut(long valueSize) {
         return record("put", (t, attributes) -> size.record(valueSize, attributes));
     }
 
-    public BiConsumer<Boolean, Throwable> recordDelete() {
+    public Sample<Boolean> recordDelete() {
         return record("delete");
     }
 
-    public BiConsumer<Void, Throwable> recordDeleteRange() {
+    public Sample<Void> recordDeleteRange() {
         return record("delete_range");
     }
 
-    public BiConsumer<GetResult, Throwable> recordGet() {
+    public Sample<GetResult> recordGet() {
         return record(
                 "get",
                 (r, attributes) -> {
@@ -66,21 +66,24 @@ public class OperationMetrics {
                 });
     }
 
-    public BiConsumer<List<String>, Throwable> recordList() {
+    public Sample<List<String>> recordList() {
         return record("list");
     }
 
-    private <T> BiConsumer<T, Throwable> record(String type) {
+    private <R> Sample<R> record(String type) {
         return record(type, (t, attributes) -> {});
     }
 
-    private <T> BiConsumer<T, Throwable> record(
-            String type, BiConsumer<T, Map<String, String>> consumer) {
+    private <R> Sample<R> record(String type, BiConsumer<R, Map<String, String>> consumer) {
         var start = clock.millis();
         return (r, t) -> {
             var attributes = attributes(type, t);
             timer.record(clock.millis() - start, attributes);
             consumer.accept(r, attributes);
         };
+    }
+
+    public interface Sample<R> {
+        void stop(R result, Throwable t);
     }
 }
