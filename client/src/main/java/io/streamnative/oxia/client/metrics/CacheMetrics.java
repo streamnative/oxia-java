@@ -25,6 +25,8 @@ import com.github.benmanes.caffeine.cache.stats.CacheStats;
 import com.github.benmanes.caffeine.cache.stats.StatsCounter;
 import io.streamnative.oxia.client.metrics.api.Metrics;
 import io.streamnative.oxia.client.metrics.api.Metrics.Histogram;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.checkerframework.checker.index.qual.NonNegative;
 
@@ -63,10 +65,10 @@ public class CacheMetrics implements StatsCounter {
 
     @Override
     public void recordEviction(@NonNegative int weight, RemovalCause removalCause) {
-        var attributes = attributes("eviction");
+        var attributes = new HashMap<>(attributes("eviction"));
         attributes.put(
                 "removal_cause", removalCause == null ? "unknown" : removalCause.name().toLowerCase());
-        evictions.record(weight, attributes);
+        evictions.record(weight, Map.copyOf(attributes));
     }
 
     @Override
