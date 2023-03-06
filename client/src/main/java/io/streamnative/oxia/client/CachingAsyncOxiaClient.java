@@ -67,6 +67,14 @@ class CachingAsyncOxiaClient implements AsyncOxiaClient {
     @Override
     public @NonNull CompletableFuture<Void> deleteRange(
             @NonNull String startKeyInclusive, @NonNull String endKeyExclusive) {
+        var cachedKeysInRange =
+                recordCache.asMap().keySet().stream()
+                        .filter(
+                                k ->
+                                        CompareWithSlash.INSTANCE.compare(k, startKeyInclusive) >= 0
+                                                && CompareWithSlash.INSTANCE.compare(k, endKeyExclusive) < 0)
+                        .toList();
+        recordCache.synchronous().invalidateAll(cachedKeysInRange);
         return delegate.deleteRange(startKeyInclusive, endKeyExclusive);
     }
 
