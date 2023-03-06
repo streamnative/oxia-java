@@ -51,9 +51,8 @@ try {
 ```java
 
 var result = client.put(
-"key", value, PutOption.AsEphemeralRecord
+  "key", value, PutOption.AsEphemeralRecord
 ).join();
-
 ```
 
 ### Delete — unconditional
@@ -79,7 +78,7 @@ try {
 Consult the [Oxia documentation][sort] for detail concerning the ordering of keys.
 
 ```java
-client.deleteRange("aMinInc", "bMaxExc").join();
+client.deleteRange("aStartInc", "bEndExc").join();
 ```
 
 ### List Key Range
@@ -87,7 +86,7 @@ client.deleteRange("aMinInc", "bMaxExc").join();
 Consult the [Oxia documentation][sort] for detail concerning the ordering of keys.
 
 ```java
-var keys = client.list("aMinInc", "bMaxExc").join();
+var keys = client.list("aStartInc", "bEndExc").join();
 ```
 
 ### Subscribe to notifications
@@ -106,19 +105,77 @@ client.notifications(
 
 ## Configuration
 
-| Option                   | Default value | Description                                                               |
-|:-------------------------|--------------:|:--------------------------------------------------------------------------|
-| `serviceAddress`         |             - | Address of Oxia cluster — `<host>:<port>`                                 |
-| `requestTimeout`         |           30s | GRPC Request timeout                                                      |
-| `batchLinger`            |           5ms | Max time to wait for new operations before closing batch                  |
-| `maxRequestsPerBatch`    |         1,000 | Max number of operations in a batch                                       |
-| `maxBatchSize`           |          4MiB | Max byte size of a batch (approximate)                                    |
-| `operationQueueCapacity` |         1,000 | Number of operations that can be buffered prior to batching               |
-| `recordCacheCapacity`    |        10,000 | Number or records that can be cached by the client (`0` disables caching) |
-| `sessionTimeout`         |           15s | Period of inactivity after which session will be closed                   |
-| `clientIdentifier`       | <random UUID> | String that uniquely identifies this client instance                      |
+| Option                   | Default value | Description                                                 |
+|:-------------------------|--------------:|:------------------------------------------------------------|
+| `serviceAddress`         |             - | Address of Oxia cluster — `<host>:<port>`                   |
+| `requestTimeout`         |           30s | GRPC Request timeout                                        |
+| `batchLinger`            |           5ms | Max time to wait for new operations before closing batch    |
+| `maxRequestsPerBatch`    |         1,000 | Max number of operations in a batch                         |
+| `maxBatchSize`           |          4MiB | Max byte size of a batch (approximate)                      |
+| `operationQueueCapacity` |         1,000 | Number of operations that can be buffered prior to batching |
+| `recordCacheCapacity`    |        10,000 | Number or records that can be cached by the client          |
+| `sessionTimeout`         |           15s | Period of inactivity after which session will be closed     |
+| `clientIdentifier`       | <random UUID> | String that uniquely identifies this client instance        |
+
+
+## Metrics
+
+The Oxia Java client collects various metrics about the operations being performed. There is an
+[API](client-metrics-api/src/main/java/io/streamnative/oxia/client/metrics/api/Metrics.java) and an OpenTelemetry
+[implementation](client-metrics-opentelemetry/src/main/java/io/streamnative/oxia/client/metrics/opentelemetry/OpenTelemetryMetrics.java)
+is provided.
+
+There are two levels at which metrics are captured - at the individual operation level and at the batch level. All
+metrics have two attributes - type & result.
+
+### Operation Level
+
+|             Name              |                                  Description                                   |
+|-------------------------------|--------------------------------------------------------------------------------|
+| `oxia_client_operation_timer` | The time an operation takes to be executed from request submission to response |
+| `oxia_client_operation_size`  | The record value size. Only applicable for `put` and `get`                     |
+
+#### Attributes
+
+|   Name   |     Description      |                     Values                     |
+|----------|----------------------|------------------------------------------------|
+| `type`   | The operation type   | `put`, `delete`, `delete_range`, `get`, `list` |
+| `result` | The operation result | `success`, `failure`                           |
+
+### Batch Level
+
+|              Name               |                            Description                             |
+|---------------------------------|--------------------------------------------------------------------|
+| `oxia_client_batch_total_timer` | The time a batch takes to be completed from creation to response   |
+| `oxia_client_batch_exec_timer`  | The time a batch takes to be completed from submission to response |
+| `oxia_client_batch_size`        | The size of all the record values in a batch                       |
+| `oxia_client_batch_requests`    | The count of requests in a batch                                   |
+
+#### Attributes
+
+|   Name   |     Description      |        Values        |
+|----------|----------------------|----------------------|
+| `type`   | The operation type   | `write`, `read`      |
+| `result` | The operation result | `success`, `failure` |
+
+### Cache Level
+
+|              Name              |                    Description                    |
+|--------------------------------|---------------------------------------------------|
+| `oxia_client_cache_load_timer` | The time it took to load a record in to the cache |
+| `oxia_client_cache_hits`       | Counts of cache hits and misses                   |
+| `oxia_client_cache_evictions`  | Counts of record evictions from the cache         |
+
+#### Attributes
+
+|      Name       |           Description           |                         Values                         |              Notes               |
+|-----------------|---------------------------------|--------------------------------------------------------|----------------------------------|
+| `type`          | The operation type              | `load`, `hit`, `eviction`                              |                                  |
+| `result`        | The operation result            | `success`, `failure`                                   |                                  |
+| `removal_cause` | See: [`RemovalCause`][caffeine] | `explicit`, `replaced`, `collected`, `expired`, `size` | Applies to `type: eviction` only |
 
 [oxia]: https://github.com/streamnative/oxia
 [it]: src/test/java/io/streamnative/oxia/client/OxiaClientIT.java
 [sort]: https://github.com/streamnative/oxia/blob/main/docs/oxia-key-sorting.md
+[caffeine]: https://github.com/ben-manes/caffeine/blob/master/caffeine/src/main/java/com/github/benmanes/caffeine/cache/RemovalCause.java
 
