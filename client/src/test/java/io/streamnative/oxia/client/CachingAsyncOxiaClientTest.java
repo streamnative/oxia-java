@@ -38,9 +38,12 @@ import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.Version;
 import io.streamnative.oxia.client.metrics.CacheMetrics;
 import io.streamnative.oxia.client.metrics.api.Metrics;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -56,7 +59,9 @@ class CachingAsyncOxiaClientTest {
     @Mock AsyncOxiaClient delegate;
     @Mock AsyncLoadingCache<String, GetResult> cache;
     @Mock LoadingCache<String, GetResult> syncCache;
+    @Mock ConcurrentMap<String, CompletableFuture<GetResult>> map;
     @Captor ArgumentCaptor<Consumer<Notification>> consumerCaptor;
+    @Captor ArgumentCaptor<Iterable<String>> keyCaptor;
 
     CachingAsyncOxiaClient client;
 
@@ -91,9 +96,19 @@ class CachingAsyncOxiaClientTest {
 
     @Test
     void deleteRange() {
+        when(cache.synchronous()).thenReturn(syncCache);
+        when(cache.asMap()).thenReturn(map);
+        when(map.keySet()).thenReturn(Set.of("a", "d", "f", "z"));
+
         var result = CompletableFuture.<Void>completedFuture(null);
-        when(delegate.deleteRange("a", "b")).thenReturn(result);
-        assertThat(client.deleteRange("a", "b")).isSameAs(result);
+        when(delegate.deleteRange("b", "k")).thenReturn(result);
+        assertThat(client.deleteRange("b", "k")).isSameAs(result);
+        verify(syncCache).invalidateAll(keyCaptor.capture());
+
+        Set<String> invalidatedKeys = new HashSet<>();
+        keyCaptor.getValue().forEach(invalidatedKeys::add);
+
+        assertThat(invalidatedKeys).containsExactlyInAnyOrder("d", "f");
     }
 
     @Test
