@@ -15,6 +15,7 @@
  */
 package io.streamnative.oxia.client;
 
+import static lombok.AccessLevel.PACKAGE;
 
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -24,28 +25,28 @@ import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.PutOption;
 import io.streamnative.oxia.client.api.PutResult;
+import io.streamnative.oxia.client.metrics.CacheMetrics;
+import io.streamnative.oxia.client.metrics.api.Metrics;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 
 class CachingAsyncOxiaClient implements AsyncOxiaClient {
     private final @NonNull AsyncOxiaClient delegate;
     private final @NonNull AsyncLoadingCache<String, GetResult> recordCache;
 
     CachingAsyncOxiaClient(ClientConfig config, AsyncOxiaClient delegate) {
-        this(
-                delegate,
-                Caffeine.newBuilder()
-                        .maximumSize(config.recordCacheCapacity())
-                        .buildAsync((key, executor) -> delegate.get(key)));
+        this(delegate, new CacheFactory(config, delegate));
     }
 
     CachingAsyncOxiaClient(
             @NonNull AsyncOxiaClient delegate,
-            @NonNull AsyncLoadingCache<String, GetResult> recordCache) {
+            @NonNull Supplier<AsyncLoadingCache<String, GetResult>> cacheFactory) {
         this.delegate = delegate;
-        this.recordCache = recordCache;
+        this.recordCache = cacheFactory.get();
         delegate.notifications(n -> recordCache.synchronous().invalidate(n.key()));
     }
 
@@ -66,6 +67,14 @@ class CachingAsyncOxiaClient implements AsyncOxiaClient {
     @Override
     public @NonNull CompletableFuture<Void> deleteRange(
             @NonNull String startKeyInclusive, @NonNull String endKeyExclusive) {
+        var cachedKeysInRange =
+                recordCache.asMap().keySet().stream()
+                        .filter(
+                                k ->
+                                        CompareWithSlash.INSTANCE.compare(k, startKeyInclusive) >= 0
+                                                && CompareWithSlash.INSTANCE.compare(k, endKeyExclusive) < 0)
+                        .toList();
+        recordCache.synchronous().invalidateAll(cachedKeysInRange);
         return delegate.deleteRange(startKeyInclusive, endKeyExclusive);
     }
 
@@ -88,5 +97,25 @@ class CachingAsyncOxiaClient implements AsyncOxiaClient {
     @Override
     public void close() throws Exception {
         delegate.close();
+    }
+
+    @RequiredArgsConstructor(access = PACKAGE)
+    static class CacheFactory implements Supplier<AsyncLoadingCache<String, GetResult>> {
+        private final @NonNull ClientConfig config;
+        private final @NonNull AsyncOxiaClient delegate;
+        private final @NonNull Supplier<CacheMetrics> cacheMetricsFactory;
+
+        CacheFactory(ClientConfig config, AsyncOxiaClient delegate) {
+            this(config, delegate, () -> CacheMetrics.create(config.metrics()));
+        }
+
+        @NonNull
+        public AsyncLoadingCache<String, GetResult> get() {
+            var builder = Caffeine.newBuilder().maximumSize(config.recordCacheCapacity());
+            if (config.metrics() != Metrics.nullObject) {
+                builder.recordStats(cacheMetricsFactory::get);
+            }
+            return builder.buildAsync((key, executor) -> delegate.get(key));
+        }
     }
 }
