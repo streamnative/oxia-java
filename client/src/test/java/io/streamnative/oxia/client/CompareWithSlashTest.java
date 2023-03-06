@@ -46,4 +46,12 @@ class CompareWithSlashTest {
 
         assertThat(CompareWithSlash.INSTANCE.compare("/a/b/a/a/a", "/a/b/a/b")).isEqualTo(+1);
     }
+
+    @Test
+    void withinRange() {
+        assertThat(CompareWithSlash.withinRange("aaaaa", "aaaac", "aaaaa")).isTrue();
+        assertThat(CompareWithSlash.withinRange("aaaaa", "aaaac", "aaaab")).isTrue();
+        assertThat(CompareWithSlash.withinRange("aaaaa", "aaaac", "aaaac")).isFalse();
+        assertThat(CompareWithSlash.withinRange("aaaaa", "aaaac", "aaaa")).isFalse();
+    }
 }
