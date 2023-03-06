@@ -101,6 +101,11 @@ public class OxiaClientBuilder {
         return this;
     }
 
+    public @NonNull OxiaClientBuilder disableRecordCache() {
+        recordCacheCapacity = 0;
+        return this;
+    }
+
     public @NonNull OxiaClientBuilder sessionTimeout(@NonNull Duration sessionTimeout) {
         if (sessionTimeout.isNegative() || sessionTimeout.equals(ZERO)) {
             throw new IllegalArgumentException(
