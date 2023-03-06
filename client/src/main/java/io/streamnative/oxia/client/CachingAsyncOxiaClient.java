@@ -69,10 +69,7 @@ class CachingAsyncOxiaClient implements AsyncOxiaClient {
             @NonNull String startKeyInclusive, @NonNull String endKeyExclusive) {
         var cachedKeysInRange =
                 recordCache.asMap().keySet().stream()
-                        .filter(
-                                k ->
-                                        CompareWithSlash.INSTANCE.compare(k, startKeyInclusive) >= 0
-                                                && CompareWithSlash.INSTANCE.compare(k, endKeyExclusive) < 0)
+                        .filter(CompareWithSlash.withinRange(startKeyInclusive, endKeyExclusive))
                         .toList();
         recordCache.synchronous().invalidateAll(cachedKeysInRange);
         return delegate.deleteRange(startKeyInclusive, endKeyExclusive);
