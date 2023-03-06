@@ -117,7 +117,6 @@ client.notifications(
 | `sessionTimeout`         |           15s | Period of inactivity after which session will be closed     |
 | `clientIdentifier`       | <random UUID> | String that uniquely identifies this client instance        |
 
-
 ## Metrics
 
 The Oxia Java client collects various metrics about the operations being performed. There is an
