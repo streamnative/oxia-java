@@ -58,12 +58,14 @@ enum CompareWithSlash implements Comparator<String> {
         }
     };
 
-    static boolean withinRange(String startKeyInclusive, String endKeyExclusive, String key) {
+    static boolean withinRange(
+            @NonNull String startKeyInclusive, @NonNull String endKeyExclusive, @NonNull String key) {
         return INSTANCE.compare(key, startKeyInclusive) >= 0
                 && INSTANCE.compare(key, endKeyExclusive) < 0;
     }
 
-    public static Predicate<String> withinRange(String startKeyInclusive, String endKeyExclusive) {
+    public static @NonNull Predicate<String> withinRange(
+            @NonNull String startKeyInclusive, @NonNull String endKeyExclusive) {
         return k -> withinRange(startKeyInclusive, endKeyExclusive, k);
     }
 }
