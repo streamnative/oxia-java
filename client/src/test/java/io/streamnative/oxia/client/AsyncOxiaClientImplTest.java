@@ -172,7 +172,7 @@ class AsyncOxiaClientImplTest {
     }
 
     @Test
-    void puInvalidOptions(@Mock Sample<PutResult> sample) {
+    void putInvalidOptions(@Mock Sample<PutResult> sample) {
         var key = "key";
         var value = "hello".getBytes(UTF_8);
         when(metrics.recordPut(value.length)).thenReturn(sample);
