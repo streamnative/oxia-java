@@ -219,5 +219,14 @@ public sealed interface Operation<R> permits CloseOperation, ReadOperation, Writ
         }
     }
 
-    Comparator<Operation> Comparator = (o1, o2) -> Long.compare(o1.sequence(), o2.sequence());
+    Comparator<Operation> Comparator =
+            (o1, o2) -> {
+                if (o1.sequence() == Long.MIN_VALUE) {
+                    return -1;
+                } else if (o2.sequence() == Long.MIN_VALUE) {
+                    return +1;
+                } else {
+                    return Long.compare(o1.sequence(), o2.sequence());
+                }
+            };
 }

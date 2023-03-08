@@ -31,6 +31,7 @@ import io.streamnative.oxia.client.api.KeyAlreadyExistsException;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.SessionDoesNotExistException;
 import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
+import io.streamnative.oxia.client.batch.Operation.CloseOperation;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
@@ -45,6 +46,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.PriorityBlockingQueue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -447,6 +449,28 @@ class OperationTest {
                                         .isInstanceOf(IllegalStateException.class)
                                         .hasMessage("GRPC.Status: UNRECOGNIZED");
                             });
+        }
+    }
+
+    @Nested
+    @DisplayName("Tests of the comparatgor")
+    class OperationComparatorTests {
+        @Test
+        void closeHasHighestPriority() throws InterruptedException {
+            var callback = new CompletableFuture<GetResult>();
+            var op1 = new GetOperation(1L, callback, "a");
+            var op2 = new GetOperation(2L, callback, "b");
+            var op3 = new GetOperation(3L, callback, "c");
+            var queue = new PriorityBlockingQueue<Operation<?>>(11, Operation.Comparator);
+            queue.put(op2);
+            queue.put(op1);
+            queue.put(CloseOperation.INSTANCE);
+            queue.put(op3);
+
+            assertThat(queue.take()).isEqualTo(CloseOperation.INSTANCE);
+            assertThat(queue.take()).isEqualTo(op1);
+            assertThat(queue.take()).isEqualTo(op2);
+            assertThat(queue.take()).isEqualTo(op3);
         }
     }
 }
