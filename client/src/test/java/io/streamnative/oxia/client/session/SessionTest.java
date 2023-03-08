@@ -34,7 +34,6 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import org.junit.jupiter.api.AfterEach;
@@ -70,7 +69,6 @@ class SessionTest {
                         Duration.ZERO,
                         1,
                         1024 * 1024,
-                        Optional.empty(),
                         0,
                         sessionTimeout,
                         clientId,

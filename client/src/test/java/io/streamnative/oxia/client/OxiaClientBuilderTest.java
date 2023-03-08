@@ -61,15 +61,6 @@ class OxiaClientBuilderTest {
     }
 
     @Test
-    void operationQueueCapacity() {
-        assertThatThrownBy(() -> builder.operationQueueCapacity(0))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> builder.operationQueueCapacity(-1))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatNoException().isThrownBy(() -> builder.operationQueueCapacity(1));
-    }
-
-    @Test
     void recordCacheCapacity() {
         assertThatThrownBy(() -> builder.recordCacheCapacity(0))
                 .isInstanceOf(IllegalArgumentException.class);

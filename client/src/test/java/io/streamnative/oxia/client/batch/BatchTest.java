@@ -139,11 +139,11 @@ class BatchTest {
         CompletableFuture<Boolean> deleteCallable = new CompletableFuture<>();
         CompletableFuture<Void> deleteRangeCallable = new CompletableFuture<>();
 
-        PutOperation put = new PutOperation(putCallable, "", new byte[0], Optional.of(1L), false);
+        PutOperation put = new PutOperation(1L, putCallable, "", new byte[0], Optional.of(1L), false);
         PutOperation putEphemeral =
-                new PutOperation(putEphemeralCallable, "", new byte[0], Optional.of(1L), true);
-        DeleteOperation delete = new DeleteOperation(deleteCallable, "", Optional.of(1L));
-        DeleteRangeOperation deleteRange = new DeleteRangeOperation(deleteRangeCallable, "a", "b");
+                new PutOperation(2L, putEphemeralCallable, "", new byte[0], Optional.of(1L), true);
+        DeleteOperation delete = new DeleteOperation(3L, deleteCallable, "", Optional.of(1L));
+        DeleteRangeOperation deleteRange = new DeleteRangeOperation(4L, deleteRangeCallable, "a", "b");
 
         String clientIdentifier = "client-id";
         SessionInfo sessionInfo = new SessionInfo(sessionId, clientIdentifier);
@@ -327,7 +327,7 @@ class BatchTest {
     class ReadBatchTests {
         ReadBatch batch;
         CompletableFuture<GetResult> getCallable = new CompletableFuture<>();
-        GetOperation get = new GetOperation(getCallable, "");
+        GetOperation get = new GetOperation(5L, getCallable, "");
         @Mock BatchMetrics.Sample sample;
 
         @BeforeEach
@@ -437,16 +437,7 @@ class BatchTest {
 
         ClientConfig config =
                 new ClientConfig(
-                        "address",
-                        ZERO,
-                        ZERO,
-                        1,
-                        1024 * 1024,
-                        Optional.empty(),
-                        0,
-                        ZERO,
-                        "client_id",
-                        Metrics.nullObject);
+                        "address", ZERO, ZERO, 1, 1024 * 1024, 0, ZERO, "client_id", Metrics.nullObject);
 
         @BeforeEach
         void mocking() {

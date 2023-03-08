@@ -70,7 +70,6 @@ class BatcherTest {
                     Duration.ofMillis(1000),
                     10,
                     1024 * 1024,
-                    Optional.empty(),
                     0,
                     Duration.ofMillis(1000),
                     "client_id",
@@ -93,7 +92,7 @@ class BatcherTest {
     @Test
     void createBatchAndAdd() throws Exception {
         var callback = new CompletableFuture<GetResult>();
-        Operation<?> op = new GetOperation(callback, "key");
+        Operation<?> op = new GetOperation(1L, callback, "key");
         when(batchFactory.apply(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(1);
         when(batch.canAdd(any())).thenReturn(true);
@@ -106,7 +105,7 @@ class BatcherTest {
     @Test
     void completeBatchOnFull() throws Exception {
         var callback = new CompletableFuture<GetResult>();
-        Operation<?> op = new GetOperation(callback, "key");
+        Operation<?> op = new GetOperation(1L, callback, "key");
         when(batchFactory.apply(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(config.maxRequestsPerBatch());
         when(batch.canAdd(any())).thenReturn(true);
@@ -121,7 +120,7 @@ class BatcherTest {
         var callback = new CompletableFuture<PutResult>();
         Operation<?> op =
                 new Operation.WriteOperation.PutOperation(
-                        callback, "key", "value".getBytes(StandardCharsets.UTF_8), Optional.empty(), false);
+                        1L, callback, "key", "value".getBytes(StandardCharsets.UTF_8), Optional.empty(), false);
         when(batchFactory.apply(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(config.maxRequestsPerBatch(), 1);
         when(batch.canAdd(any())).thenReturn(false).thenReturn(true);
@@ -141,7 +140,7 @@ class BatcherTest {
         var callback = new CompletableFuture<PutResult>();
         Operation<?> op =
                 new Operation.WriteOperation.PutOperation(
-                        callback, "key", "value".getBytes(StandardCharsets.UTF_8), Optional.empty(), false);
+                        1L, callback, "key", "value".getBytes(StandardCharsets.UTF_8), Optional.empty(), false);
         when(batchFactory.apply(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(config.maxRequestsPerBatch(), 1);
         when(batch.canAdd(any())).thenThrow(OperationTooLargeException.class);
@@ -160,7 +159,7 @@ class BatcherTest {
     @Test
     void completeBatchOnFullThenNewBatch() throws Exception {
         var callback = new CompletableFuture<GetResult>();
-        Operation<?> op = new GetOperation(callback, "key");
+        Operation<?> op = new GetOperation(1L, callback, "key");
         when(batchFactory.apply(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(config.maxRequestsPerBatch(), 1);
         when(batch.canAdd(any())).thenReturn(true);
@@ -180,7 +179,7 @@ class BatcherTest {
     @Test
     void completeBatchOnLingerExpiration() throws Exception {
         var callback = new CompletableFuture<GetResult>();
-        Operation<?> op = new GetOperation(callback, "key");
+        Operation<?> op = new GetOperation(1L, callback, "key");
         when(batchFactory.apply(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(1);
         when(batch.canAdd(any())).thenReturn(true);
@@ -196,7 +195,7 @@ class BatcherTest {
     @Test
     void completeBatchOnLingerExpirationMulti() throws Exception {
         var callback = new CompletableFuture<GetResult>();
-        Operation<?> op = new GetOperation(callback, "key");
+        Operation<?> op = new GetOperation(1L, callback, "key");
         when(batchFactory.apply(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(1);
         when(batch.canAdd(any())).thenReturn(true);
@@ -222,7 +221,7 @@ class BatcherTest {
     @Test
     void interrupt(@Mock BlockingQueue<Operation<?>> queue) throws Exception {
         var callback = new CompletableFuture<GetResult>();
-        Operation<?> op = new GetOperation(callback, "key");
+        Operation<?> op = new GetOperation(1L, callback, "key");
         doReturn(op).when(queue).poll();
         when(queue.poll(anyLong(), eq(MILLISECONDS))).thenThrow(new InterruptedException());
         batcher = new Batcher(config, shardId, batchFactory, queue, clock);
@@ -247,7 +246,7 @@ class BatcherTest {
     @Test
     void unboundedPollAtStart(@Mock BlockingQueue<Operation<?>> queue) throws Exception {
         var callback = new CompletableFuture<GetResult>();
-        Operation<?> op = new GetOperation(callback, "key");
+        Operation<?> op = new GetOperation(1L, callback, "key");
         doReturn(op).when(queue).poll();
         batcher = new Batcher(config, shardId, batchFactory, queue, clock);
         when(batchFactory.apply(shardId)).thenReturn(batch);
