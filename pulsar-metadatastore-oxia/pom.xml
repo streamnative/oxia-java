@@ -346,10 +346,6 @@
                                     <shadedPattern>${shade.relocation.package}.io.perfmark</shadedPattern>
                                 </relocation>
                                 <relocation>
-                                    <pattern>io.streamnative.oxia</pattern>
-                                    <shadedPattern>${shade.relocation.package}.io.streamnative.oxia</shadedPattern>
-                                </relocation>
-                                <relocation>
                                     <pattern>javax.annotation</pattern>
                                     <shadedPattern>${shade.relocation.package}.javax.annotation</shadedPattern>
                                 </relocation>
