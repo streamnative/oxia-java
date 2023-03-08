@@ -42,15 +42,13 @@ import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Optional;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeoutException;
-import java.util.stream.IntStream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -72,13 +70,13 @@ class BatcherTest {
                     Duration.ofMillis(1000),
                     10,
                     1024 * 1024,
-                    5,
+                    Optional.empty(),
                     0,
                     Duration.ofMillis(1000),
                     "client_id",
                     Metrics.nullObject);
 
-    BlockingQueue<Operation<?>> queue = new ArrayBlockingQueue<>(config.operationQueueCapacity());
+    BlockingQueue<Operation<?>> queue = new LinkedBlockingDeque<>();
     ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
     Batcher batcher;
 
@@ -225,7 +223,6 @@ class BatcherTest {
     void interrupt(@Mock BlockingQueue<Operation<?>> queue) throws Exception {
         var callback = new CompletableFuture<GetResult>();
         Operation<?> op = new GetOperation(callback, "key");
-        when(queue.offer(op, config.requestTimeout().toMillis(), MILLISECONDS)).thenReturn(true);
         doReturn(op).when(queue).poll();
         when(queue.poll(anyLong(), eq(MILLISECONDS))).thenThrow(new InterruptedException());
         batcher = new Batcher(config, shardId, batchFactory, queue, clock);
@@ -248,21 +245,9 @@ class BatcherTest {
     }
 
     @Test
-    void addTimeout() {
-        var callback = new CompletableFuture<GetResult>();
-        Operation<?> op = new GetOperation(callback, "key");
-        IntStream.range(0, config.operationQueueCapacity()).forEach(i -> batcher.add(op));
-        long start = Clock.systemUTC().millis();
-        assertThatThrownBy(() -> batcher.add(op)).isInstanceOf(TimeoutException.class);
-        assertThat(Clock.systemUTC().millis() - start)
-                .isGreaterThanOrEqualTo(config.requestTimeout().toMillis());
-    }
-
-    @Test
     void unboundedPollAtStart(@Mock BlockingQueue<Operation<?>> queue) throws Exception {
         var callback = new CompletableFuture<GetResult>();
         Operation<?> op = new GetOperation(callback, "key");
-        when(queue.offer(op, config.requestTimeout().toMillis(), MILLISECONDS)).thenReturn(true);
         doReturn(op).when(queue).poll();
         batcher = new Batcher(config, shardId, batchFactory, queue, clock);
         when(batchFactory.apply(shardId)).thenReturn(batch);

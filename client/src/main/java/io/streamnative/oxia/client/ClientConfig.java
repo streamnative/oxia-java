@@ -18,6 +18,7 @@ package io.streamnative.oxia.client;
 
 import io.streamnative.oxia.client.metrics.api.Metrics;
 import java.time.Duration;
+import java.util.Optional;
 import lombok.NonNull;
 
 public record ClientConfig(
@@ -26,7 +27,7 @@ public record ClientConfig(
         @NonNull Duration batchLinger,
         int maxRequestsPerBatch,
         int maxBatchSize,
-        int operationQueueCapacity,
+        Optional<Integer> operationQueueCapacity,
         int recordCacheCapacity,
         @NonNull Duration sessionTimeout,
         @NonNull String clientIdentifier,

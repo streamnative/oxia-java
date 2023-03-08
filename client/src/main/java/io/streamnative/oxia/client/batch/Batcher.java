@@ -23,9 +23,8 @@ import io.streamnative.oxia.client.metrics.BatchMetrics;
 import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import java.time.Clock;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.LinkedBlockingDeque;
 import java.util.function.Function;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -46,7 +45,7 @@ public class Batcher implements Runnable, AutoCloseable {
                 config,
                 shardId,
                 batchFactory,
-                new ArrayBlockingQueue<>(config.operationQueueCapacity()),
+                new LinkedBlockingDeque<>(config.operationQueueCapacity().orElse(Integer.MAX_VALUE)),
                 Clock.systemUTC());
     }
 
@@ -54,10 +53,7 @@ public class Batcher implements Runnable, AutoCloseable {
     public <R> void add(@NonNull Operation<R> operation) {
         var timeout = config.requestTimeout();
         try {
-            if (!operations.offer(operation, timeout.toMillis(), MILLISECONDS)) {
-                throw new TimeoutException(
-                        "Queue full - could not add new operation. Consider increasing 'operationQueueCapacity'");
-            }
+            operations.put(operation);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);

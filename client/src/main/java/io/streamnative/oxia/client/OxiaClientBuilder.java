@@ -21,6 +21,7 @@ import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.SyncOxiaClient;
 import io.streamnative.oxia.client.metrics.api.Metrics;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
@@ -34,7 +35,7 @@ public class OxiaClientBuilder {
     public static final int DefaultMaxRequestsPerBatch = 1000;
     public static final int DefaultMaxBatchSize = 4 * 1024 * 1024;
     public static final Duration DefaultRequestTimeout = Duration.ofSeconds(30);
-    public static final int DefaultOperationQueueCapacity = 1000;
+    public static final Optional<Integer> DefaultOperationQueueCapacity = Optional.empty();
     public static final Duration DefaultSessionTimeout = Duration.ofSeconds(15);
     public static final int DefaultRecordCacheCapacity = 10_000;
 
@@ -43,7 +44,7 @@ public class OxiaClientBuilder {
     @NonNull private Duration batchLinger = DefaultBatchLinger;
     private int maxRequestsPerBatch = DefaultMaxRequestsPerBatch;
     private int maxBatchSize = DefaultMaxBatchSize;
-    private int operationQueueCapacity = DefaultOperationQueueCapacity;
+    private Optional<Integer> operationQueueCapacity = DefaultOperationQueueCapacity;
     private int recordCacheCapacity = DefaultRecordCacheCapacity;
     @NonNull private Duration sessionTimeout = DefaultSessionTimeout;
     @NonNull private Supplier<String> clientIdentifier = OxiaClientBuilder::randomClientIdentifier;
@@ -88,7 +89,7 @@ public class OxiaClientBuilder {
             throw new IllegalArgumentException(
                     "operationQueueCapacity must be greater than zero: " + operationQueueCapacity);
         }
-        this.operationQueueCapacity = operationQueueCapacity;
+        this.operationQueueCapacity = Optional.of(operationQueueCapacity);
         return this;
     }
 
