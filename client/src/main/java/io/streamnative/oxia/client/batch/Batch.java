@@ -16,6 +16,7 @@
 package io.streamnative.oxia.client.batch;
 
 import static io.streamnative.oxia.client.ProtoUtil.longToUint32;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.toList;
 import static lombok.AccessLevel.PACKAGE;
 import static lombok.AccessLevel.PRIVATE;
@@ -35,7 +36,6 @@ import io.streamnative.oxia.proto.GetResponse;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import io.streamnative.oxia.proto.ReadRequest;
 import io.streamnative.oxia.proto.WriteRequest;
-import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
@@ -89,12 +89,12 @@ public interface Batch {
 
         int sizeOf(@NonNull Operation<?> operation) {
             if (operation instanceof PutOperation p) {
-                return p.key().getBytes(StandardCharsets.UTF_8).length + p.value().length;
+                return p.key().getBytes(UTF_8).length + p.value().length;
             } else if (operation instanceof DeleteOperation d) {
-                return d.key().getBytes(StandardCharsets.UTF_8).length;
+                return d.key().getBytes(UTF_8).length;
             } else if (operation instanceof DeleteRangeOperation r) {
-                return r.startKeyInclusive().getBytes(StandardCharsets.UTF_8).length
-                        + r.endKeyExclusive().getBytes(StandardCharsets.UTF_8).length;
+                return r.startKeyInclusive().getBytes(UTF_8).length
+                        + r.endKeyExclusive().getBytes(UTF_8).length;
             }
             return 0;
         }

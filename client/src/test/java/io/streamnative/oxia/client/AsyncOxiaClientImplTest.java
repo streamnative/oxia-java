@@ -19,8 +19,10 @@ import static io.streamnative.oxia.client.api.PutOption.ifVersionIdEquals;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Optional.empty;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -109,6 +111,30 @@ class AsyncOxiaClientImplTest {
     }
 
     @Test
+    void putFails(@Mock Sample<PutResult> sample) {
+        var opCaptor = ArgumentCaptor.forClass(PutOperation.class);
+        var shardId = 1L;
+        var key = "key";
+        var value = "hello".getBytes(UTF_8);
+        var throwable = new RuntimeException();
+        when(metrics.recordPut(value.length)).thenReturn(sample);
+        when(shardManager.get(key)).thenReturn(shardId);
+        when(writeBatchManager.getBatcher(shardId)).thenReturn(batcher);
+        doThrow(throwable).when(batcher).add(opCaptor.capture());
+        var result = client.put(key, value);
+        assertThat(result).isCompletedExceptionally();
+        verify(sample).stop(null, throwable);
+    }
+
+    @Test
+    void putClosed() throws Exception {
+        client.close();
+        var key = "key";
+        var value = "hello".getBytes(UTF_8);
+        assertThatThrownBy(() -> client.put(key, value)).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
     void putExpectedVersion(@Mock Sample<PutResult> sample) {
         var opCaptor = ArgumentCaptor.forClass(PutOperation.class);
         var shardId = 1L;
@@ -128,6 +154,15 @@ class AsyncOxiaClientImplTest {
                             assertThat(o.expectedVersionId()).hasValue(expectedVersionId);
                             assertThat(o.value()).isEqualTo(value);
                         });
+    }
+
+    @Test
+    void puInvalidOptions(@Mock Sample<PutResult> sample) {
+        var key = "key";
+        var value = "hello".getBytes(UTF_8);
+        when(metrics.recordPut(value.length)).thenReturn(sample);
+        var result = client.put(key, value, ifVersionIdEquals(1L), ifVersionIdEquals(2L));
+        assertThat(result).isCompletedExceptionally();
     }
 
     @Test
@@ -152,6 +187,28 @@ class AsyncOxiaClientImplTest {
     }
 
     @Test
+    void deleteFails(@Mock Sample<Boolean> sample) {
+        var opCaptor = ArgumentCaptor.forClass(DeleteOperation.class);
+        var shardId = 1L;
+        var key = "key";
+        var throwable = new RuntimeException();
+        when(metrics.recordDelete()).thenReturn(sample);
+        when(shardManager.get(key)).thenReturn(shardId);
+        when(writeBatchManager.getBatcher(shardId)).thenReturn(batcher);
+        doThrow(throwable).when(batcher).add(opCaptor.capture());
+        var result = client.delete(key);
+        assertThat(result).isNotCompleted();
+        verify(sample).stop(null, throwable);
+    }
+
+    @Test
+    void deleteClosed() throws Exception {
+        client.close();
+        var key = "key";
+        assertThatThrownBy(() -> client.delete(key)).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
     void deleteExpectedVersion(@Mock Sample<Boolean> sample) {
         var opCaptor = ArgumentCaptor.forClass(DeleteOperation.class);
         var shardId = 1L;
@@ -169,6 +226,15 @@ class AsyncOxiaClientImplTest {
                             assertThat(o.key()).isEqualTo(key);
                             assertThat(o.expectedVersionId()).hasValue(expectedVersionId);
                         });
+    }
+
+    @Test
+    void deleteInvalidOptions(@Mock Sample<Boolean> sample) {
+        var key = "key";
+        when(metrics.recordDelete()).thenReturn(sample);
+        var result =
+                client.delete(key, DeleteOption.ifVersionIdEquals(1L), DeleteOption.ifVersionIdEquals(2L));
+        assertThat(result).isCompletedExceptionally();
     }
 
     @Test
@@ -224,6 +290,41 @@ class AsyncOxiaClientImplTest {
     }
 
     @Test
+    void deleteRangeFails(@Mock Sample<Void> sample) {
+        var batcher1 = mock(Batcher.class);
+        var batcher2 = mock(Batcher.class);
+        var batcher3 = mock(Batcher.class);
+        var opCaptor1 = ArgumentCaptor.forClass(DeleteRangeOperation.class);
+        var opCaptor2 = ArgumentCaptor.forClass(DeleteRangeOperation.class);
+        var opCaptor3 = ArgumentCaptor.forClass(DeleteRangeOperation.class);
+        var startInclusive = "a-startInclusive";
+        var endExclusive = "z-endExclusive";
+        var throwable = new RuntimeException();
+        when(metrics.recordDeleteRange()).thenReturn(sample);
+        when(shardManager.getAll()).thenReturn(List.of(1L, 2L, 3L));
+        when(writeBatchManager.getBatcher(1L)).thenReturn(batcher1);
+        when(writeBatchManager.getBatcher(2L)).thenReturn(batcher2);
+        when(writeBatchManager.getBatcher(3L)).thenReturn(batcher3);
+        doNothing().when(batcher1).add(opCaptor1.capture());
+        doNothing().when(batcher2).add(opCaptor2.capture());
+        doThrow(throwable).when(batcher3).add(opCaptor3.capture());
+        var result = client.deleteRange(startInclusive, endExclusive);
+        opCaptor1.getValue().callback().complete(null);
+        opCaptor2.getValue().callback().complete(null);
+        assertThat(result).isCompletedExceptionally();
+        verify(sample).stop(null, throwable);
+    }
+
+    @Test
+    void deleteRangeClosed() throws Exception {
+        client.close();
+        var startInclusive = "a-startInclusive";
+        var endExclusive = "z-endExclusive";
+        assertThatThrownBy(() -> client.deleteRange(startInclusive, endExclusive))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
     void get(@Mock Sample<GetResult> sample) {
         var opCaptor = ArgumentCaptor.forClass(GetOperation.class);
         var shardId = 1L;
@@ -245,6 +346,28 @@ class AsyncOxiaClientImplTest {
     }
 
     @Test
+    void getFails(@Mock Sample<GetResult> sample) {
+        var opCaptor = ArgumentCaptor.forClass(GetOperation.class);
+        var shardId = 1L;
+        var key = "key";
+        var throwable = new RuntimeException();
+        when(metrics.recordGet()).thenReturn(sample);
+        when(shardManager.get(key)).thenReturn(shardId);
+        when(readBatchManager.getBatcher(shardId)).thenReturn(batcher);
+        doThrow(throwable).when(batcher).add(opCaptor.capture());
+        var result = client.get(key);
+        assertThat(result).isCompletedExceptionally();
+        verify(sample).stop(null, throwable);
+    }
+
+    @Test
+    void getClosed() throws Exception {
+        client.close();
+        var key = "key";
+        assertThatThrownBy(() -> client.get(key)).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
     void list(
             @Mock ReactorOxiaClientStub stub0,
             @Mock ReactorOxiaClientStub stub1,
@@ -260,6 +383,13 @@ class AsyncOxiaClientImplTest {
                 .containsExactlyInAnyOrder("0-a", "0-b", "0-c", "0-d", "1-a", "1-b", "1-c", "1-d");
 
         verify(sample).stop(list, null);
+    }
+
+    @Test
+    void listClosed() throws Exception {
+        client.close();
+        assertThatThrownBy(() -> client.list("a", "e").join())
+                .isInstanceOf(IllegalStateException.class);
     }
 
     private void setupListStub(long shardId, String leader, ReactorOxiaClientStub stub) {
