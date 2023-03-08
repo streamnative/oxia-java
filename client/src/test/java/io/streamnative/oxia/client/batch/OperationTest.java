@@ -453,7 +453,7 @@ class OperationTest {
     }
 
     @Nested
-    @DisplayName("Tests of the comparatgor")
+    @DisplayName("Tests of the comparator")
     class OperationComparatorTests {
         @Test
         void closeHasHighestPriority() throws InterruptedException {
