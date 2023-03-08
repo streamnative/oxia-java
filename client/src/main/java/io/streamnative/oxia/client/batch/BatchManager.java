@@ -62,30 +62,26 @@ public class BatchManager implements AutoCloseable {
             return;
         }
         closed = true;
-        var exceptions =
-                batchersByShardId.values().stream()
-                        .map(
-                                b -> {
-                                    try {
-                                        b.close();
-                                        return null;
-                                    } catch (Exception e) {
-                                        return e;
-                                    }
-                                })
-                        .filter(Objects::nonNull)
-                        .collect(toList());
-        shutdownExecutor();
-        if (!exceptions.isEmpty()) {
-            throw new ShutdownException(exceptions);
-        }
-    }
-
-    private void shutdownExecutor() {
         executor.shutdown();
         try {
             if (!executor.awaitTermination(1, SECONDS)) {
                 executor.shutdownNow();
+            }
+            var exceptions =
+                    batchersByShardId.values().stream()
+                            .map(
+                                    b -> {
+                                        try {
+                                            b.close();
+                                            return null;
+                                        } catch (Exception e) {
+                                            return e;
+                                        }
+                                    })
+                            .filter(Objects::nonNull)
+                            .collect(toList());
+            if (!exceptions.isEmpty()) {
+                throw new ShutdownException(exceptions);
             }
         } catch (InterruptedException e) {
             executor.shutdownNow();

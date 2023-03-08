@@ -52,6 +52,9 @@ public class Batcher implements Runnable, AutoCloseable {
 
     @SneakyThrows
     public <R> void add(@NonNull Operation<R> operation) {
+        if (closed) {
+            throw new IllegalStateException("Batcher has been closed");
+        }
         var timeout = config.requestTimeout();
         try {
             if (!operations.offer(operation, timeout.toMillis(), MILLISECONDS)) {

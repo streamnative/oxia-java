@@ -217,8 +217,13 @@ class BatcherTest {
     void close() throws Exception {
         Future<?> future = executor.submit(() -> batcher.run());
         assertThat(future).isNotDone();
+        future.cancel(true);
         batcher.close();
         await().untilAsserted(() -> assertThat(future).isDone());
+
+        var callback = new CompletableFuture<GetResult>();
+        Operation<?> op = new GetOperation(callback, "key");
+        assertThatThrownBy(() -> batcher.add(op)).isInstanceOf(IllegalStateException.class);
     }
 
     @Test
@@ -226,7 +231,7 @@ class BatcherTest {
         var callback = new CompletableFuture<GetResult>();
         Operation<?> op = new GetOperation(callback, "key");
         when(queue.offer(op, config.requestTimeout().toMillis(), MILLISECONDS)).thenReturn(true);
-        doReturn(op).when(queue).poll();
+        doReturn(op).when(queue).take();
         when(queue.poll(anyLong(), eq(MILLISECONDS))).thenThrow(new InterruptedException());
         batcher = new Batcher(config, shardId, batchFactory, queue, clock);
         when(batchFactory.apply(shardId)).thenReturn(batch);
@@ -263,7 +268,7 @@ class BatcherTest {
         var callback = new CompletableFuture<GetResult>();
         Operation<?> op = new GetOperation(callback, "key");
         when(queue.offer(op, config.requestTimeout().toMillis(), MILLISECONDS)).thenReturn(true);
-        doReturn(op).when(queue).poll();
+        doReturn(op).when(queue).take();
         batcher = new Batcher(config, shardId, batchFactory, queue, clock);
         when(batchFactory.apply(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(1);
@@ -275,7 +280,7 @@ class BatcherTest {
         await()
                 .untilAsserted(
                         () -> {
-                            inOrder.verify(queue, atLeastOnce()).poll();
+                            inOrder.verify(queue, atLeastOnce()).take();
                             inOrder.verify(queue, atLeastOnce()).poll(anyLong(), eq(MILLISECONDS));
                         });
     }
