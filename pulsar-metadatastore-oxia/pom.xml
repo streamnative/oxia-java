@@ -322,8 +322,8 @@
                             <shadedClassifierName>shaded</shadedClassifierName>
                             <relocations>
                                 <relocation>
-                                    <pattern>com.github.ben-manes.caffeine</pattern>
-                                    <shadedPattern>${shade.relocation.package}.com.github.ben-manes.caffeine</shadedPattern>
+                                    <pattern>com.github.benmanes.caffeine</pattern>
+                                    <shadedPattern>${shade.relocation.package}.com.github.benmanes.caffeine</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>com.google</pattern>
@@ -389,6 +389,7 @@
                             </filters>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ApacheLicenseResourceTransformer"/>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                             </transformers>
                         </configuration>
                     </execution>
