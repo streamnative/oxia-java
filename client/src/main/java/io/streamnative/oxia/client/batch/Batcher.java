@@ -69,7 +69,7 @@ public class Batcher implements Runnable, AutoCloseable {
             try {
                 Operation<?> operation = null;
                 if (batch == null) {
-                    operation = operations.poll();
+                    operation = operations.take();
                 } else {
                     operation = operations.poll(lingerBudgetMs, MILLISECONDS);
                     var spentLingerBudgetMs = Math.max(0, clock.millis() - batch.getStartTime());

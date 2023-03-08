@@ -222,7 +222,7 @@ class BatcherTest {
     void interrupt(@Mock BlockingQueue<Operation<?>> queue) throws Exception {
         var callback = new CompletableFuture<GetResult>();
         Operation<?> op = new GetOperation(1L, callback, "key");
-        doReturn(op).when(queue).poll();
+        doReturn(op).when(queue).take();
         when(queue.poll(anyLong(), eq(MILLISECONDS))).thenThrow(new InterruptedException());
         batcher = new Batcher(config, shardId, batchFactory, queue, clock);
         when(batchFactory.apply(shardId)).thenReturn(batch);
@@ -244,10 +244,10 @@ class BatcherTest {
     }
 
     @Test
-    void unboundedPollAtStart(@Mock BlockingQueue<Operation<?>> queue) throws Exception {
+    void unboundedTakeAtStart(@Mock BlockingQueue<Operation<?>> queue) throws Exception {
         var callback = new CompletableFuture<GetResult>();
         Operation<?> op = new GetOperation(1L, callback, "key");
-        doReturn(op).when(queue).poll();
+        doReturn(op).when(queue).take();
         batcher = new Batcher(config, shardId, batchFactory, queue, clock);
         when(batchFactory.apply(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(1);
@@ -259,7 +259,7 @@ class BatcherTest {
         await()
                 .untilAsserted(
                         () -> {
-                            inOrder.verify(queue, atLeastOnce()).poll();
+                            inOrder.verify(queue, atLeastOnce()).take();
                             inOrder.verify(queue, atLeastOnce()).poll(anyLong(), eq(MILLISECONDS));
                         });
     }
