@@ -80,11 +80,11 @@ public class Session implements AutoCloseable {
                         .doBeforeRetry(
                                 signal ->
                                         log.warn(
-                                                "Retrying sending keep-alives for session {}:{} - {}",
+                                                "Retrying sending keep-alives for session [id={},shard={}] - {}",
                                                 sessionId,
                                                 shardId,
                                                 signal));
-        var threadName = String.format("session-%s:%s-keep-alive", sessionId, shardId);
+        var threadName = String.format("session-[id=%s,shard=%s]-keep-alive", sessionId, shardId);
 
         keepAliveSubscription =
                 Mono.just(heartbeat)
@@ -96,7 +96,8 @@ public class Session implements AutoCloseable {
                         .publishOn(Schedulers.newSingle(threadName))
                         .doOnError(
                                 t -> {
-                                    log.error("Failed to keep-alive session: {}:{}", sessionId, shardId, t);
+                                    log.error(
+                                            "Failed to keep-alive session: [id={},shard={}]", sessionId, shardId, t);
                                 })
                         .subscribe();
     }
