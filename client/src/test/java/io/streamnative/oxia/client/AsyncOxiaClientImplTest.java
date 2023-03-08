@@ -19,8 +19,8 @@ import static io.streamnative.oxia.client.api.PutOption.ifVersionIdEquals;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Optional.empty;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
@@ -127,11 +127,26 @@ class AsyncOxiaClientImplTest {
     }
 
     @Test
-    void putClosed() throws Exception {
-        client.close();
+    void putClosed(@Mock Sample<PutResult> sample) throws Exception {
         var key = "key";
         var value = "hello".getBytes(UTF_8);
-        assertThatThrownBy(() -> client.put(key, value)).isInstanceOf(IllegalStateException.class);
+        when(metrics.recordPut(value.length)).thenReturn(sample);
+        client.close();
+        assertThat(client.put(key, value)).isCompletedExceptionally();
+    }
+
+    @Test
+    void putNullKey(@Mock Sample<PutResult> sample) throws Exception {
+        var value = "hello".getBytes(UTF_8);
+        when(metrics.recordPut(value.length)).thenReturn(sample);
+        assertThat(client.put(null, value)).isCompletedExceptionally();
+    }
+
+    @Test
+    void putNullValue(@Mock Sample<PutResult> sample) throws Exception {
+        var key = "key";
+        when(metrics.recordPut(anyLong())).thenReturn(sample);
+        assertThat(client.put(key, null)).isCompletedExceptionally();
     }
 
     @Test
@@ -202,10 +217,17 @@ class AsyncOxiaClientImplTest {
     }
 
     @Test
-    void deleteClosed() throws Exception {
+    void deleteClosed(@Mock Sample<Boolean> sample) throws Exception {
+        when(metrics.recordDelete()).thenReturn(sample);
         client.close();
         var key = "key";
-        assertThatThrownBy(() -> client.delete(key)).isInstanceOf(IllegalStateException.class);
+        assertThat(client.delete(key)).isCompletedExceptionally();
+    }
+
+    @Test
+    void deleteNullKey(@Mock Sample<Boolean> sample) throws Exception {
+        when(metrics.recordDelete()).thenReturn(sample);
+        assertThat(client.delete(null)).isCompletedExceptionally();
     }
 
     @Test
@@ -316,12 +338,26 @@ class AsyncOxiaClientImplTest {
     }
 
     @Test
-    void deleteRangeClosed() throws Exception {
+    void deleteRangeClosed(@Mock Sample<Void> sample) throws Exception {
+        when(metrics.recordDeleteRange()).thenReturn(sample);
         client.close();
         var startInclusive = "a-startInclusive";
         var endExclusive = "z-endExclusive";
-        assertThatThrownBy(() -> client.deleteRange(startInclusive, endExclusive))
-                .isInstanceOf(IllegalStateException.class);
+        assertThat(client.deleteRange(startInclusive, endExclusive)).isCompletedExceptionally();
+    }
+
+    @Test
+    void deleteRangeNullStart(@Mock Sample<Void> sample) throws Exception {
+        when(metrics.recordDeleteRange()).thenReturn(sample);
+        var endExclusive = "z-endExclusive";
+        assertThat(client.deleteRange(null, endExclusive)).isCompletedExceptionally();
+    }
+
+    @Test
+    void deleteRangeEnd(@Mock Sample<Void> sample) throws Exception {
+        when(metrics.recordDeleteRange()).thenReturn(sample);
+        var startInclusive = "a-startInclusive";
+        assertThat(client.deleteRange(startInclusive, null)).isCompletedExceptionally();
     }
 
     @Test
@@ -361,10 +397,17 @@ class AsyncOxiaClientImplTest {
     }
 
     @Test
-    void getClosed() throws Exception {
+    void getClosed(@Mock Sample<GetResult> sample) throws Exception {
+        when(metrics.recordGet()).thenReturn(sample);
         client.close();
         var key = "key";
-        assertThatThrownBy(() -> client.get(key)).isInstanceOf(IllegalStateException.class);
+        assertThat(client.get(key)).isCompletedExceptionally();
+    }
+
+    @Test
+    void getNullKey(@Mock Sample<GetResult> sample) throws Exception {
+        when(metrics.recordGet()).thenReturn(sample);
+        assertThat(client.get(null)).isCompletedExceptionally();
     }
 
     @Test
@@ -386,10 +429,22 @@ class AsyncOxiaClientImplTest {
     }
 
     @Test
-    void listClosed() throws Exception {
+    void listClosed(@Mock Sample<List<String>> sample) throws Exception {
+        when(metrics.recordList()).thenReturn(sample);
         client.close();
-        assertThatThrownBy(() -> client.list("a", "e").join())
-                .isInstanceOf(IllegalStateException.class);
+        assertThat(client.list("a", "e")).isCompletedExceptionally();
+    }
+
+    @Test
+    void listNullStart(@Mock Sample<List<String>> sample) throws Exception {
+        when(metrics.recordList()).thenReturn(sample);
+        assertThat(client.list(null, "e")).isCompletedExceptionally();
+    }
+
+    @Test
+    void listNullEnd(@Mock Sample<List<String>> sample) throws Exception {
+        when(metrics.recordList()).thenReturn(sample);
+        assertThat(client.list("a", null)).isCompletedExceptionally();
     }
 
     private void setupListStub(long shardId, String leader, ReactorOxiaClientStub stub) {
