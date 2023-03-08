@@ -80,9 +80,13 @@ public class PerfClient {
 
         ExecutorService executor = Executors.newCachedThreadPool();
 
-        executor.execute(() -> generateWriteTraffic(client));
-        executor.execute(() -> generateReadTraffic(client));
+        if (arguments.readPercentage != 100) {
+            executor.execute(() -> generateWriteTraffic(client));
+        }
 
+        if (arguments.readPercentage != 0) {
+            executor.execute(() -> generateReadTraffic(client));
+        }
 
         Histogram writeReportHistogram = null;
         Histogram readReportHistogram = null;
