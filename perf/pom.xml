@@ -27,7 +27,7 @@
     </parent>
 
     <artifactId>oxia-perf</artifactId>
-    <name>Oxia Perf client</name>
+    <name>Oxia Perf Client</name>
 
     <properties>
         <hdr-histogram.version>2.1.9</hdr-histogram.version>
