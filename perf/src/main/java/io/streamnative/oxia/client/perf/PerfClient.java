@@ -22,7 +22,6 @@ import com.beust.jcommander.ParameterException;
 import com.google.common.util.concurrent.RateLimiter;
 import io.streamnative.oxia.client.OxiaClientBuilder;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
-import java.text.DecimalFormat;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,6 +30,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.HdrHistogram.Histogram;
 import org.HdrHistogram.Recorder;
@@ -39,15 +39,12 @@ import org.HdrHistogram.Recorder;
 public class PerfClient {
 
     private static final List<String> keys = new ArrayList<>();
-
     private static final LongAdder writeOps = new LongAdder();
     private static final LongAdder readOps = new LongAdder();
     private static final LongAdder writeFailed = new LongAdder();
     private static final LongAdder readFailed = new LongAdder();
-
-    private static final Recorder writeLatency = new Recorder(TimeUnit.SECONDS.toMicros(120000), 5);
-    private static final Recorder readLatency = new Recorder(TimeUnit.SECONDS.toMicros(120000), 5);
-
+    private static final Recorder writeLatency = new Recorder(TimeUnit.SECONDS.toMicros(120_000), 5);
+    private static final Recorder readLatency = new Recorder(TimeUnit.SECONDS.toMicros(120_000), 5);
     private static final PerfArguments arguments = new PerfArguments();
 
     public static void main(String[] args) throws Exception {
@@ -115,19 +112,19 @@ public class PerfClient {
                             Stats - Total ops: {} ops/s - Failed ops: {} ops/s
                                Write ops {} w/s  Latency ms: 50% {} - 95% {} - 99% {} - 99.9% {} - max {}
                                Read  ops {} r/s  Latency ms: 50% {} - 95% {} - 99% {} - 99.9% {} - max {}""",
-                    INTFORMAT.format(writeRate + readRate), INTFORMAT.format(failedWriteRate + failedReadRate),
+                    INT_FORMAT.apply(writeRate + readRate), INT_FORMAT.apply(failedWriteRate + failedReadRate),
 
-                    INTFORMAT.format(writeRate), DEC.format(writeReportHistogram.getValueAtPercentile(50) / 1000.0),
-                    DEC.format(writeReportHistogram.getValueAtPercentile(95) / 1000.0),
-                    DEC.format(writeReportHistogram.getValueAtPercentile(99) / 1000.0),
-                    DEC.format(writeReportHistogram.getValueAtPercentile(99.9) / 1000.0),
-                    DEC.format(writeReportHistogram.getMaxValue() / 1000.0),
+                    INT_FORMAT.apply(writeRate), DEC_FORMAT.apply(writeReportHistogram.getValueAtPercentile(50) / 1000.0),
+                    DEC_FORMAT.apply(writeReportHistogram.getValueAtPercentile(95) / 1000.0),
+                    DEC_FORMAT.apply(writeReportHistogram.getValueAtPercentile(99) / 1000.0),
+                    DEC_FORMAT.apply(writeReportHistogram.getValueAtPercentile(99.9) / 1000.0),
+                    DEC_FORMAT.apply(writeReportHistogram.getMaxValue() / 1000.0),
 
-                    INTFORMAT.format(readRate), DEC.format(readReportHistogram.getValueAtPercentile(50) / 1000.0),
-                    DEC.format(readReportHistogram.getValueAtPercentile(95) / 1000.0),
-                    DEC.format(readReportHistogram.getValueAtPercentile(99) / 1000.0),
-                    DEC.format(readReportHistogram.getValueAtPercentile(99.9) / 1000.0),
-                    DEC.format(readReportHistogram.getMaxValue() / 1000.0)
+                    INT_FORMAT.apply(readRate), DEC_FORMAT.apply(readReportHistogram.getValueAtPercentile(50) / 1000.0),
+                    DEC_FORMAT.apply(readReportHistogram.getValueAtPercentile(95) / 1000.0),
+                    DEC_FORMAT.apply(readReportHistogram.getValueAtPercentile(99) / 1000.0),
+                    DEC_FORMAT.apply(readReportHistogram.getValueAtPercentile(99.9) / 1000.0),
+                    DEC_FORMAT.apply(readReportHistogram.getMaxValue() / 1000.0)
 
             );
 
@@ -187,8 +184,6 @@ public class PerfClient {
         }
     }
 
-
-    static final DecimalFormat THROUGHPUTFORMAT = new PaddingDecimalFormat("0.0", 8);
-    static final DecimalFormat DEC = new PaddingDecimalFormat("0.000", 7);
-    static final DecimalFormat INTFORMAT = new PaddingDecimalFormat("0", 7);
+    static final Function<Double, String> DEC_FORMAT = d -> String.format("%7.3f", d);
+    static final Function<Double, String> INT_FORMAT = d -> String.format("%7.0f", d);
 }
