@@ -29,7 +29,7 @@ record Shard(long id, @NonNull String leader, @NonNull HashRange hashRange) {
     }
 
     public @NonNull Set<Shard> findOverlapping(@NonNull Collection<Shard> other) {
-        return other.stream().filter(this::overlaps).collect(toSet());
+        return other.stream().filter(o -> !this.equals(o)).filter(this::overlaps).collect(toSet());
     }
 
     static @NonNull Shard fromProto(@NonNull ShardAssignment s) {
