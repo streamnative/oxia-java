@@ -30,13 +30,12 @@
     <name>Oxia Perf client</name>
 
     <properties>
+        <hdr-histogram.version>2.1.9</hdr-histogram.version>
         <jcommander.version>1.82</jcommander.version>
         <maven.shade.plugin.version>3.4.1</maven.shade.plugin.version>
-        <hdr-histogram.version>2.1.9</hdr-histogram.version>
     </properties>
 
     <dependencies>
-
         <dependency>
             <groupId>com.beust</groupId>
             <artifactId>jcommander</artifactId>
@@ -48,13 +47,11 @@
             <artifactId>oxia-client</artifactId>
             <version>${project.version}</version>
         </dependency>
-
         <dependency>
             <groupId>org.hdrhistogram</groupId>
             <artifactId>HdrHistogram</artifactId>
             <version>${hdr-histogram.version}</version>
         </dependency>
-
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-simple</artifactId>
