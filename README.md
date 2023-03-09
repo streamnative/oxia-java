@@ -8,7 +8,9 @@ This project comprises JDK language compatible modules for the [Oxia][oxia] serv
 the following capabilities:
 
 - [Client](client/) for the Oxia service
-- [Testcontainer](testcontainers/) for local integration testing with an Oxia service.
+- [OpenTelemetry Metrics](client-metrics-opentelemetry/) integration with the client
+- [Testcontainer](testcontainers/) for integration testing with a local Oxia service
+- [Performance Test Tool](perf/) for performance testing with an Oxia service.
 
 ## Build
 
