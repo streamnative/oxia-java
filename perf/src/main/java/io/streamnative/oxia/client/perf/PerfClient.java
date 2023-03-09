@@ -114,13 +114,15 @@ public class PerfClient {
                                Read  ops {} r/s  Latency ms: 50% {} - 95% {} - 99% {} - 99.9% {} - max {}""",
                     INT_FORMAT.apply(writeRate + readRate), INT_FORMAT.apply(failedWriteRate + failedReadRate),
 
-                    INT_FORMAT.apply(writeRate), DEC_FORMAT.apply(writeReportHistogram.getValueAtPercentile(50) / 1000.0),
+                    INT_FORMAT.apply(writeRate),
+                    DEC_FORMAT.apply(writeReportHistogram.getValueAtPercentile(50) / 1000.0),
                     DEC_FORMAT.apply(writeReportHistogram.getValueAtPercentile(95) / 1000.0),
                     DEC_FORMAT.apply(writeReportHistogram.getValueAtPercentile(99) / 1000.0),
                     DEC_FORMAT.apply(writeReportHistogram.getValueAtPercentile(99.9) / 1000.0),
                     DEC_FORMAT.apply(writeReportHistogram.getMaxValue() / 1000.0),
 
-                    INT_FORMAT.apply(readRate), DEC_FORMAT.apply(readReportHistogram.getValueAtPercentile(50) / 1000.0),
+                    INT_FORMAT.apply(readRate),
+                    DEC_FORMAT.apply(readReportHistogram.getValueAtPercentile(50) / 1000.0),
                     DEC_FORMAT.apply(readReportHistogram.getValueAtPercentile(95) / 1000.0),
                     DEC_FORMAT.apply(readReportHistogram.getValueAtPercentile(99) / 1000.0),
                     DEC_FORMAT.apply(readReportHistogram.getValueAtPercentile(99.9) / 1000.0),
