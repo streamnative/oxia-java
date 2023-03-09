@@ -461,7 +461,7 @@ class OperationTest {
             var op1 = new GetOperation(1L, callback, "a");
             var op2 = new GetOperation(2L, callback, "b");
             var op3 = new GetOperation(3L, callback, "c");
-            var queue = new PriorityBlockingQueue<Operation<?>>(11, Operation.Comparator);
+            var queue = new PriorityBlockingQueue<Operation<?>>(11, Operation.PriorityComparator);
             queue.put(op2);
             queue.put(op1);
             queue.put(CloseOperation.INSTANCE);

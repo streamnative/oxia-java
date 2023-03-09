@@ -47,7 +47,7 @@ public class Batcher implements Runnable, AutoCloseable {
                 config,
                 shardId,
                 batchFactory,
-                new PriorityBlockingQueue<>(DEFAULT_INITIAL_QUEUE_CAPACITY, Operation.Comparator),
+                new PriorityBlockingQueue<>(DEFAULT_INITIAL_QUEUE_CAPACITY, Operation.PriorityComparator),
                 Clock.systemUTC());
     }
 

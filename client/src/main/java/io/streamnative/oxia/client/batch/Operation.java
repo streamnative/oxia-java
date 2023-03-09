@@ -219,11 +219,11 @@ public sealed interface Operation<R> permits CloseOperation, ReadOperation, Writ
         }
     }
 
-    Comparator<Operation> Comparator =
+    Comparator<Operation> PriorityComparator =
             (o1, o2) -> {
-                if (o1.sequence() == Long.MIN_VALUE) {
+                if (o1 == CloseOperation.INSTANCE) {
                     return -1;
-                } else if (o2.sequence() == Long.MIN_VALUE) {
+                } else if (o2 == CloseOperation.INSTANCE) {
                     return +1;
                 } else {
                     return Long.compare(o1.sequence(), o2.sequence());
