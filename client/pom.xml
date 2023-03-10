@@ -101,23 +101,6 @@
             <version>${reactor.version}</version>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>io.streamnative.oxia</groupId>
-            <artifactId>oxia-testcontainers</artifactId>
-            <version>${project.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.testcontainers</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.junit.jupiter</groupId>
-                    <artifactId>junit-jupiter-api</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
     </dependencies>
 
     <build>

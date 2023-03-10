@@ -13,17 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.streamnative.oxia.client;
+package io.streamnative.oxia.client.it;
 
 import static io.streamnative.oxia.client.api.PutOption.IfRecordDoesNotExist;
 import static io.streamnative.oxia.client.api.PutOption.ifVersionIdEquals;
-import static io.streamnative.oxia.testcontainers.OxiaContainer.DEFAULT_IMAGE_NAME;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.concurrent.CompletableFuture.allOf;
+import static java.util.function.Function.identity;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
+import static org.awaitility.Awaitility.await;
 
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.sdk.OpenTelemetrySdk;
+import io.opentelemetry.sdk.metrics.SdkMeterProvider;
+import io.opentelemetry.sdk.metrics.data.HistogramPointData;
+import io.opentelemetry.sdk.metrics.data.MetricData;
+import io.opentelemetry.sdk.resources.Resource;
+import io.opentelemetry.sdk.testing.exporter.InMemoryMetricReader;
+import io.opentelemetry.semconv.resource.attributes.ResourceAttributes;
+import io.streamnative.oxia.client.OxiaClientBuilder;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.DeleteOption;
 import io.streamnative.oxia.client.api.KeyAlreadyExistsException;
@@ -33,9 +43,11 @@ import io.streamnative.oxia.client.api.Notification.KeyDeleted;
 import io.streamnative.oxia.client.api.Notification.KeyModified;
 import io.streamnative.oxia.client.api.PutOption;
 import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
+import io.streamnative.oxia.client.metrics.opentelemetry.OpenTelemetryMetrics;
 import io.streamnative.oxia.testcontainers.OxiaContainer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -49,7 +61,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 public class OxiaClientIT {
     @Container
     private static final OxiaContainer oxia =
-            new OxiaContainer(DEFAULT_IMAGE_NAME)
+            new OxiaContainer(OxiaContainer.DEFAULT_IMAGE_NAME)
                     .withShards(4)
                     .withLogConsumer(new Slf4jLogConsumer(log));
 
@@ -57,9 +69,28 @@ public class OxiaClientIT {
 
     private static List<Notification> notifications = new ArrayList<>();
 
+    private static InMemoryMetricReader metricReader;
+
     @BeforeAll
     static void beforeAll() {
-        client = new OxiaClientBuilder(oxia.getServiceAddress()).asyncClient().join();
+        Resource resource =
+                Resource.getDefault()
+                        .merge(
+                                Resource.create(
+                                        Attributes.of(ResourceAttributes.SERVICE_NAME, "logical-service-name")));
+
+        metricReader = InMemoryMetricReader.create();
+        SdkMeterProvider sdkMeterProvider =
+                SdkMeterProvider.builder().registerMetricReader(metricReader).setResource(resource).build();
+
+        OpenTelemetry openTelemetry =
+                OpenTelemetrySdk.builder().setMeterProvider(sdkMeterProvider).buildAndRegisterGlobal();
+
+        client =
+                new OxiaClientBuilder(oxia.getServiceAddress())
+                        .metrics(OpenTelemetryMetrics.create(openTelemetry))
+                        .asyncClient()
+                        .join();
         client.notifications(notifications::add);
     }
 
@@ -168,5 +199,20 @@ public class OxiaClientIT {
                         });
         assertThat(client.get("g").join()).isNull();
         assertThat(client.get("h").join()).isNotNull();
+
+        metricReader.flush();
+        var metrics = metricReader.collectAllMetrics();
+        var metricsByName = metrics.stream().collect(Collectors.toMap(MetricData::getName, identity()));
+
+        assertThat(
+                        metricsByName.get("oxia_client_operation_size").getHistogramData().getPoints().stream()
+                                .map(HistogramPointData::getCount)
+                                .reduce(0L, Long::sum))
+                .isEqualTo(18);
+        assertThat(
+                        metricsByName.get("oxia_client_cache_hits").getHistogramData().getPoints().stream()
+                                .map(HistogramPointData::getCount)
+                                .reduce(0L, Long::sum))
+                .isEqualTo(11);
     }
 }

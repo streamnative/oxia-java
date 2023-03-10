@@ -172,7 +172,7 @@ metrics have two attributes - type & result.
 | `removal_cause` | See: [`RemovalCause`][caffeine] | `explicit`, `replaced`, `collected`, `expired`, `size` | Applies to `type: eviction` only |
 
 [oxia]: https://github.com/streamnative/oxia
-[it]: src/test/java/io/streamnative/oxia/client/OxiaClientIT.java
+[it]: ../client-it/src/test/java/io/streamnative/oxia/client/it/OxiaClientIT.java
 [sort]: https://github.com/streamnative/oxia/blob/main/docs/oxia-key-sorting.md
 [caffeine]: https://github.com/ben-manes/caffeine/blob/master/caffeine/src/main/java/com/github/benmanes/caffeine/cache/RemovalCause.java
 
