@@ -10,7 +10,7 @@ the following capabilities:
 - [Client](client/) for the Oxia service
 - [OpenTelemetry Metrics](client-metrics-opentelemetry/) integration with the client
 - [Testcontainer](testcontainers/) for integration testing with a local Oxia service
-- [Performance Test Tool](perf/) for performance testing with an Oxia service.
+- [Performance Test Tool](perf/) for performance testing with an Oxia service
 
 ## Build
 
