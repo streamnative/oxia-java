@@ -54,7 +54,7 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
     OxiaMetadataStore(
             String serviceAddress, MetadataStoreConfig metadataStoreConfig, boolean enableSessionWatcher)
             throws Exception {
-        super(metadataStoreConfig.getMetadataStoreName());
+        super();
         var linger = metadataStoreConfig.getBatchingMaxDelayMillis();
         if (!metadataStoreConfig.isBatchingEnabled()) {
             linger = 0;
@@ -64,7 +64,6 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
         client =
                 new OxiaClientBuilder(serviceAddress)
                         .clientIdentifier(identity)
-                        /* TODO batchingMaxSizeKb: not supported by oxia _yet_ */
                         .sessionTimeout(Duration.ofMillis(metadataStoreConfig.getSessionTimeoutMillis()))
                         .batchLinger(Duration.ofMillis(linger))
                         .maxRequestsPerBatch(metadataStoreConfig.getBatchingMaxOperations())
@@ -75,7 +74,7 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
     }
 
     private void notificationCallback(Notification notification) {
-        if (notification.key().startsWith("__oxia") || this.isClosed.get()) {
+        if (notification.key().startsWith("__oxia")) {
             return;
         }
         if (notification instanceof Notification.KeyCreated keyCreated) {
@@ -258,12 +257,10 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
 
     @Override
     public void close() throws Exception {
-        if (isClosed.compareAndSet(false, true)) {
-            if (client != null) {
-                client.close();
-            }
-            super.close();
+        if (client != null) {
+            client.close();
         }
+        super.close();
     }
 
     public Optional<MetadataEventSynchronizer> getMetadataEventSynchronizer() {

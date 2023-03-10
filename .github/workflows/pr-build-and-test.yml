@@ -24,16 +24,6 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Check out pulsar
-        uses: actions/checkout@master
-        with:
-          repository: andrasbeni/pulsar
-          ref: metadata-test-changes
-          fetch-depth: 1
-
-      - name: Install pulsar-metadata
-        run: mvn install -am -pl :pulsar-metadata -DskipTests --no-transfer-progress --batch-mode
-
       - name: Checkout code
         uses: actions/checkout@v3
         with:
