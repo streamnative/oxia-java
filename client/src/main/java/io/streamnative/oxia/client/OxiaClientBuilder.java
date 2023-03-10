@@ -32,7 +32,7 @@ public class OxiaClientBuilder {
 
     public static final Duration DefaultBatchLinger = Duration.ofMillis(5);
     public static final int DefaultMaxRequestsPerBatch = 1000;
-    public static final int DefaultMaxBatchSize = 4 * 1024 * 1024;
+    public static final int DefaultMaxBatchSize = 128 * 1024;
     public static final Duration DefaultRequestTimeout = Duration.ofSeconds(30);
     public static final Duration DefaultSessionTimeout = Duration.ofSeconds(15);
     public static final int DefaultRecordCacheCapacity = 10_000;
@@ -41,7 +41,6 @@ public class OxiaClientBuilder {
     @NonNull private Duration requestTimeout = DefaultRequestTimeout;
     @NonNull private Duration batchLinger = DefaultBatchLinger;
     private int maxRequestsPerBatch = DefaultMaxRequestsPerBatch;
-    private int maxBatchSize = DefaultMaxBatchSize;
     private int recordCacheCapacity = DefaultRecordCacheCapacity;
     @NonNull private Duration sessionTimeout = DefaultSessionTimeout;
     @NonNull private Supplier<String> clientIdentifier = OxiaClientBuilder::randomClientIdentifier;
@@ -70,14 +69,6 @@ public class OxiaClientBuilder {
                     "MaxRequestsPerBatch must be greater than zero: " + maxRequestsPerBatch);
         }
         this.maxRequestsPerBatch = maxRequestsPerBatch;
-        return this;
-    }
-
-    public @NonNull OxiaClientBuilder maxBatchSize(int maxBatchSize) {
-        if (maxBatchSize <= 0) {
-            throw new IllegalArgumentException("MaxBatchSize must be greater than zero: " + maxBatchSize);
-        }
-        this.maxBatchSize = maxBatchSize;
         return this;
     }
 
@@ -126,7 +117,7 @@ public class OxiaClientBuilder {
                         requestTimeout,
                         batchLinger,
                         maxRequestsPerBatch,
-                        maxBatchSize,
+                        DefaultMaxBatchSize,
                         recordCacheCapacity,
                         sessionTimeout,
                         clientIdentifier.get(),

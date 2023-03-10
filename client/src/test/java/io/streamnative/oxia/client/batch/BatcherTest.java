@@ -33,7 +33,6 @@ import static org.mockito.Mockito.when;
 
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.api.GetResult;
-import io.streamnative.oxia.client.api.OperationTooLargeException;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.batch.Batch.BatchFactory;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
@@ -116,14 +115,14 @@ class BatcherTest {
     }
 
     @Test
-    void addWhenNextDoesNotFit() throws Exception {
+    void addWhenNextDoesNotFit() {
         var callback = new CompletableFuture<PutResult>();
         Operation<?> op =
                 new Operation.WriteOperation.PutOperation(
                         1L, callback, "key", "value".getBytes(StandardCharsets.UTF_8), Optional.empty(), false);
         when(batchFactory.apply(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(config.maxRequestsPerBatch(), 1);
-        when(batch.canAdd(any())).thenReturn(false).thenReturn(true);
+        when(batch.canAdd(any())).thenReturn(false);
         executor.execute(() -> batcher.run());
         batcher.add(op);
         await()
@@ -131,27 +130,6 @@ class BatcherTest {
                         () -> {
                             verify(batchFactory, times(2)).apply(shardId);
                             verify(batch).add(op);
-                        });
-        verifyNoInteractions(clock);
-    }
-
-    @Test
-    void addWhenTooLarge() throws Exception {
-        var callback = new CompletableFuture<PutResult>();
-        Operation<?> op =
-                new Operation.WriteOperation.PutOperation(
-                        1L, callback, "key", "value".getBytes(StandardCharsets.UTF_8), Optional.empty(), false);
-        when(batchFactory.apply(shardId)).thenReturn(batch);
-        when(batch.size()).thenReturn(config.maxRequestsPerBatch(), 1);
-        when(batch.canAdd(any())).thenThrow(OperationTooLargeException.class);
-        executor.execute(() -> batcher.run());
-        batcher.add(op);
-        await()
-                .untilAsserted(
-                        () -> {
-                            assertThat(op.callback().isCompletedExceptionally()).isTrue();
-                            verify(batchFactory).apply(shardId);
-                            verify(batch, never()).add(any());
                         });
         verifyNoInteractions(clock);
     }

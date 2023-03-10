@@ -54,13 +54,6 @@ class OxiaClientBuilderTest {
     }
 
     @Test
-    void maxBatchSize() {
-        assertThatThrownBy(() -> builder.maxBatchSize(0)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> builder.maxBatchSize(-1)).isInstanceOf(IllegalArgumentException.class);
-        assertThatNoException().isThrownBy(() -> builder.maxBatchSize(1));
-    }
-
-    @Test
     void recordCacheCapacity() {
         assertThatThrownBy(() -> builder.recordCacheCapacity(0))
                 .isInstanceOf(IllegalArgumentException.class);
