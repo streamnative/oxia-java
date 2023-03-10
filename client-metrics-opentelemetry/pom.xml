@@ -23,7 +23,7 @@
     <parent>
         <groupId>io.streamnative.oxia</groupId>
         <artifactId>oxia-java</artifactId>
-        <version>0.0.6-SNAPSHOT</version>
+        <version>0.0.7-SNAPSHOT</version>
     </parent>
 
     <artifactId>oxia-client-metrics-opentelemetry</artifactId>
@@ -43,21 +43,6 @@
             <groupId>io.streamnative.oxia</groupId>
             <artifactId>oxia-client-metrics-api</artifactId>
             <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-junit-jupiter</artifactId>
-            <scope>test</scope>
         </dependency>
     </dependencies>
 

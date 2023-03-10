@@ -40,8 +40,7 @@ public interface AsyncOxiaClient extends AutoCloseable {
      *     the call.
      */
     @NonNull
-    CompletableFuture<PutResult> put(
-            @NonNull String key, byte @NonNull [] value, @NonNull PutOption... options);
+    CompletableFuture<PutResult> put(String key, byte[] value, PutOption... options);
 
     /**
      * Conditionally deletes the record associated with the key if the record exists, and the server's
@@ -57,7 +56,7 @@ public interface AsyncOxiaClient extends AutoCloseable {
      *     versionId at the server did not that match supplied in the call.
      */
     @NonNull
-    CompletableFuture<Boolean> delete(@NonNull String key, @NonNull DeleteOption... options);
+    CompletableFuture<Boolean> delete(String key, DeleteOption... options);
 
     /**
      * Deletes any records with keys within the specified range. For more information on how keys are
@@ -72,8 +71,7 @@ public interface AsyncOxiaClient extends AutoCloseable {
      * @return A future that completes when the delete call has returned.
      */
     @NonNull
-    CompletableFuture<Void> deleteRange(
-            @NonNull String startKeyInclusive, @NonNull String endKeyExclusive);
+    CompletableFuture<Void> deleteRange(String startKeyInclusive, String endKeyExclusive);
 
     /**
      * Returns the record associated with the specified key. The returned value includes the value,
@@ -84,7 +82,7 @@ public interface AsyncOxiaClient extends AutoCloseable {
      *     Supplied via a future returning a {@link GetResult}.
      */
     @NonNull
-    CompletableFuture<GetResult> get(@NonNull String key);
+    CompletableFuture<GetResult> get(String key);
 
     /**
      * Lists any existing keys within the specified range. For more information on how keys are
@@ -100,8 +98,7 @@ public interface AsyncOxiaClient extends AutoCloseable {
      *     none. Supplied via a future.
      */
     @NonNull
-    CompletableFuture<List<String>> list(
-            @NonNull String startKeyInclusive, @NonNull String endKeyExclusive);
+    CompletableFuture<List<String>> list(String startKeyInclusive, String endKeyExclusive);
 
     /**
      * Registers a callback to receive Oxia {@link Notification record change notifications}. Multiple

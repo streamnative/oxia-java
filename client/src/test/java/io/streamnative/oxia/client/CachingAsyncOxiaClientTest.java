@@ -125,7 +125,7 @@ class CachingAsyncOxiaClientTest {
         var metrics = mock(Metrics.class);
         var cacheMetrics = mock(CacheMetrics.class);
         var config =
-                new ClientConfig("localhost:8080", ZERO, ZERO, 1, 1024 * 1024, 1, 1, ZERO, "id", metrics);
+                new ClientConfig("localhost:8080", ZERO, ZERO, 1, 1024 * 1024, 1, ZERO, "id", metrics);
         var cacheFactory = new CacheFactory(config, delegate, () -> cacheMetrics);
 
         var value = "value".getBytes(UTF_8);

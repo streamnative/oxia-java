@@ -68,7 +68,6 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
                         .sessionTimeout(Duration.ofMillis(metadataStoreConfig.getSessionTimeoutMillis()))
                         .batchLinger(Duration.ofMillis(linger))
                         .maxRequestsPerBatch(metadataStoreConfig.getBatchingMaxOperations())
-                        .operationQueueCapacity(4000)
                         .asyncClient()
                         .get();
         client.notifications(this::notificationCallback);

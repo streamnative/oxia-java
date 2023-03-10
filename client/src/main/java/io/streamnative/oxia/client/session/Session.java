@@ -19,6 +19,7 @@ import static io.streamnative.oxia.client.ProtoUtil.longToUint32;
 import static lombok.AccessLevel.PACKAGE;
 import static lombok.AccessLevel.PUBLIC;
 
+import com.google.common.annotations.VisibleForTesting;
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.proto.CloseSessionRequest;
 import io.streamnative.oxia.proto.CreateSessionRequest;
@@ -43,6 +44,9 @@ public class Session implements AutoCloseable {
     private final @NonNull Function<Long, ReactorOxiaClientGrpc.ReactorOxiaClientStub> stubByShardId;
     private final @NonNull Duration sessionTimeout;
     private final @NonNull Duration heartbeatInterval;
+
+    @Getter(PACKAGE)
+    @VisibleForTesting
     private final long shardId;
 
     @Getter(PUBLIC)
@@ -65,7 +69,7 @@ public class Session implements AutoCloseable {
                 shardId,
                 sessionId,
                 SessionHeartbeat.newBuilder()
-                        .setShardId(longToUint32(sessionId))
+                        .setShardId(longToUint32(shardId))
                         .setSessionId(sessionId)
                         .build());
     }
@@ -76,11 +80,11 @@ public class Session implements AutoCloseable {
                         .doBeforeRetry(
                                 signal ->
                                         log.warn(
-                                                "Retrying sending keep-alives for session {}:{} - {}",
+                                                "Retrying sending keep-alives for session [id={},shard={}] - {}",
                                                 sessionId,
                                                 shardId,
                                                 signal));
-        var threadName = String.format("session-%s:%s-keep-alive", sessionId, shardId);
+        var threadName = String.format("session-[id=%s,shard=%s]-keep-alive", sessionId, shardId);
 
         keepAliveSubscription =
                 Mono.just(heartbeat)
@@ -92,7 +96,8 @@ public class Session implements AutoCloseable {
                         .publishOn(Schedulers.newSingle(threadName))
                         .doOnError(
                                 t -> {
-                                    log.error("Failed to keep-alive session: {}:{}", sessionId, shardId, t);
+                                    log.error(
+                                            "Failed to keep-alive session: [id={},shard={}]", sessionId, shardId, t);
                                 })
                         .subscribe();
     }

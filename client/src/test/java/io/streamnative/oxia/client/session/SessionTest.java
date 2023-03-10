@@ -15,6 +15,7 @@
  */
 package io.streamnative.oxia.client.session;
 
+import static io.streamnative.oxia.client.ProtoUtil.longToUint32;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
@@ -68,7 +69,6 @@ class SessionTest {
                         Duration.ZERO,
                         1,
                         1024 * 1024,
-                        1,
                         0,
                         sessionTimeout,
                         clientId,
@@ -99,6 +99,7 @@ class SessionTest {
     @Test
     void sessionId() {
         var session = new Session(stubByShardId, config, shardId, sessionId);
+        assertThat(session.getShardId()).isEqualTo(shardId);
         assertThat(session.getSessionId()).isEqualTo(sessionId);
     }
 
@@ -111,6 +112,12 @@ class SessionTest {
                 .untilAsserted(
                         () -> {
                             assertThat(service.signals.size()).isGreaterThan(2);
+                            assertThat(service.signals)
+                                    .containsOnly(
+                                            SessionHeartbeat.newBuilder()
+                                                    .setSessionId(sessionId)
+                                                    .setShardId(longToUint32(shardId))
+                                                    .build());
                         });
         session.close();
         assertThat(service.closed).isTrue();

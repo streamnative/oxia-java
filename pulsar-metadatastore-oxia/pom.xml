@@ -23,7 +23,7 @@
     <parent>
         <groupId>io.streamnative.oxia</groupId>
         <artifactId>oxia-java</artifactId>
-        <version>0.0.6-SNAPSHOT</version>
+        <version>0.0.7-SNAPSHOT</version>
     </parent>
 
     <artifactId>pulsar-metadatastore-oxia</artifactId>
@@ -39,12 +39,8 @@
         <pulsar.version>2.12.0-SNAPSHOT</pulsar.version>
 
         <checkstyle.version>10.3.3</checkstyle.version>
-        <lombok.version>1.18.24</lombok.version>
-        <slf4j.version>2.0.5</slf4j.version>
         <testng.version>7.7.0</testng.version>
-        <assertj-core.version>3.18.1</assertj-core.version>
         <dropwizard.version>4.1.12.1</dropwizard.version>
-        <awaitility.version>4.2.0</awaitility.version>
         <snappy.version>1.1.8.4</snappy.version>
 
         <checkstyle.plugin.version>3.2.0</checkstyle.plugin.version>
@@ -77,18 +73,6 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <version>${lombok.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>${slf4j.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
             <groupId>io.dropwizard.metrics</groupId>
             <artifactId>metrics-core</artifactId>
             <version>${dropwizard.version}</version>
@@ -118,24 +102,6 @@
                     <artifactId>grpc-core</artifactId>
                 </exclusion>
             </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.assertj</groupId>
-            <artifactId>assertj-core</artifactId>
-            <version>${assertj-core.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.awaitility</groupId>
-            <artifactId>awaitility</artifactId>
-            <version>${awaitility.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-            <version>${slf4j.version}</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testng</groupId>
@@ -322,8 +288,8 @@
                             <shadedClassifierName>shaded</shadedClassifierName>
                             <relocations>
                                 <relocation>
-                                    <pattern>com.github.ben-manes.caffeine</pattern>
-                                    <shadedPattern>${shade.relocation.package}.com.github.ben-manes.caffeine</shadedPattern>
+                                    <pattern>com.github.benmanes.caffeine</pattern>
+                                    <shadedPattern>${shade.relocation.package}.com.github.benmanes.caffeine</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>com.google</pattern>
@@ -344,10 +310,6 @@
                                 <relocation>
                                     <pattern>io.perfmark</pattern>
                                     <shadedPattern>${shade.relocation.package}.io.perfmark</shadedPattern>
-                                </relocation>
-                                <relocation>
-                                    <pattern>io.streamnative.oxia</pattern>
-                                    <shadedPattern>${shade.relocation.package}.io.streamnative.oxia</shadedPattern>
                                 </relocation>
                                 <relocation>
                                     <pattern>javax.annotation</pattern>
@@ -389,6 +351,7 @@
                             </filters>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ApacheLicenseResourceTransformer"/>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                             </transformers>
                         </configuration>
                     </execution>

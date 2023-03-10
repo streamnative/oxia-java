@@ -40,7 +40,9 @@ import io.streamnative.oxia.proto.ListResponse;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import java.time.Clock;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -93,75 +95,121 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     private final @NonNull SessionManager sessionManager;
     private final @NonNull StubFactory<ReactorOxiaClientStub> reactorStubFactory;
     private final @NonNull OperationMetrics metrics;
+    private final AtomicLong sequence = new AtomicLong();
     private volatile boolean closed;
 
     @Override
-    public @NonNull CompletableFuture<PutResult> put(
-            @NonNull String key, byte @NonNull [] value, @NonNull PutOption... options) {
-        checkIfClosed();
-        var sample = metrics.recordPut(value.length);
-        var validatedOptions = PutOption.validate(options);
-        var shardId = shardManager.get(key);
+    public @NonNull CompletableFuture<PutResult> put(String key, byte[] value, PutOption... options) {
+        var sample = metrics.recordPut(value == null ? 0 : value.length);
         var callback = new CompletableFuture<PutResult>();
-        var versionId = PutOption.toVersionId(validatedOptions);
-        var op =
-                new PutOperation(callback, key, value, versionId, PutOption.toEphemeral(validatedOptions));
-        writeBatchManager.getBatcher(shardId).add(op);
+        try {
+            checkIfClosed();
+            Objects.requireNonNull(key);
+            Objects.requireNonNull(value);
+            var validatedOptions = PutOption.validate(options);
+            var shardId = shardManager.get(key);
+            var versionId = PutOption.toVersionId(validatedOptions);
+            var op =
+                    new PutOperation(
+                            sequence.getAndIncrement(),
+                            callback,
+                            key,
+                            value,
+                            versionId,
+                            PutOption.toEphemeral(validatedOptions));
+            writeBatchManager.getBatcher(shardId).add(op);
+        } catch (RuntimeException e) {
+            callback.completeExceptionally(e);
+        }
         return callback.whenComplete(sample::stop);
     }
 
     @Override
-    public @NonNull CompletableFuture<Boolean> delete(
-            @NonNull String key, @NonNull DeleteOption... options) {
-        checkIfClosed();
+    public @NonNull CompletableFuture<Boolean> delete(String key, DeleteOption... options) {
         var sample = metrics.recordDelete();
-        var validatedOptions = DeleteOption.validate(options);
-        var shardId = shardManager.get(key);
         var callback = new CompletableFuture<Boolean>();
-        var versionId = DeleteOption.toVersionId(validatedOptions);
-        writeBatchManager.getBatcher(shardId).add(new DeleteOperation(callback, key, versionId));
+        try {
+            checkIfClosed();
+            Objects.requireNonNull(key);
+            var validatedOptions = DeleteOption.validate(options);
+            var shardId = shardManager.get(key);
+            var versionId = DeleteOption.toVersionId(validatedOptions);
+            writeBatchManager
+                    .getBatcher(shardId)
+                    .add(new DeleteOperation(sequence.getAndIncrement(), callback, key, versionId));
+        } catch (RuntimeException e) {
+            callback.completeExceptionally(e);
+        }
         return callback.whenComplete(sample::stop);
     }
 
     @Override
     public @NonNull CompletableFuture<Void> deleteRange(
-            @NonNull String startKeyInclusive, @NonNull String endKeyExclusive) {
-        checkIfClosed();
+            String startKeyInclusive, String endKeyExclusive) {
         var sample = metrics.recordDeleteRange();
-        var shardDeletes =
-                shardManager.getAll().stream()
-                        .map(writeBatchManager::getBatcher)
-                        .map(
-                                b -> {
-                                    var callback = new CompletableFuture<Void>();
-                                    b.add(new DeleteRangeOperation(callback, startKeyInclusive, endKeyExclusive));
-                                    return callback;
-                                })
-                        .collect(toList())
-                        .toArray(new CompletableFuture[0]);
-        return CompletableFuture.allOf(shardDeletes).whenComplete(sample::stop);
+        CompletableFuture<Void> callback;
+        try {
+            checkIfClosed();
+            Objects.requireNonNull(startKeyInclusive);
+            Objects.requireNonNull(endKeyExclusive);
+            var shardDeletes =
+                    shardManager.getAll().stream()
+                            .map(writeBatchManager::getBatcher)
+                            .map(
+                                    b -> {
+                                        var shardCallback = new CompletableFuture<Void>();
+                                        b.add(
+                                                new DeleteRangeOperation(
+                                                        sequence.getAndIncrement(),
+                                                        shardCallback,
+                                                        startKeyInclusive,
+                                                        endKeyExclusive));
+                                        return shardCallback;
+                                    })
+                            .collect(toList())
+                            .toArray(new CompletableFuture[0]);
+            callback = CompletableFuture.allOf(shardDeletes);
+        } catch (RuntimeException e) {
+            callback = CompletableFuture.failedFuture(e);
+        }
+        return callback.whenComplete(sample::stop);
     }
 
     @Override
-    public @NonNull CompletableFuture<GetResult> get(@NonNull String key) {
-        checkIfClosed();
+    public @NonNull CompletableFuture<GetResult> get(String key) {
         var sample = metrics.recordGet();
-        var shardId = shardManager.get(key);
         var callback = new CompletableFuture<GetResult>();
-        readBatchManager.getBatcher(shardId).add(new GetOperation(callback, key));
+        try {
+            checkIfClosed();
+            Objects.requireNonNull(key);
+            var shardId = shardManager.get(key);
+            readBatchManager
+                    .getBatcher(shardId)
+                    .add(new GetOperation(sequence.getAndIncrement(), callback, key));
+        } catch (RuntimeException e) {
+            callback.completeExceptionally(e);
+        }
         return callback.whenComplete(sample::stop);
     }
 
     @Override
     public @NonNull CompletableFuture<List<String>> list(
-            @NonNull String startKeyInclusive, @NonNull String endKeyExclusive) {
-        checkIfClosed();
+            String startKeyInclusive, String endKeyExclusive) {
         var sample = metrics.recordList();
-        return Flux.fromIterable(shardManager.getAll())
-                .flatMap(shardId -> list(shardId, startKeyInclusive, endKeyExclusive))
-                .collectList()
-                .toFuture()
-                .whenComplete(sample::stop);
+        CompletableFuture<List<String>> callback;
+        try {
+            checkIfClosed();
+            Objects.requireNonNull(startKeyInclusive);
+            Objects.requireNonNull(endKeyExclusive);
+            callback =
+                    Flux.fromIterable(shardManager.getAll())
+                            .flatMap(shardId -> list(shardId, startKeyInclusive, endKeyExclusive))
+                            .collectList()
+                            .toFuture();
+        } catch (Exception e) {
+            callback = CompletableFuture.failedFuture(e);
+        }
+        return callback.whenComplete(sample::stop);
     }
 
     @Override
@@ -172,7 +220,6 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
     private @NonNull Flux<String> list(
             long shardId, @NonNull String startKeyInclusive, @NonNull String endKeyExclusive) {
-        checkIfClosed();
         var leader = shardManager.leader(shardId);
         var stub = reactorStubFactory.apply(leader);
         var request =
