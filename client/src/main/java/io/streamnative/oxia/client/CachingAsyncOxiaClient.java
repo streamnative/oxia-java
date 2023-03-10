@@ -19,13 +19,14 @@ import static lombok.AccessLevel.PACKAGE;
 
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.stats.StatsCounter;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.DeleteOption;
 import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.PutOption;
 import io.streamnative.oxia.client.api.PutResult;
-import io.streamnative.oxia.client.metrics.CacheMetrics;
+import io.streamnative.oxia.client.metrics.RecordMetrics;
 import io.streamnative.oxia.client.metrics.api.Metrics;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -100,10 +101,10 @@ class CachingAsyncOxiaClient implements AsyncOxiaClient {
     static class CacheFactory implements Supplier<AsyncLoadingCache<String, GetResult>> {
         private final @NonNull ClientConfig config;
         private final @NonNull AsyncOxiaClient delegate;
-        private final @NonNull Supplier<CacheMetrics> cacheMetricsFactory;
+        private final @NonNull Supplier<StatsCounter> cacheMetricsFactory;
 
         CacheFactory(ClientConfig config, AsyncOxiaClient delegate) {
-            this(config, delegate, () -> CacheMetrics.create(config.metrics()));
+            this(config, delegate, () -> RecordMetrics.create(config.metrics()).caffeineStatsCounter());
         }
 
         @NonNull

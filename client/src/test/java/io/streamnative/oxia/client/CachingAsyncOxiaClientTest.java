@@ -27,6 +27,7 @@ import static org.mockito.Mockito.when;
 
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
 import com.github.benmanes.caffeine.cache.LoadingCache;
+import com.github.benmanes.caffeine.cache.stats.StatsCounter;
 import io.streamnative.oxia.client.CachingAsyncOxiaClient.CacheFactory;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.GetResult;
@@ -36,7 +37,6 @@ import io.streamnative.oxia.client.api.Notification.KeyDeleted;
 import io.streamnative.oxia.client.api.Notification.KeyModified;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.Version;
-import io.streamnative.oxia.client.metrics.CacheMetrics;
 import io.streamnative.oxia.client.metrics.api.Metrics;
 import java.util.HashSet;
 import java.util.List;
@@ -123,7 +123,7 @@ class CachingAsyncOxiaClientTest {
     @Test
     void get() throws Exception {
         var metrics = mock(Metrics.class);
-        var cacheMetrics = mock(CacheMetrics.class);
+        var cacheMetrics = mock(StatsCounter.class);
         var config =
                 new ClientConfig("localhost:8080", ZERO, ZERO, 1, 1024 * 1024, 1, ZERO, "id", metrics);
         var cacheFactory = new CacheFactory(config, delegate, () -> cacheMetrics);

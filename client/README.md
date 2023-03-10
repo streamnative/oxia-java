@@ -140,6 +140,22 @@ metrics have two attributes - type & result.
 | `type`   | The operation type   | `put`, `delete`, `delete_range`, `get`, `list` |
 | `result` | The operation result | `success`, `failure`                           |
 
+### Record Level
+
+|                 Name                  |                    Description                    |
+|---------------------------------------|---------------------------------------------------|
+| `oxia_client_record_cache_load_timer` | The time it took to load a record in to the cache |
+| `oxia_client_record_cache_hits`       | Counts of cache hits and misses                   |
+| `oxia_client_record_cache_evictions`  | Counts of record evictions from the cache         |
+
+#### Attributes
+
+|      Name       |           Description           |                         Values                         |                 Notes                  |
+|-----------------|---------------------------------|--------------------------------------------------------|----------------------------------------|
+| `type`          | The operation type              | `cache_load`, `cache_hit`, `cache_eviction`            |                                        |
+| `result`        | The operation result            | `success`, `failure`                                   |                                        |
+| `removal_cause` | See: [`RemovalCause`][caffeine] | `explicit`, `replaced`, `collected`, `expired`, `size` | Applies to `type: cache_eviction` only |
+
 ### Batch Level
 
 |              Name               |                            Description                             |
@@ -155,22 +171,6 @@ metrics have two attributes - type & result.
 |----------|----------------------|----------------------|
 | `type`   | The operation type   | `write`, `read`      |
 | `result` | The operation result | `success`, `failure` |
-
-### Cache Level
-
-|              Name              |                    Description                    |
-|--------------------------------|---------------------------------------------------|
-| `oxia_client_cache_load_timer` | The time it took to load a record in to the cache |
-| `oxia_client_cache_hits`       | Counts of cache hits and misses                   |
-| `oxia_client_cache_evictions`  | Counts of record evictions from the cache         |
-
-#### Attributes
-
-|      Name       |           Description           |                         Values                         |              Notes               |
-|-----------------|---------------------------------|--------------------------------------------------------|----------------------------------|
-| `type`          | The operation type              | `load`, `hit`, `eviction`                              |                                  |
-| `result`        | The operation result            | `success`, `failure`                                   |                                  |
-| `removal_cause` | See: [`RemovalCause`][caffeine] | `explicit`, `replaced`, `collected`, `expired`, `size` | Applies to `type: eviction` only |
 
 [oxia]: https://github.com/streamnative/oxia
 [it]: src/test/java/io/streamnative/oxia/client/OxiaClientIT.java
