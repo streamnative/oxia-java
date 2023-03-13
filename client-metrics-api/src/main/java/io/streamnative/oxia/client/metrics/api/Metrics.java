@@ -17,6 +17,7 @@ package io.streamnative.oxia.client.metrics.api;
 
 
 import java.util.Map;
+import lombok.NonNull;
 
 public interface Metrics {
 
@@ -34,16 +35,20 @@ public interface Metrics {
         MILLISECONDS
     }
 
-    static Map<String, String> attributes(String type, Throwable t) {
+    static @NonNull Map<String, String> attributes(@NonNull String type, Throwable t) {
         return attributes(type, t == null);
     }
 
-    static Map<String, String> attributes(String type, boolean success) {
-        return Map.of("type", type, "result", success ? "success" : "failure");
+    static @NonNull Map<String, String> attributes(String type, boolean success) {
+        return Map.of("type", type, "result", successOrFail(success));
     }
 
-    static Map<String, String> attributes(String type) {
+    static @NonNull Map<String, String> attributes(String type) {
         return attributes(type, true);
+    }
+
+    static @NonNull String successOrFail(boolean isSuccess) {
+        return isSuccess ? "success" : "failure";
     }
 }
 

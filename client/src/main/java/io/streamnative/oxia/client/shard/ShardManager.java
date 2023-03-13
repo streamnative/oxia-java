@@ -90,22 +90,15 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
         // TODO filter non-retriables?
         RetryBackoffSpec retrySpec =
                 Retry.backoff(Long.MAX_VALUE, Duration.ofMillis(100))
-                        .doBeforeRetry(
-                                signal -> {
-                                    log.warn("Retrying receiving shard assignments: {}", signal);
-                                    metrics.recordRetry();
-                                });
+                        .doBeforeRetry(signal -> log.warn("Retrying receiving shard assignments: {}", signal));
         var assignmentsFlux =
                 Flux.defer(() -> stub.getShardAssignments(ShardAssignmentsRequest.getDefaultInstance()))
-                        .doOnError(
-                                t -> {
-                                    log.warn("Error receiving shard assignments", t);
-                                    metrics.recordError();
-                                })
+                        .doOnError(t -> log.warn("Error receiving shard assignments", t))
                         .retryWhen(retrySpec)
                         .repeat()
                         .publishOn(Schedulers.newSingle("shard-assignments"))
                         .doOnNext(this::updateAssignments)
+                        .doOnEach(metrics::recordAssignments)
                         .publish();
         // Complete after the first response has been processed
         var future = Mono.from(assignmentsFlux).then().toFuture();
@@ -121,7 +114,7 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
         var changes = computeShardLeaderChanges(assignments.shards, updatedMap);
         assignments.update(updates);
         callbacks.accept(changes);
-        metrics.recordAssignments(changes);
+        metrics.recordChanges(changes);
     }
 
     @VisibleForTesting

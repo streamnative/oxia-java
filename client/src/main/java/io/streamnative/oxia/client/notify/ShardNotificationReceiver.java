@@ -85,18 +85,13 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
         RetryBackoffSpec retrySpec =
                 Retry.backoff(Long.MAX_VALUE, Duration.ofMillis(100))
                         .doBeforeRetry(
-                                signal -> {
-                                    log.warn("Retrying receiving notifications for shard {}: {}", shardId, signal);
-                                    metrics.recordRetry(shardId);
-                                });
+                                signal ->
+                                        log.warn("Retrying receiving notifications for shard {}: {}", shardId, signal));
         var threadName = String.format("shard-%s-notifications", shardId);
         var disposable =
                 Flux.defer(() -> stub.getNotifications(request.build()))
-                        .doOnError(
-                                t -> {
-                                    log.warn("Error receiving notifications for shard {}", shardId, t);
-                                    metrics.recordError(shardId);
-                                })
+                        .doOnError(t -> log.warn("Error receiving notifications for shard {}", shardId, t))
+                        .doOnEach(metrics::recordBatch)
                         .retryWhen(retrySpec)
                         .repeat()
                         .publishOn(Schedulers.newSingle(threadName))
@@ -121,7 +116,6 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
                         })
                 .filter(Objects::nonNull)
                 .forEach(callback::accept);
-        metrics.recordNotifications(batch);
     }
 
     public long getOffset() {

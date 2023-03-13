@@ -41,20 +41,12 @@ public class SessionManager implements AutoCloseable, Consumer<ShardAssignmentCh
 
     private final ConcurrentMap<Long, Session> sessionsByShardId = new ConcurrentHashMap<>();
     private final @NonNull Session.Factory factory;
-    private final @NonNull SessionMetrics metrics;
     private volatile boolean closed = false;
 
     public SessionManager(
             @NonNull ClientConfig config,
             @NonNull Function<Long, ReactorOxiaClientGrpc.ReactorOxiaClientStub> stubByShardId) {
-        this(config, stubByShardId, SessionMetrics.create(config.metrics()));
-    }
-
-    SessionManager(
-            @NonNull ClientConfig config,
-            @NonNull Function<Long, ReactorOxiaClientGrpc.ReactorOxiaClientStub> stubByShardId,
-            @NonNull SessionMetrics metrics) {
-        this(new Session.Factory(config, stubByShardId, metrics), metrics);
+        this(new Session.Factory(config, stubByShardId, SessionMetrics.create(config.metrics())));
     }
 
     @NonNull
@@ -68,7 +60,6 @@ public class SessionManager implements AutoCloseable, Consumer<ShardAssignmentCh
                     s -> {
                         var session = factory.create(shardId);
                         session.start();
-                        metrics.recordCreate(shardId);
                         return session;
                     });
         } catch (Exception e) {
@@ -115,7 +106,6 @@ public class SessionManager implements AutoCloseable, Consumer<ShardAssignmentCh
                 session.close();
             } catch (Exception e) {
                 log.warn("Error closing session {}", session.getSessionId(), e);
-                metrics.recordCloseError(session.getShardId());
             }
         }
         return Optional.ofNullable(session);

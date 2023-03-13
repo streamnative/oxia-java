@@ -16,40 +16,31 @@
 package io.streamnative.oxia.client.metrics;
 
 import static io.streamnative.oxia.client.metrics.api.Metrics.Unit.NONE;
+import static io.streamnative.oxia.client.metrics.api.Metrics.attributes;
 import static lombok.AccessLevel.PACKAGE;
 
 import io.streamnative.oxia.client.metrics.api.Metrics;
-import java.util.Map;
+import io.streamnative.oxia.proto.KeepAliveResponse;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import reactor.core.publisher.Signal;
 
 @RequiredArgsConstructor(access = PACKAGE)
 public class SessionMetrics {
 
-    private final @NonNull Metrics.Histogram lifecycle;
+    private final @NonNull Metrics.Histogram keepalive;
 
     public static @NonNull SessionMetrics create(@NonNull Metrics metrics) {
-        var lifecycle = metrics.histogram("oxia_client_session_lifecycle", NONE);
-        return new SessionMetrics(lifecycle);
+        var heartbeat = metrics.histogram("oxia_client_session_keepalive", NONE);
+        return new SessionMetrics(heartbeat);
     }
 
-    public void recordKeepAliveError(long shardId) {
-        lifecycle.record(1, attributes("heartbeat_error", shardId));
-    }
-
-    public void recordKeepAliveRetry(long shardId) {
-        lifecycle.record(1, attributes("heartbeat_retry", shardId));
-    }
-
-    public void recordCreate(long shardId) {
-        lifecycle.record(1, attributes("create", shardId));
-    }
-
-    public void recordCloseError(long shardId) {
-        lifecycle.record(1, attributes("close_error", shardId));
-    }
-
-    private static Map<String, String> attributes(@NonNull String type, long shardId) {
-        return Map.of("type", type, "shard_id", Long.toString(shardId));
+    public void recordKeepAlive(@NonNull Signal<KeepAliveResponse> signal) {
+        var type = "heartbeat";
+        switch (signal.getType()) {
+            case ON_NEXT -> keepalive.record(1, attributes(type, true));
+            case ON_ERROR -> keepalive.record(1, attributes(type, false));
+            default -> {}
+        }
     }
 }

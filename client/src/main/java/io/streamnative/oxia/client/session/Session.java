@@ -82,14 +82,12 @@ public class Session implements AutoCloseable {
         RetryBackoffSpec retrySpec =
                 Retry.backoff(Long.MAX_VALUE, Duration.ofMillis(100))
                         .doBeforeRetry(
-                                signal -> {
-                                    log.warn(
-                                            "Retrying sending keep-alives for session [id={},shard={}] - {}",
-                                            sessionId,
-                                            shardId,
-                                            signal);
-                                    metrics.recordKeepAliveRetry(shardId);
-                                });
+                                signal ->
+                                        log.warn(
+                                                "Retrying sending keep-alives for session [id={},shard={}] - {}",
+                                                sessionId,
+                                                shardId,
+                                                signal));
         var threadName = String.format("session-[id=%s,shard=%s]-keep-alive", sessionId, shardId);
 
         keepAliveSubscription =
@@ -100,11 +98,9 @@ public class Session implements AutoCloseable {
                         .retryWhen(retrySpec)
                         .timeout(sessionTimeout)
                         .publishOn(Schedulers.newSingle(threadName))
+                        .doOnEach(metrics::recordKeepAlive)
                         .doOnError(
-                                t -> {
-                                    log.warn("Failed to keep-alive session: [id={},shard={}]", sessionId, shardId, t);
-                                    metrics.recordKeepAliveError(shardId);
-                                })
+                                t -> log.warn("Session keep-alive error: [id={},shard={}]", sessionId, shardId, t))
                         .subscribe();
     }
 

@@ -15,9 +15,9 @@
  */
 package io.streamnative.oxia.client.metrics;
 
-import static io.streamnative.oxia.client.ProtoUtil.uint32ToLong;
 import static io.streamnative.oxia.client.metrics.api.Metrics.Histogram;
 import static io.streamnative.oxia.client.metrics.api.Metrics.Unit.NONE;
+import static io.streamnative.oxia.client.metrics.api.Metrics.attributes;
 import static java.util.stream.Collectors.groupingBy;
 import static lombok.AccessLevel.PACKAGE;
 
@@ -28,50 +28,40 @@ import io.streamnative.oxia.proto.NotificationBatch;
 import java.util.Map;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import reactor.core.publisher.Signal;
 
 @RequiredArgsConstructor(access = PACKAGE)
 public class NotificationMetrics {
 
-    private final @NonNull Histogram lifecycle;
-    private final @NonNull Histogram received;
+    private final @NonNull Histogram batch;
+    private final @NonNull Histogram event;
 
     public static @NonNull NotificationMetrics create(@NonNull Metrics metrics) {
-        var lifecycle = metrics.histogram("oxia_client_notifications_lifecycle", NONE);
-        var received = metrics.histogram("oxia_client_notifications_received", NONE);
-        return new NotificationMetrics(lifecycle, received);
+        var batch = metrics.histogram("oxia_client_notification", NONE);
+        var events = metrics.histogram("oxia_client_notification_event", NONE);
+        return new NotificationMetrics(batch, events);
+    }
+
+    public void recordBatch(@NonNull Signal<NotificationBatch> signal) {
+        var type = "batch";
+        switch (signal.getType()) {
+            case ON_NEXT -> {
+                batch.record(1, attributes(type, true));
+                recordNotification(signal.get());
+            }
+            case ON_ERROR -> batch.record(1, attributes(type, false));
+            default -> {}
+        }
     }
 
     @VisibleForTesting
-    void recordBatch(long shardId, boolean success) {
-        var attributes =
-                Map.of(
-                        "type", "batch",
-                        "shard_id", Long.toString(shardId),
-                        "success", Boolean.toString(success).toLowerCase());
-        lifecycle.record(1, attributes);
-    }
-
-    public void recordError(long shardId) {
-        recordBatch(shardId, false);
-    }
-
-    public void recordRetry(long shardId) {
-        var attributes = Map.of("type", "retry", "shard_id", Long.toString(shardId));
-        lifecycle.record(1, attributes);
-    }
-
-    public void recordNotifications(@NonNull NotificationBatch batch) {
-        var shardId = uint32ToLong(batch.getShardId());
-        recordBatch(shardId, true);
+    void recordNotification(@NonNull NotificationBatch batch) {
         batch.getNotificationsMap().values().stream()
                 .collect(groupingBy(Notification::getType))
                 .forEach(
                         (key, value) -> {
-                            var attributes =
-                                    Map.of(
-                                            "type", key.name().toLowerCase(),
-                                            "shard_id", Long.toString(shardId));
-                            received.record(value.size(), attributes);
+                            var attributes = Map.of("type", key.name().toLowerCase());
+                            event.record(value.size(), attributes);
                         });
     }
 }

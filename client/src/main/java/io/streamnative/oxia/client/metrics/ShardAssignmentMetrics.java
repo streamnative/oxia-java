@@ -19,44 +19,37 @@ import static io.streamnative.oxia.client.metrics.api.Metrics.Unit.NONE;
 import static io.streamnative.oxia.client.metrics.api.Metrics.attributes;
 import static lombok.AccessLevel.PACKAGE;
 
-import com.google.common.annotations.VisibleForTesting;
 import io.streamnative.oxia.client.metrics.api.Metrics;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChanges;
-import java.util.Map;
+import io.streamnative.oxia.proto.ShardAssignments;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import reactor.core.publisher.Signal;
 
 @RequiredArgsConstructor(access = PACKAGE)
 public class ShardAssignmentMetrics {
 
-    private final @NonNull Metrics.Histogram lifecycle;
-    private final @NonNull Metrics.Histogram changes;
+    private final @NonNull Metrics.Histogram event;
+    private final @NonNull Metrics.Histogram change;
 
     public static @NonNull ShardAssignmentMetrics create(@NonNull Metrics metrics) {
-        var lifecycle = metrics.histogram("oxia_client_shard_assignments_lifecycle", NONE);
-        var changes = metrics.histogram("oxia_client_shard_assignments_received", NONE);
-        return new ShardAssignmentMetrics(lifecycle, changes);
+        var event = metrics.histogram("oxia_client_shard_assignment", NONE);
+        var change = metrics.histogram("oxia_client_shard_assignment_change", NONE);
+        return new ShardAssignmentMetrics(event, change);
     }
 
-    public void recordError() {
-        recordAssignments(false);
+    public void recordAssignments(@NonNull Signal<ShardAssignments> signal) {
+        var type = "event";
+        switch (signal.getType()) {
+            case ON_NEXT -> event.record(1, attributes(type, true));
+            case ON_ERROR -> event.record(1, attributes(type, false));
+            default -> {}
+        }
     }
 
-    public void recordRetry() {
-        lifecycle.record(1, attributes("retry"));
-    }
-
-    @VisibleForTesting
-    void recordAssignments(boolean success) {
-        var attributes =
-                Map.of("type", "assignments", "success", Boolean.toString(success).toLowerCase());
-        lifecycle.record(1, attributes);
-    }
-
-    public void recordAssignments(@NonNull ShardAssignmentChanges changes) {
-        recordAssignments(true);
-        this.changes.record(changes.added().size(), attributes("added"));
-        this.changes.record(changes.removed().size(), attributes("removed"));
-        this.changes.record(changes.reassigned().size(), attributes("reassigned"));
+    public void recordChanges(@NonNull ShardAssignmentChanges changes) {
+        change.record(changes.added().size(), attributes("added"));
+        change.record(changes.removed().size(), attributes("removed"));
+        change.record(changes.reassigned().size(), attributes("reassigned"));
     }
 }
