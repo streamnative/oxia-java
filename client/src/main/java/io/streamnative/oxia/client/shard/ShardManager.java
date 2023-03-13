@@ -29,6 +29,8 @@ import static java.util.stream.Collectors.toSet;
 import com.google.common.annotations.VisibleForTesting;
 import io.streamnative.oxia.client.CompositeConsumer;
 import io.streamnative.oxia.client.grpc.GrpcResponseStream;
+import io.streamnative.oxia.client.metrics.ShardAssignmentMetrics;
+import io.streamnative.oxia.client.metrics.api.Metrics;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import io.streamnative.oxia.proto.ShardAssignments;
 import io.streamnative.oxia.proto.ShardAssignmentsRequest;
@@ -59,19 +61,27 @@ import reactor.util.retry.RetryBackoffSpec;
 public class ShardManager extends GrpcResponseStream implements AutoCloseable {
     private final @NonNull Assignments assignments;
     private final @NonNull CompositeConsumer<ShardAssignmentChanges> callbacks;
+    private final @NonNull ShardAssignmentMetrics metrics;
 
     @VisibleForTesting
     ShardManager(
             @NonNull Supplier<ReactorOxiaClientStub> stubFactory,
             @NonNull Assignments assignments,
-            @NonNull CompositeConsumer<ShardAssignmentChanges> callbacks) {
+            @NonNull CompositeConsumer<ShardAssignmentChanges> callbacks,
+            @NonNull ShardAssignmentMetrics metrics) {
         super(stubFactory);
         this.assignments = assignments;
         this.callbacks = callbacks;
+        this.metrics = metrics;
     }
 
-    public ShardManager(@NonNull Supplier<ReactorOxiaClientStub> stubFactory) {
-        this(stubFactory, new Assignments(Xxh332HashRangeShardStrategy), new CompositeConsumer<>());
+    public ShardManager(
+            @NonNull Supplier<ReactorOxiaClientStub> stubFactory, @NonNull Metrics metrics) {
+        this(
+                stubFactory,
+                new Assignments(Xxh332HashRangeShardStrategy),
+                new CompositeConsumer<>(),
+                ShardAssignmentMetrics.create(metrics));
     }
 
     @Override
@@ -80,10 +90,18 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
         // TODO filter non-retriables?
         RetryBackoffSpec retrySpec =
                 Retry.backoff(Long.MAX_VALUE, Duration.ofMillis(100))
-                        .doBeforeRetry(signal -> log.warn("Retrying receiving shard assignments: {}", signal));
+                        .doBeforeRetry(
+                                signal -> {
+                                    log.warn("Retrying receiving shard assignments: {}", signal);
+                                    metrics.recordRetry();
+                                });
         var assignmentsFlux =
                 Flux.defer(() -> stub.getShardAssignments(ShardAssignmentsRequest.getDefaultInstance()))
-                        .doOnError(t -> log.warn("Error receiving shard assignments", t))
+                        .doOnError(
+                                t -> {
+                                    log.warn("Error receiving shard assignments", t);
+                                    metrics.recordError();
+                                })
                         .retryWhen(retrySpec)
                         .repeat()
                         .publishOn(Schedulers.newSingle("shard-assignments"))
@@ -103,6 +121,7 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
         var changes = computeShardLeaderChanges(assignments.shards, updatedMap);
         assignments.update(updates);
         callbacks.accept(changes);
+        metrics.recordAssignments(changes);
     }
 
     @VisibleForTesting

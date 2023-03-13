@@ -20,6 +20,7 @@ import static lombok.AccessLevel.PACKAGE;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.streamnative.oxia.client.ClientConfig;
+import io.streamnative.oxia.client.metrics.SessionMetrics;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChanges;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
 import java.util.ArrayList;
@@ -40,26 +41,39 @@ public class SessionManager implements AutoCloseable, Consumer<ShardAssignmentCh
 
     private final ConcurrentMap<Long, Session> sessionsByShardId = new ConcurrentHashMap<>();
     private final @NonNull Session.Factory factory;
+    private final @NonNull SessionMetrics metrics;
     private volatile boolean closed = false;
 
     public SessionManager(
             @NonNull ClientConfig config,
             @NonNull Function<Long, ReactorOxiaClientGrpc.ReactorOxiaClientStub> stubByShardId) {
-        this(new Session.Factory(config, stubByShardId));
+        this(config, stubByShardId, SessionMetrics.create(config.metrics()));
+    }
+
+    SessionManager(
+            @NonNull ClientConfig config,
+            @NonNull Function<Long, ReactorOxiaClientGrpc.ReactorOxiaClientStub> stubByShardId,
+            @NonNull SessionMetrics metrics) {
+        this(new Session.Factory(config, stubByShardId, metrics), metrics);
     }
 
     @NonNull
     public Session getSession(long shardId) {
-        if (closed) {
-            throw new IllegalStateException("session manager has been closed");
+        try {
+            if (closed) {
+                throw new IllegalStateException("session manager has been closed");
+            }
+            return sessionsByShardId.computeIfAbsent(
+                    shardId,
+                    s -> {
+                        var session = factory.create(shardId);
+                        session.start();
+                        metrics.recordCreate(shardId);
+                        return session;
+                    });
+        } catch (Exception e) {
+            throw e;
         }
-        return sessionsByShardId.computeIfAbsent(
-                shardId,
-                s -> {
-                    var session = factory.create(shardId);
-                    session.start();
-                    return session;
-                });
     }
 
     @Override
@@ -95,12 +109,13 @@ public class SessionManager implements AutoCloseable, Consumer<ShardAssignmentCh
     }
 
     @VisibleForTesting
-    static Optional<Session> closeQuietly(Session session) {
+    Optional<Session> closeQuietly(Session session) {
         if (session != null) {
             try {
                 session.close();
             } catch (Exception e) {
-                log.error("Error closing session {}", session.getSessionId(), e);
+                log.warn("Error closing session {}", session.getSessionId(), e);
+                metrics.recordCloseError(session.getShardId());
             }
         }
         return Optional.ofNullable(session);

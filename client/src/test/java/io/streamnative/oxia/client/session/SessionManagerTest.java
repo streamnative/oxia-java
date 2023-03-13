@@ -24,6 +24,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
+import io.streamnative.oxia.client.metrics.SessionMetrics;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChange.Reassigned;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChange.Removed;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChanges;
@@ -39,11 +40,12 @@ class SessionManagerTest {
 
     @Mock Session.Factory factory;
     @Mock Session session;
+    @Mock SessionMetrics metrics;
     SessionManager manager;
 
     @BeforeEach
     void setup() {
-        manager = new SessionManager(factory);
+        manager = new SessionManager(factory, metrics);
     }
 
     @Test
@@ -62,6 +64,7 @@ class SessionManagerTest {
         var session1 = manager.getSession(shardId);
         verify(factory, times(1)).create(shardId);
         verify(session, times(1)).start();
+        verify(metrics, times(1)).recordCreate(shardId);
 
         var session2 = manager.getSession(shardId);
         assertThat(session2).isSameAs(session1);
@@ -111,14 +114,14 @@ class SessionManagerTest {
 
     @Test
     void closeQuietly() throws Exception {
-        var value = SessionManager.closeQuietly(session);
+        var value = manager.closeQuietly(session);
         assertThat(value).containsSame(session);
         verify(session).close();
     }
 
     @Test
     void closeQuietlyNull() throws Exception {
-        var value = SessionManager.closeQuietly(null);
+        var value = manager.closeQuietly(null);
         assertThat(value).isEmpty();
     }
 }

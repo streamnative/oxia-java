@@ -25,6 +25,7 @@ import io.streamnative.oxia.client.api.Notification.KeyCreated;
 import io.streamnative.oxia.client.api.Notification.KeyDeleted;
 import io.streamnative.oxia.client.grpc.ChannelManager.StubFactory;
 import io.streamnative.oxia.client.grpc.GrpcResponseStream;
+import io.streamnative.oxia.client.metrics.NotificationMetrics;
 import io.streamnative.oxia.proto.NotificationBatch;
 import io.streamnative.oxia.proto.NotificationsRequest;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
@@ -51,6 +52,7 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
     private final long shardId;
 
     private final @NonNull Consumer<Notification> callback;
+    private final @NonNull NotificationMetrics metrics;
     private @NonNull Optional<Long> startingOffset = Optional.empty();
 
     private long offset;
@@ -58,10 +60,12 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
     ShardNotificationReceiver(
             @NonNull Supplier<ReactorOxiaClientStub> stubFactory,
             long shardId,
-            @NonNull Consumer<Notification> callback) {
+            @NonNull Consumer<Notification> callback,
+            @NonNull NotificationMetrics metrics) {
         super(stubFactory);
         this.shardId = shardId;
         this.callback = callback;
+        this.metrics = metrics;
     }
 
     public void start(@NonNull Optional<Long> offset) {
@@ -81,12 +85,18 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
         RetryBackoffSpec retrySpec =
                 Retry.backoff(Long.MAX_VALUE, Duration.ofMillis(100))
                         .doBeforeRetry(
-                                signal ->
-                                        log.warn("Retrying receiving notifications for shard {}: {}", shardId, signal));
+                                signal -> {
+                                    log.warn("Retrying receiving notifications for shard {}: {}", shardId, signal);
+                                    metrics.recordRetry(shardId);
+                                });
         var threadName = String.format("shard-%s-notifications", shardId);
         var disposable =
                 Flux.defer(() -> stub.getNotifications(request.build()))
-                        .doOnError(t -> log.warn("Error receiving notifications for shard {}", shardId, t))
+                        .doOnError(
+                                t -> {
+                                    log.warn("Error receiving notifications for shard {}", shardId, t);
+                                    metrics.recordError(shardId);
+                                })
                         .retryWhen(retrySpec)
                         .repeat()
                         .publishOn(Schedulers.newSingle(threadName))
@@ -111,6 +121,7 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
                         })
                 .filter(Objects::nonNull)
                 .forEach(callback::accept);
+        metrics.recordNotifications(batch);
     }
 
     public long getOffset() {
@@ -123,9 +134,10 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
         private final @NonNull Consumer<Notification> callback;
 
         @NonNull
-        ShardNotificationReceiver newReceiver(long shardId, @NonNull String leader) {
+        ShardNotificationReceiver newReceiver(
+                long shardId, @NonNull String leader, @NonNull NotificationMetrics metrics) {
             return new ShardNotificationReceiver(
-                    () -> reactorStubFactory.apply(leader), shardId, callback);
+                    () -> reactorStubFactory.apply(leader), shardId, callback, metrics);
         }
     }
 }

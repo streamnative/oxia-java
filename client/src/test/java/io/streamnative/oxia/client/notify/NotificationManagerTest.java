@@ -20,6 +20,8 @@ import static io.streamnative.oxia.proto.NotificationType.KEY_DELETED;
 import static io.streamnative.oxia.proto.NotificationType.KEY_MODIFIED;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -35,6 +37,8 @@ import io.streamnative.oxia.client.api.Notification.KeyCreated;
 import io.streamnative.oxia.client.api.Notification.KeyDeleted;
 import io.streamnative.oxia.client.api.Notification.KeyModified;
 import io.streamnative.oxia.client.grpc.ChannelManager.StubFactory;
+import io.streamnative.oxia.client.metrics.NotificationMetrics;
+import io.streamnative.oxia.client.metrics.api.Metrics;
 import io.streamnative.oxia.client.shard.ShardManager;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChange.Added;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChange.Reassigned;
@@ -73,14 +77,15 @@ class NotificationManagerTest {
         @Mock ShardNotificationReceiver receiver1;
         @Mock ShardNotificationReceiver receiver2;
         @Mock ShardNotificationReceiver receiver3;
+        @Mock NotificationMetrics metrics;
         NotificationManager manager;
         CompositeConsumer<Notification> callback = new CompositeConsumer<>();
 
         @BeforeEach
         void setup() {
-            manager = new NotificationManager(receiverFactory, callback);
-            when(receiverFactory.newReceiver(1L, "leader1")).thenReturn(receiver1);
-            when(receiverFactory.newReceiver(2L, "leader2")).thenReturn(receiver2);
+            manager = new NotificationManager(receiverFactory, callback, metrics);
+            when(receiverFactory.newReceiver(1L, "leader1", metrics)).thenReturn(receiver1);
+            when(receiverFactory.newReceiver(2L, "leader2", metrics)).thenReturn(receiver2);
             when(receiver1.start()).thenReturn(CompletableFuture.completedFuture(null));
             when(receiver2.start()).thenReturn(CompletableFuture.completedFuture(null));
         }
@@ -121,7 +126,7 @@ class NotificationManagerTest {
                             Set.of(new Added(1L, "leader1"), new Added(2L, "leader2")), Set.of(), Set.of());
             manager.accept(changes1);
 
-            when(receiverFactory.newReceiver(3L, "leader3")).thenReturn(receiver3);
+            when(receiverFactory.newReceiver(3L, "leader3", metrics)).thenReturn(receiver3);
             when(receiver3.start()).thenReturn(CompletableFuture.completedFuture(null));
 
             var changes2 =
@@ -139,7 +144,7 @@ class NotificationManagerTest {
                             Set.of(new Added(1L, "leader1"), new Added(2L, "leader2")), Set.of(), Set.of());
             manager.accept(changes1);
 
-            when(receiverFactory.newReceiver(2L, "leader3")).thenReturn(receiver3);
+            when(receiverFactory.newReceiver(2L, "leader3", metrics)).thenReturn(receiver3);
             var shard2offset = 1000L;
             when(receiver2.getOffset()).thenReturn(shard2offset);
 
@@ -215,6 +220,8 @@ class NotificationManagerTest {
         @Mock StubFactory<ReactorOxiaClientStub> stubByShardId;
         @Mock ShardManager.Assignments assignments;
         @Mock Consumer<Notification> notificationCallback;
+        @Mock Metrics metrics;
+        @Mock Metrics.Histogram histogram;
 
         @BeforeEach
         void beforeEach() throws Exception {
@@ -238,6 +245,7 @@ class NotificationManagerTest {
             var stub2 = ReactorOxiaClientGrpc.newReactorStub(channel2);
             when(stubByShardId.apply("leader1")).thenReturn(stub1);
             when(stubByShardId.apply("leader2")).thenReturn(stub2);
+            when(metrics.histogram(anyString(), any(Metrics.Unit.class))).thenReturn(histogram);
         }
 
         @Test
@@ -254,7 +262,7 @@ class NotificationManagerTest {
             responses1.offer(Flux.just(notifications1).concatWith(Flux.never()));
             responses2.offer(Flux.just(notifications2).concatWith(Flux.never()));
 
-            try (var manager = new NotificationManager(stubByShardId)) {
+            try (var manager = new NotificationManager(stubByShardId, metrics)) {
                 manager.registerCallback(notificationCallback);
                 var changes =
                         new ShardAssignmentChanges(
