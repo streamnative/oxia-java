@@ -111,14 +111,14 @@ class SessionManagerTest {
 
     @Test
     void closeQuietly() throws Exception {
-        var value = SessionManager.closeQuietly(session);
+        var value = manager.closeQuietly(session);
         assertThat(value).containsSame(session);
         verify(session).close();
     }
 
     @Test
     void closeQuietlyNull() throws Exception {
-        var value = SessionManager.closeQuietly(null);
+        var value = manager.closeQuietly(null);
         assertThat(value).isEmpty();
     }
 }

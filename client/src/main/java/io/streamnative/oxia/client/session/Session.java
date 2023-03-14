@@ -21,6 +21,7 @@ import static lombok.AccessLevel.PUBLIC;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.streamnative.oxia.client.ClientConfig;
+import io.streamnative.oxia.client.metrics.SessionMetrics;
 import io.streamnative.oxia.proto.CloseSessionRequest;
 import io.streamnative.oxia.proto.CreateSessionRequest;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
@@ -53,6 +54,7 @@ public class Session implements AutoCloseable {
     private final long sessionId;
 
     private final @NonNull SessionHeartbeat heartbeat;
+    private final @NonNull SessionMetrics metrics;
 
     private Disposable keepAliveSubscription;
 
@@ -60,7 +62,8 @@ public class Session implements AutoCloseable {
             @NonNull Function<Long, ReactorOxiaClientGrpc.ReactorOxiaClientStub> stubByShardId,
             @NonNull ClientConfig config,
             long shardId,
-            long sessionId) {
+            long sessionId,
+            SessionMetrics metrics) {
         this(
                 stubByShardId,
                 config.sessionTimeout(),
@@ -71,7 +74,8 @@ public class Session implements AutoCloseable {
                 SessionHeartbeat.newBuilder()
                         .setShardId(longToUint32(shardId))
                         .setSessionId(sessionId)
-                        .build());
+                        .build(),
+                metrics);
     }
 
     void start() {
@@ -94,11 +98,9 @@ public class Session implements AutoCloseable {
                         .retryWhen(retrySpec)
                         .timeout(sessionTimeout)
                         .publishOn(Schedulers.newSingle(threadName))
+                        .doOnEach(metrics::recordKeepAlive)
                         .doOnError(
-                                t -> {
-                                    log.error(
-                                            "Failed to keep-alive session: [id={},shard={}]", sessionId, shardId, t);
-                                })
+                                t -> log.warn("Session keep-alive error: [id={},shard={}]", sessionId, shardId, t))
                         .subscribe();
     }
 
@@ -118,6 +120,7 @@ public class Session implements AutoCloseable {
     static class Factory {
         @NonNull ClientConfig config;
         @NonNull Function<Long, ReactorOxiaClientGrpc.ReactorOxiaClientStub> stubByShardId;
+        @NonNull SessionMetrics metrics;
 
         @NonNull
         Session create(long shardId) {
@@ -132,7 +135,7 @@ public class Session implements AutoCloseable {
             if (response == null) {
                 throw new IllegalStateException("Empty session returned for shardId: " + shardId);
             }
-            return new Session(stubByShardId, config, shardId, response.getSessionId());
+            return new Session(stubByShardId, config, shardId, response.getSessionId(), metrics);
         }
     }
 }

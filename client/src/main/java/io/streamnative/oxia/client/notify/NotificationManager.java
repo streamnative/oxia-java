@@ -21,6 +21,8 @@ import io.streamnative.oxia.client.CompositeConsumer;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.grpc.ChannelManager.StubFactory;
 import io.streamnative.oxia.client.grpc.GrpcResponseStream;
+import io.streamnative.oxia.client.metrics.NotificationMetrics;
+import io.streamnative.oxia.client.metrics.api.Metrics;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChanges;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import java.util.Optional;
@@ -38,12 +40,15 @@ public class NotificationManager implements AutoCloseable, Consumer<ShardAssignm
             new ConcurrentHashMap<>();
     private final @NonNull ShardNotificationReceiver.Factory recieverFactory;
     private final @NonNull CompositeConsumer<Notification> compositeCallback;
+    private final @NonNull NotificationMetrics metrics;
     private volatile boolean closed = false;
 
-    public NotificationManager(@NonNull StubFactory<ReactorOxiaClientStub> reactorStubFactory) {
+    public NotificationManager(
+            @NonNull StubFactory<ReactorOxiaClientStub> reactorStubFactory, @NonNull Metrics metrics) {
         this.compositeCallback = new CompositeConsumer<>();
         this.recieverFactory =
                 new ShardNotificationReceiver.Factory(reactorStubFactory, compositeCallback);
+        this.metrics = NotificationMetrics.create(metrics);
     }
 
     @Override
@@ -57,7 +62,8 @@ public class NotificationManager implements AutoCloseable, Consumer<ShardAssignm
                 .forEach(
                         s ->
                                 shardReceivers
-                                        .computeIfAbsent(s.shardId(), id -> recieverFactory.newReceiver(id, s.leader()))
+                                        .computeIfAbsent(
+                                                s.shardId(), id -> recieverFactory.newReceiver(id, s.leader(), metrics))
                                         .start());
         changes
                 .reassigned()
@@ -66,7 +72,8 @@ public class NotificationManager implements AutoCloseable, Consumer<ShardAssignm
                             var receiver = Optional.ofNullable(shardReceivers.remove(s.shardId()));
                             receiver.ifPresent(GrpcResponseStream::close);
                             shardReceivers
-                                    .computeIfAbsent(s.shardId(), id -> recieverFactory.newReceiver(id, s.toLeader()))
+                                    .computeIfAbsent(
+                                            s.shardId(), id -> recieverFactory.newReceiver(id, s.toLeader(), metrics))
                                     .start(receiver.map(ShardNotificationReceiver::getOffset));
                         });
     }

@@ -18,12 +18,16 @@ package io.streamnative.oxia.client.session;
 import static io.streamnative.oxia.client.ProtoUtil.longToUint32;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.verify;
 
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
 import io.streamnative.oxia.client.ClientConfig;
+import io.streamnative.oxia.client.metrics.SessionMetrics;
 import io.streamnative.oxia.client.metrics.api.Metrics;
 import io.streamnative.oxia.proto.CloseSessionRequest;
 import io.streamnative.oxia.proto.CloseSessionResponse;
@@ -40,8 +44,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Signal;
 import reactor.test.StepVerifier;
 
 @ExtendWith(MockitoExtension.class)
@@ -57,6 +63,8 @@ class SessionTest {
     private Server server;
     private ManagedChannel channel;
     private TestService service;
+
+    @Mock SessionMetrics metrics;
 
     @BeforeEach
     void setup() throws IOException {
@@ -98,14 +106,14 @@ class SessionTest {
 
     @Test
     void sessionId() {
-        var session = new Session(stubByShardId, config, shardId, sessionId);
+        var session = new Session(stubByShardId, config, shardId, sessionId, metrics);
         assertThat(session.getShardId()).isEqualTo(shardId);
         assertThat(session.getSessionId()).isEqualTo(sessionId);
     }
 
     @Test
     void start() throws Exception {
-        var session = new Session(stubByShardId, config, shardId, sessionId);
+        var session = new Session(stubByShardId, config, shardId, sessionId, metrics);
         session.start();
 
         await()
@@ -122,6 +130,8 @@ class SessionTest {
         session.close();
         assertThat(service.closed).isTrue();
         assertThat(service.signalsAfterClosed).isEmpty();
+
+        verify(metrics, atLeast(2)).recordKeepAlive(any(Signal.class));
     }
 
     static class TestService extends ReactorOxiaClientGrpc.OxiaClientImplBase {

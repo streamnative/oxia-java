@@ -19,13 +19,17 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.when;
 
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
 import io.grpc.Status;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
+import io.streamnative.oxia.client.metrics.api.Metrics;
 import io.streamnative.oxia.proto.Int32HashRange;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.OxiaClientImplBase;
@@ -70,6 +74,8 @@ class ShardManagerGrpcTest {
     Server server;
     ManagedChannel channel;
     @Mock Supplier<ReactorOxiaClientStub> stubFactory;
+    @Mock Metrics metrics;
+    @Mock Metrics.Histogram histogram;
 
     @BeforeEach
     void beforeEach() throws Exception {
@@ -84,6 +90,7 @@ class ShardManagerGrpcTest {
         channel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
         var stub = ReactorOxiaClientGrpc.newReactorStub(channel);
         doReturn(stub).when(stubFactory).get();
+        when(metrics.histogram(anyString(), any(Metrics.Unit.class))).thenReturn(histogram);
     }
 
     @AfterEach
@@ -96,7 +103,7 @@ class ShardManagerGrpcTest {
     void start() {
         var assignments = ShardAssignments.newBuilder().addAssignments(assignment(0, 0, 3)).build();
         responses.offer(Flux.just(assignments).concatWith(Flux.never()));
-        try (var shardManager = new ShardManager(stubFactory)) {
+        try (var shardManager = new ShardManager(stubFactory, metrics)) {
             assertThat(shardManager.start()).succeedsWithin(Duration.ofSeconds(1));
             assertThat(shardManager.getAll()).containsExactlyInAnyOrder(0L);
             assertThat(shardManager.leader(0)).isEqualTo("leader0");
@@ -106,7 +113,7 @@ class ShardManagerGrpcTest {
     @Test
     void neverStarts() {
         responses.offer(Flux.never());
-        try (var shardManager = new ShardManager(stubFactory)) {
+        try (var shardManager = new ShardManager(stubFactory, metrics)) {
             assertThatThrownBy(() -> shardManager.start().get(1, SECONDS))
                     .isInstanceOf(TimeoutException.class);
             assertThat(shardManager.getAll()).isEmpty();
@@ -122,7 +129,7 @@ class ShardManagerGrpcTest {
                         .addAssignments(assignment(2, 2, 3))
                         .build();
         responses.offer(Flux.just(assignments0, assignments1).concatWith(Flux.never()));
-        try (var shardManager = new ShardManager(stubFactory)) {
+        try (var shardManager = new ShardManager(stubFactory, metrics)) {
             shardManager.start().join();
             await()
                     .untilAsserted(
@@ -139,7 +146,7 @@ class ShardManagerGrpcTest {
         responses.offer(Flux.error(Status.UNAVAILABLE.asException()));
         var assignments = ShardAssignments.newBuilder().addAssignments(assignment(0, 0, 3)).build();
         responses.offer(Flux.just(assignments).concatWith(Flux.never()));
-        try (var shardManager = new ShardManager(stubFactory)) {
+        try (var shardManager = new ShardManager(stubFactory, metrics)) {
             assertThat(shardManager.start()).succeedsWithin(Duration.ofSeconds(1));
             assertThat(shardManager.getAll()).containsExactlyInAnyOrder(0L);
             assertThat(shardManager.leader(0)).isEqualTo("leader0");
@@ -152,7 +159,7 @@ class ShardManagerGrpcTest {
         responses.offer(Flux.empty());
         var assignments = ShardAssignments.newBuilder().addAssignments(assignment(0, 0, 3)).build();
         responses.offer(Flux.just(assignments).concatWith(Flux.never()));
-        try (var shardManager = new ShardManager(stubFactory)) {
+        try (var shardManager = new ShardManager(stubFactory, metrics)) {
             assertThat(shardManager.start()).succeedsWithin(Duration.ofSeconds(1));
             assertThat(shardManager.getAll()).containsExactlyInAnyOrder(0L);
             assertThat(shardManager.leader(0)).isEqualTo("leader0");
