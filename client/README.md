@@ -118,14 +118,11 @@ client.notifications(
 ## Metrics
 
 The Oxia Java client collects various metrics about the operations being performed. There is an
-[API](client-metrics-api/src/main/java/io/streamnative/oxia/client/metrics/api/Metrics.java) and an OpenTelemetry
-[implementation](client-metrics-opentelemetry/src/main/java/io/streamnative/oxia/client/metrics/opentelemetry/OpenTelemetryMetrics.java)
-is provided.
+[API][metrics-api] and an OpenTelemetry [implementation][otel-metrics] is provided.
 
-There are two levels at which metrics are captured - at the individual operation level and at the batch level. All
-metrics have two attributes - type & result.
+There are various categories of metrics captured:
 
-### Operation Level
+### Operation Metrics
 
 |             Name              |                                  Description                                   |
 |-------------------------------|--------------------------------------------------------------------------------|
@@ -139,7 +136,7 @@ metrics have two attributes - type & result.
 | `type`   | The operation type   | `put`, `delete`, `delete_range`, `get`, `list` |
 | `result` | The operation result | `success`, `failure`                           |
 
-### Batch Level
+### Batch Metrics
 
 |              Name               |                            Description                             |
 |---------------------------------|--------------------------------------------------------------------|
@@ -155,7 +152,7 @@ metrics have two attributes - type & result.
 | `type`   | The operation type   | `write`, `read`      |
 | `result` | The operation result | `success`, `failure` |
 
-### Cache Level
+### Cache Metrics
 
 |              Name              |                    Description                    |
 |--------------------------------|---------------------------------------------------|
@@ -171,8 +168,66 @@ metrics have two attributes - type & result.
 | `result`        | The operation result            | `success`, `failure`                                   |                                  |
 | `removal_cause` | See: [`RemovalCause`][caffeine] | `explicit`, `replaced`, `collected`, `expired`, `size` | Applies to `type: eviction` only |
 
+### Session Metrics
+
+|              Name               |                 Description                 |
+|---------------------------------|---------------------------------------------|
+| `oxia_client_session_keepalive` | Status of the session keep-alive heartbeats |
+
+#### Attributes
+
+|   Name   |     Description      |        Values        |
+|----------|----------------------|----------------------|
+| `result` | The heartbeat result | `success`, `failure` |
+
+### Notification Metrics
+
+|               Name               |            Description            |
+|----------------------------------|-----------------------------------|
+| `oxia_client_notification`       | Status of the notification stream |
+| `oxia_client_notification_event` | Count of record change events     |
+
+#### Attributes
+
+##### `oxia_client_notification_event`
+
+|   Name   |    Description    |        Values        |
+|----------|-------------------|----------------------|
+| `type`   |                   | `batch`              |
+| `result` | The stream status | `success`, `failure` |
+
+##### `oxia_client_notification`
+
+|  Name  |      Description      |                    Values                    |
+|--------|-----------------------|----------------------------------------------|
+| `type` | The notification type | `key_created`, `key_deleted`, `key_modified` |
+
+### Shard Assignment Metrics
+
+|                 Name                  |              Description               |
+|---------------------------------------|----------------------------------------|
+| `oxia_client_shard_assignment`        | Status of the shard assignments stream |
+| `oxia_client_shard_assignment_change` | Count of assignment changes            |
+
+#### Attributes
+
+##### `oxia_client_shard_assignment`
+
+|   Name   |    Description    |        Values        |
+|----------|-------------------|----------------------|
+| `type`   |                   | `event`              |
+| `result` | The stream status | `success`, `failure` |
+
+##### `oxia_client_shard_assignment_change`
+
+|  Name  |     Description     |              Values              |
+|--------|---------------------|----------------------------------|
+| `type` | The assignment type | `added`, `removed`, `reassigned` |
+
 [oxia]: https://github.com/streamnative/oxia
 [it]: ../client-it/src/test/java/io/streamnative/oxia/client/it/OxiaClientIT.java
 [sort]: https://github.com/streamnative/oxia/blob/main/docs/oxia-key-sorting.md
 [caffeine]: https://github.com/ben-manes/caffeine/blob/master/caffeine/src/main/java/com/github/benmanes/caffeine/cache/RemovalCause.java
+[metrics-api]: client-metrics-api/src/main/java/io/streamnative/oxia/client/metrics/api/Metrics.java
+[otel-metrics]: client-metrics-opentelemetry/src/main/java/io/streamnative/oxia/client/metrics/opentelemetry/OpenTelemetryMetrics.java
 
