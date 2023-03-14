@@ -22,6 +22,7 @@ import static lombok.AccessLevel.PACKAGE;
 import io.streamnative.oxia.client.metrics.api.Metrics;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChanges;
 import io.streamnative.oxia.proto.ShardAssignments;
+import java.util.Map;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Signal;
@@ -48,8 +49,8 @@ public class ShardAssignmentMetrics {
     }
 
     public void recordChanges(@NonNull ShardAssignmentChanges changes) {
-        change.record(changes.added().size(), attributes("added"));
-        change.record(changes.removed().size(), attributes("removed"));
-        change.record(changes.reassigned().size(), attributes("reassigned"));
+        change.record(changes.added().size(), Map.of("type", "added"));
+        change.record(changes.removed().size(), Map.of("type", "removed"));
+        change.record(changes.reassigned().size(), Map.of("type", "reassigned"));
     }
 }

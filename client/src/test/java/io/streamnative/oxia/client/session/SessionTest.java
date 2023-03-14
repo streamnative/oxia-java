@@ -18,6 +18,9 @@ package io.streamnative.oxia.client.session;
 import static io.streamnative.oxia.client.ProtoUtil.longToUint32;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeast;
+import static org.mockito.Mockito.verify;
 
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
@@ -44,6 +47,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Signal;
 import reactor.test.StepVerifier;
 
 @ExtendWith(MockitoExtension.class)
@@ -126,6 +130,8 @@ class SessionTest {
         session.close();
         assertThat(service.closed).isTrue();
         assertThat(service.signalsAfterClosed).isEmpty();
+
+        verify(metrics, atLeast(2)).recordKeepAlive(any(Signal.class));
     }
 
     static class TestService extends ReactorOxiaClientGrpc.OxiaClientImplBase {

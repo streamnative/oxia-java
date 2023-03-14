@@ -21,6 +21,7 @@ import static io.streamnative.oxia.proto.NotificationType.KEY_MODIFIED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -53,6 +54,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Signal;
 
 @ExtendWith(MockitoExtension.class)
 class ShardNotificationReceiverTest {
@@ -123,6 +125,7 @@ class ShardNotificationReceiverTest {
                                 verify(notificationCallback).accept(new KeyModified("key3", 3L));
                             });
         }
+        verify(metrics, atLeastOnce()).recordBatch(any(Signal.class));
     }
 
     @Test
