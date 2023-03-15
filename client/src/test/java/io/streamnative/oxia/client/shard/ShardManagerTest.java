@@ -50,7 +50,6 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Signal;
 
 @ExtendWith(MockitoExtension.class)
 public class ShardManagerTest {
@@ -192,7 +191,7 @@ public class ShardManagerTest {
 
             assertThat(manager.leader(0)).isEqualTo("leader0");
 
-            verify(metrics, atLeast(1)).recordAssignments(any(Signal.class));
+            verify(metrics, atLeast(1)).recordAssignments(any());
             verify(metrics, atLeast(1))
                     .recordChanges(
                             new ShardManager.ShardAssignmentChanges(
