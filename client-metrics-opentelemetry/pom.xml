@@ -29,15 +29,10 @@
     <artifactId>oxia-client-metrics-opentelemetry</artifactId>
     <name>Oxia Client Metrics OpenTelemetry</name>
 
-    <properties>
-        <opentelemetry.version>1.23.1</opentelemetry.version>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>io.opentelemetry</groupId>
             <artifactId>opentelemetry-api</artifactId>
-            <version>${opentelemetry.version}</version>
         </dependency>
         <dependency>
             <groupId>io.streamnative.oxia</groupId>
