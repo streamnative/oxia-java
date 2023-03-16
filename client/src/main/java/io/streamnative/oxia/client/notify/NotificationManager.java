@@ -23,12 +23,16 @@ import io.streamnative.oxia.client.grpc.ChannelManager.StubFactory;
 import io.streamnative.oxia.client.grpc.GrpcResponseStream;
 import io.streamnative.oxia.client.metrics.NotificationMetrics;
 import io.streamnative.oxia.client.metrics.api.Metrics;
+import io.streamnative.oxia.client.shard.ShardManager;
+import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChange.Added;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChanges;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,23 +43,57 @@ public class NotificationManager implements AutoCloseable, Consumer<ShardAssignm
     private final ConcurrentMap<Long, ShardNotificationReceiver> shardReceivers =
             new ConcurrentHashMap<>();
     private final @NonNull ShardNotificationReceiver.Factory recieverFactory;
+    private final @NonNull ShardManager shardManager;
     private final @NonNull CompositeConsumer<Notification> compositeCallback;
     private final @NonNull NotificationMetrics metrics;
+    private volatile boolean started = false;
     private volatile boolean closed = false;
 
     public NotificationManager(
-            @NonNull StubFactory<ReactorOxiaClientStub> reactorStubFactory, @NonNull Metrics metrics) {
+            @NonNull StubFactory<ReactorOxiaClientStub> reactorStubFactory,
+            @NonNull ShardManager shardManager,
+            @NonNull Metrics metrics) {
         this.compositeCallback = new CompositeConsumer<>();
         this.recieverFactory =
                 new ShardNotificationReceiver.Factory(reactorStubFactory, compositeCallback);
+        this.shardManager = shardManager;
         this.metrics = NotificationMetrics.create(metrics);
     }
 
     @Override
     public void accept(@NonNull ShardAssignmentChanges changes) {
-        if (closed) {
+        if (!started || closed) {
             return;
         }
+        connectNotificationReceivers(changes);
+    }
+
+    public void registerCallback(@NonNull Consumer<Notification> callback) {
+        if (closed) {
+            throw new IllegalStateException("Notification manager has been closed");
+        }
+        compositeCallback.add(callback);
+        if (!started) {
+            synchronized (this) {
+                if (!started) {
+                    bootstrap();
+                    started = true;
+                }
+            }
+        }
+    }
+
+    private void bootstrap() {
+        connectNotificationReceivers(
+                new ShardAssignmentChanges(
+                        shardManager.getAll().stream()
+                                .map(s -> new Added(s, shardManager.leader(s)))
+                                .collect(Collectors.toSet()),
+                        Set.of(),
+                        Set.of()));
+    }
+
+    private void connectNotificationReceivers(@NonNull ShardAssignmentChanges changes) {
         changes.removed().forEach(s -> shardReceivers.remove(s.shardId()).close());
         changes
                 .added()
@@ -76,13 +114,6 @@ public class NotificationManager implements AutoCloseable, Consumer<ShardAssignm
                                             s.shardId(), id -> recieverFactory.newReceiver(id, s.toLeader(), metrics))
                                     .start(receiver.map(ShardNotificationReceiver::getOffset));
                         });
-    }
-
-    public void registerCallback(@NonNull Consumer<Notification> callback) {
-        if (closed) {
-            throw new IllegalStateException("Notification manager has been closed");
-        }
-        compositeCallback.add(callback);
     }
 
     @Override

@@ -60,7 +60,8 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         Supplier<ReactorOxiaClientStub> stubFactory =
                 () -> reactorStubFactory.apply(config.serviceAddress());
         var shardManager = new ShardManager(stubFactory, config.metrics());
-        var notificationManager = new NotificationManager(reactorStubFactory, config.metrics());
+        var notificationManager =
+                new NotificationManager(reactorStubFactory, shardManager, config.metrics());
 
         Function<Long, String> leaderFn = shardManager::leader;
         var stubByShardId = leaderFn.andThen(reactorStubFactory);
