@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client.shard;
 
-import static io.streamnative.oxia.client.ProtoUtil.uint32ToLong;
 import static java.util.stream.Collectors.toSet;
 
 import io.streamnative.oxia.proto.ShardAssignment;
@@ -33,7 +32,6 @@ record Shard(long id, @NonNull String leader, @NonNull HashRange hashRange) {
     }
 
     static @NonNull Shard fromProto(@NonNull ShardAssignment s) {
-        return new Shard(
-                uint32ToLong(s.getShardId()), s.getLeader(), HashRange.fromProto(s.getInt32HashRange()));
+        return new Shard(s.getShardId(), s.getLeader(), HashRange.fromProto(s.getInt32HashRange()));
     }
 }

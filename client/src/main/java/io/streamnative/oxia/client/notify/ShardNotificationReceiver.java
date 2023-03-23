@@ -19,7 +19,6 @@ import static io.streamnative.oxia.client.api.Notification.KeyModified;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static lombok.AccessLevel.PACKAGE;
 
-import io.streamnative.oxia.client.ProtoUtil;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.Notification.KeyCreated;
 import io.streamnative.oxia.client.api.Notification.KeyDeleted;
@@ -79,8 +78,8 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
     @Override
     protected @NonNull CompletableFuture<Void> start(
             @NonNull ReactorOxiaClientStub stub, @NonNull Consumer<Disposable> consumer) {
-        var request = NotificationsRequest.newBuilder().setShardId(ProtoUtil.longToUint32(shardId));
-        startingOffset.ifPresent(o -> request.setStartOffsetExclusive(ProtoUtil.longToUint32(o)));
+        var request = NotificationsRequest.newBuilder().setShardId(shardId);
+        startingOffset.ifPresent(o -> request.setStartOffsetExclusive(o));
         // TODO filter non-retriables?
         RetryBackoffSpec retrySpec =
                 Retry.backoff(Long.MAX_VALUE, Duration.ofMillis(100))

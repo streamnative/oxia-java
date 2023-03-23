@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client.batch;
 
-import static io.streamnative.oxia.client.ProtoUtil.longToUint32;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.toList;
 import static lombok.AccessLevel.PACKAGE;
@@ -157,7 +156,7 @@ public interface Batch {
                 sessionInfo = Optional.empty();
             }
             return WriteRequest.newBuilder()
-                    .setShardId(longToUint32(getShardId()))
+                    .setShardId(getShardId())
                     .addAllPuts(puts.stream().map(p -> p.toProto(sessionInfo)).collect(toList()))
                     .addAllDeletes(deletes.stream().map(DeleteOperation::toProto).collect(toList()))
                     .addAllDeleteRanges(
@@ -220,7 +219,7 @@ public interface Batch {
         @NonNull
         ReadRequest toProto() {
             return ReadRequest.newBuilder()
-                    .setShardId(longToUint32(getShardId()))
+                    .setShardId(getShardId())
                     .addAllGets(gets.stream().map(GetOperation::toProto).collect(toList()))
                     .build();
         }

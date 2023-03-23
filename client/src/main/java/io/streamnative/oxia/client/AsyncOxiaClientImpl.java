@@ -225,7 +225,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         var stub = reactorStubFactory.apply(leader);
         var request =
                 ListRequest.newBuilder()
-                        .setShardId(ProtoUtil.longToUint32(shardId))
+                        .setShardId(shardId)
                         .setStartInclusive(startKeyInclusive)
                         .setEndExclusive(endKeyExclusive)
                         .build();

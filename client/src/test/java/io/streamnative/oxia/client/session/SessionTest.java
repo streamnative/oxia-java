@@ -16,7 +16,6 @@
 package io.streamnative.oxia.client.session;
 
 import static io.streamnative.oxia.client.OxiaClientBuilder.DefaultNamespace;
-import static io.streamnative.oxia.client.ProtoUtil.longToUint32;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
@@ -126,7 +125,7 @@ class SessionTest {
                                     .containsOnly(
                                             SessionHeartbeat.newBuilder()
                                                     .setSessionId(sessionId)
-                                                    .setShardId(longToUint32(shardId))
+                                                    .setShardId(shardId)
                                                     .build());
                         });
         session.close();
