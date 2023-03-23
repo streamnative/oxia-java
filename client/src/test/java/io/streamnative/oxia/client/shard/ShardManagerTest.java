@@ -15,6 +15,7 @@
  */
 package io.streamnative.oxia.client.shard;
 
+import static io.streamnative.oxia.client.OxiaClientBuilder.DefaultNamespace;
 import static io.streamnative.oxia.client.shard.HashRangeShardStrategy.Xxh332HashRangeShardStrategy;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -30,6 +31,7 @@ import static org.mockito.Mockito.when;
 import io.streamnative.oxia.client.CompositeConsumer;
 import io.streamnative.oxia.client.metrics.ShardAssignmentMetrics;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChange.Added;
+import io.streamnative.oxia.proto.NamespaceShardsAssignment;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import io.streamnative.oxia.proto.ShardAssignment;
 import io.streamnative.oxia.proto.ShardAssignments;
@@ -106,7 +108,7 @@ public class ShardManagerTest {
             void mocking() {
                 when(lock.readLock()).thenReturn(rLock);
                 when(lock.writeLock()).thenReturn(wLock);
-                assignments = new ShardManager.Assignments(lock, s -> k -> true);
+                assignments = new ShardManager.Assignments(lock, s -> k -> true, DefaultNamespace);
                 assignments.update(singletonList(new Shard(1, "leader 1", new HashRange(1, 1))));
             }
 
@@ -120,7 +122,7 @@ public class ShardManagerTest {
 
             @Test
             void getFail() {
-                assignments = new ShardManager.Assignments(lock, s -> k -> false);
+                assignments = new ShardManager.Assignments(lock, s -> k -> false, DefaultNamespace);
                 assertThatThrownBy(() -> assignments.get("key"))
                         .isInstanceOf(NoShardAvailableException.class);
                 var inorder = inOrder(rLock);
@@ -146,7 +148,7 @@ public class ShardManagerTest {
 
             @Test
             void leaderFail() {
-                assignments = new ShardManager.Assignments(lock, s -> k -> false);
+                assignments = new ShardManager.Assignments(lock, s -> k -> false, DefaultNamespace);
                 assertThatThrownBy(() -> assignments.leader(1L))
                         .isInstanceOf(NoShardAvailableException.class);
                 var inorder = inOrder(rLock);
@@ -167,9 +169,11 @@ public class ShardManagerTest {
     @Nested
     @DisplayName("Manager delegation")
     class ManagerTests {
+        private final String namespace = "default";
+
         @Spy
         ShardManager.Assignments assignments =
-                new ShardManager.Assignments(Xxh332HashRangeShardStrategy);
+                new ShardManager.Assignments(Xxh332HashRangeShardStrategy, DefaultNamespace);
 
         @Mock Supplier<ReactorOxiaClientStub> stubFactory;
         @Mock ShardAssignmentMetrics metrics;
@@ -184,8 +188,12 @@ public class ShardManagerTest {
         void start(@Mock ReactorOxiaClientStub stub) {
             when(stubFactory.get()).thenReturn(stub);
             var assignment = ShardAssignment.newBuilder().setShardId(0).setLeader("leader0").build();
-            when(stub.getShardAssignments(ShardAssignmentsRequest.getDefaultInstance()))
-                    .thenReturn(Flux.just(ShardAssignments.newBuilder().addAssignments(assignment).build()));
+            var nsAssignment = NamespaceShardsAssignment.newBuilder().addAssignments(assignment).build();
+            when(stub.getShardAssignments(
+                            ShardAssignmentsRequest.newBuilder().setNamespace(namespace).build()))
+                    .thenReturn(
+                            Flux.just(
+                                    ShardAssignments.newBuilder().putNamespaces(namespace, nsAssignment).build()));
             var future = manager.start();
             assertThat(future).succeedsWithin(Duration.ofMillis(100));
 

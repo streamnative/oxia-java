@@ -108,6 +108,7 @@ client.notifications(
 | Option                | Default value | Description                                              |
 |:----------------------|--------------:|:---------------------------------------------------------|
 | `serviceAddress`      |             - | Address of Oxia cluster — `<host>:<port>`                |
+| `namespace`           |       default | The Oxia namespace that this client should use           |
 | `requestTimeout`      |           30s | GRPC Request timeout                                     |
 | `batchLinger`         |           5ms | Max time to wait for new operations before closing batch |
 | `maxRequestsPerBatch` |         1,000 | Max number of operations in a batch                      |

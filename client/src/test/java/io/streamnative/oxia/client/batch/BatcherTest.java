@@ -15,6 +15,7 @@
  */
 package io.streamnative.oxia.client.batch;
 
+import static io.streamnative.oxia.client.OxiaClientBuilder.DefaultNamespace;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -72,7 +73,8 @@ class BatcherTest {
                     0,
                     Duration.ofMillis(1000),
                     "client_id",
-                    Metrics.nullObject);
+                    Metrics.nullObject,
+                    DefaultNamespace);
 
     BlockingQueue<Operation<?>> queue = new LinkedBlockingDeque<>();
     ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();

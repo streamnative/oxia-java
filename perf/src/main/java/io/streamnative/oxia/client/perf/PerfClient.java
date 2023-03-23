@@ -68,6 +68,7 @@ public class PerfClient {
                 .batchLinger(Duration.ofMillis(arguments.batchLingerMs))
                 .maxRequestsPerBatch(arguments.maxRequestsPerBatch)
                 .requestTimeout(Duration.ofMillis(arguments.requestTimeoutMs))
+                .namespace(arguments.namespace)
                 .asyncClient()
                 .get();
 

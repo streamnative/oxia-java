@@ -17,6 +17,7 @@ package io.streamnative.oxia.client;
 
 import static java.time.Duration.ZERO;
 
+import com.google.common.base.Strings;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.SyncOxiaClient;
 import io.streamnative.oxia.client.metrics.api.Metrics;
@@ -36,6 +37,7 @@ public class OxiaClientBuilder {
     public static final Duration DefaultRequestTimeout = Duration.ofSeconds(30);
     public static final Duration DefaultSessionTimeout = Duration.ofSeconds(15);
     public static final int DefaultRecordCacheCapacity = 10_000;
+    public static final String DefaultNamespace = "default";
 
     @NonNull private final String serviceAddress;
     @NonNull private Duration requestTimeout = DefaultRequestTimeout;
@@ -45,6 +47,7 @@ public class OxiaClientBuilder {
     @NonNull private Duration sessionTimeout = DefaultSessionTimeout;
     @NonNull private Supplier<String> clientIdentifier = OxiaClientBuilder::randomClientIdentifier;
     @NonNull private Metrics metrics = Metrics.nullObject;
+    @NonNull private String namespace = DefaultNamespace;
 
     public @NonNull OxiaClientBuilder requestTimeout(@NonNull Duration requestTimeout) {
         if (requestTimeout.isNegative() || requestTimeout.equals(ZERO)) {
@@ -78,6 +81,14 @@ public class OxiaClientBuilder {
                     "recordCacheCapacity must be greater than zero: " + recordCacheCapacity);
         }
         this.recordCacheCapacity = recordCacheCapacity;
+        return this;
+    }
+
+    public @NonNull OxiaClientBuilder namespace(@NonNull String namespace) {
+        if (Strings.isNullOrEmpty(namespace)) {
+            throw new IllegalArgumentException("namespace must not be null or empty.");
+        }
+        this.namespace = namespace;
         return this;
     }
 
@@ -121,7 +132,8 @@ public class OxiaClientBuilder {
                         recordCacheCapacity,
                         sessionTimeout,
                         clientIdentifier.get(),
-                        metrics);
+                        metrics,
+                        namespace);
         var async = AsyncOxiaClientImpl.newInstance(config);
         if (config.recordCacheCapacity() > 0) {
             return async.thenApply(a -> new CachingAsyncOxiaClient(config, a));

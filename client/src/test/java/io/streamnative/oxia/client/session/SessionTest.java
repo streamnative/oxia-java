@@ -15,6 +15,7 @@
  */
 package io.streamnative.oxia.client.session;
 
+import static io.streamnative.oxia.client.OxiaClientBuilder.DefaultNamespace;
 import static io.streamnative.oxia.client.ProtoUtil.longToUint32;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -80,7 +81,8 @@ class SessionTest {
                         0,
                         sessionTimeout,
                         clientId,
-                        Metrics.nullObject);
+                        Metrics.nullObject,
+                        DefaultNamespace);
 
         String serverName = InProcessServerBuilder.generateName();
         service = new TestService();
