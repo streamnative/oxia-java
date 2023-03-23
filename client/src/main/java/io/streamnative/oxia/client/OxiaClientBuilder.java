@@ -84,7 +84,7 @@ public class OxiaClientBuilder {
         return this;
     }
 
-    public @NonNull OxiaClientBuilder namespace(String namespace) {
+    public @NonNull OxiaClientBuilder namespace(@NonNull String namespace) {
         if (Strings.isNullOrEmpty(namespace)) {
             throw new IllegalArgumentException("namespace must not be null or empty.");
         }

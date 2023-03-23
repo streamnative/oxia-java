@@ -46,11 +46,14 @@ class StaticShardStrategy implements ShardStrategy {
 
     public @NonNull StaticShardStrategy assign(
             @NonNull String key, @NonNull ShardAssignments response) {
-        var namespaceShardsAssignment = response.getNamespacesMap().get(DefaultNamespace);
-        if (namespaceShardsAssignment.getAssignmentsCount() != 1) {
+        var nsShardsAssignment = response.getNamespacesMap().get(DefaultNamespace);
+        if (nsShardsAssignment == null) {
+            throw new NamespaceNotFoundException(DefaultNamespace);
+        }
+        if (nsShardsAssignment.getAssignmentsCount() != 1) {
             throw new IllegalArgumentException();
         }
-        return assign(key, namespaceShardsAssignment.getAssignments(0));
+        return assign(key, nsShardsAssignment.getAssignments(0));
     }
 
     public @NonNull StaticShardStrategy remove(@NonNull String key) {
