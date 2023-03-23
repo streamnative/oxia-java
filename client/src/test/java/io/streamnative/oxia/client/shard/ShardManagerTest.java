@@ -169,6 +169,7 @@ public class ShardManagerTest {
     @Nested
     @DisplayName("Manager delegation")
     class ManagerTests {
+        private final String namespace = "default";
         @Spy
         ShardManager.Assignments assignments =
                 new ShardManager.Assignments(Xxh332HashRangeShardStrategy, DefaultNamespace);
@@ -187,11 +188,11 @@ public class ShardManagerTest {
             when(stubFactory.get()).thenReturn(stub);
             var assignment = ShardAssignment.newBuilder().setShardId(0).setLeader("leader0").build();
             var nsAssignment = NamespaceShardsAssignment.newBuilder().addAssignments(assignment).build();
-            when(stub.getShardAssignments(ShardAssignmentsRequest.getDefaultInstance()))
+            when(stub.getShardAssignments(ShardAssignmentsRequest.newBuilder().setNamespace(namespace).build()))
                     .thenReturn(
                             Flux.just(
                                     ShardAssignments.newBuilder()
-                                            .putNamespaces(DefaultNamespace, nsAssignment)
+                                            .putNamespaces(namespace, nsAssignment)
                                             .build()));
             var future = manager.start();
             assertThat(future).succeedsWithin(Duration.ofMillis(100));
