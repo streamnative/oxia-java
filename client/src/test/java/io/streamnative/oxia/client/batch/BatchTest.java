@@ -15,6 +15,7 @@
  */
 package io.streamnative.oxia.client.batch;
 
+import static io.streamnative.oxia.client.OxiaClientBuilder.DefaultNamespace;
 import static io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientImplBase;
 import static io.streamnative.oxia.proto.ReactorOxiaClientGrpc.newReactorStub;
 import static io.streamnative.oxia.proto.Status.KEY_NOT_FOUND;
@@ -437,7 +438,8 @@ class BatchTest {
 
         ClientConfig config =
                 new ClientConfig(
-                        "address", ZERO, ZERO, 1, 1024 * 1024, 0, ZERO, "client_id", Metrics.nullObject);
+                        "address", ZERO, ZERO, 1, 1024 * 1024, 0,
+                        ZERO, "client_id", Metrics.nullObject, DefaultNamespace);
 
         @BeforeEach
         void mocking() {

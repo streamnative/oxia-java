@@ -27,6 +27,7 @@ import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 import io.streamnative.oxia.client.CompositeConsumer;
 import io.streamnative.oxia.client.grpc.GrpcResponseStream;
 import io.streamnative.oxia.client.metrics.ShardAssignmentMetrics;
@@ -76,10 +77,11 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
     }
 
     public ShardManager(
-            @NonNull Supplier<ReactorOxiaClientStub> stubFactory, @NonNull Metrics metrics) {
+            @NonNull Supplier<ReactorOxiaClientStub> stubFactory, @NonNull Metrics metrics,
+            @NonNull String namespace) {
         this(
                 stubFactory,
-                new Assignments(Xxh332HashRangeShardStrategy),
+                new Assignments(Xxh332HashRangeShardStrategy, namespace),
                 new CompositeConsumer<>(),
                 ShardAssignmentMetrics.create(metrics));
     }
@@ -108,8 +110,12 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
     }
 
     private void updateAssignments(ShardAssignments shardAssignments) {
+        var nsSharedAssignments = shardAssignments.getNamespacesMap().get(assignments.namespace);
+        if (nsSharedAssignments == null) {
+            throw new NamespaceNotFoundException(assignments.namespace);
+        }
         var updates =
-                shardAssignments.getAssignmentsList().stream().map(Shard::fromProto).collect(toList());
+                nsSharedAssignments.getAssignmentsList().stream().map(Shard::fromProto).collect(toList());
         var updatedMap = recomputeShardHashBoundaries(assignments.shards, updates);
         var changes = computeShardLeaderChanges(assignments.shards, updatedMap);
         assignments.update(updates);
@@ -202,13 +208,18 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
         private final Lock wLock;
         private Map<Long, Shard> shards = new HashMap<>();
         private final ShardStrategy shardStrategy;
+        private final String namespace;
 
-        Assignments(ShardStrategy shardStrategy) {
-            this(new ReentrantReadWriteLock(), shardStrategy);
+        Assignments(ShardStrategy shardStrategy, String namespace) {
+            this(new ReentrantReadWriteLock(), shardStrategy, namespace);
         }
 
-        Assignments(ReadWriteLock lock, ShardStrategy shardStrategy) {
+        Assignments(ReadWriteLock lock, ShardStrategy shardStrategy, String namespace) {
+            if (Strings.isNullOrEmpty(namespace)) {
+                throw new IllegalArgumentException("namespace must not be null or empty");
+            }
             this.shardStrategy = shardStrategy;
+            this.namespace = namespace;
             rLock = lock.readLock();
             wLock = lock.writeLock();
         }

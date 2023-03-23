@@ -15,9 +15,11 @@
  */
 package io.streamnative.oxia.client.shard;
 
+import static io.streamnative.oxia.client.OxiaClientBuilder.DefaultNamespace;
 import static io.streamnative.oxia.client.ProtoUtil.longToUint32;
 
 import io.streamnative.oxia.proto.Int32HashRange;
+import io.streamnative.oxia.proto.NamespaceShardsAssignment;
 import io.streamnative.oxia.proto.ShardAssignment;
 import io.streamnative.oxia.proto.ShardAssignments;
 import lombok.NonNull;
@@ -39,7 +41,8 @@ public class ModelFactory {
     static @NonNull ShardAssignments newShardAssignments(
             long id, int min, int max, @NonNull String leader) {
         return ShardAssignments.newBuilder()
-                .addAssignments(newShardAssignment(id, min, max, leader))
+                .putNamespaces(DefaultNamespace, NamespaceShardsAssignment.newBuilder()
+                        .addAssignments(newShardAssignment(id, min, max, leader)).build())
                 .build();
     }
 }

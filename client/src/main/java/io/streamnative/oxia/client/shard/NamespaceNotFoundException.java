@@ -13,21 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.streamnative.oxia.client;
+package io.streamnative.oxia.client.shard;
 
-
-import io.streamnative.oxia.client.metrics.api.Metrics;
-import java.time.Duration;
+import lombok.Getter;
 import lombok.NonNull;
 
-public record ClientConfig(
-        @NonNull String serviceAddress,
-        @NonNull Duration requestTimeout,
-        @NonNull Duration batchLinger,
-        int maxRequestsPerBatch,
-        int maxBatchSize,
-        int recordCacheCapacity,
-        @NonNull Duration sessionTimeout,
-        @NonNull String clientIdentifier,
-        @NonNull Metrics metrics,
-        @NonNull String namespace) {}
+/**
+ * The namespace not found in shards assignments.
+ */
+public class NamespaceNotFoundException extends RuntimeException {
+    @Getter
+    private final String namespace;
+
+    /**
+     * Creates an instance of the exception.
+     *
+     * @param namespace The namespace specified in the call.
+     */
+    public NamespaceNotFoundException(@NonNull String namespace) {
+        super(String.format("namespace %s not found in shards assignments", namespace));
+        this.namespace = namespace;
+    }
+}
