@@ -36,8 +36,7 @@ public class PerfArguments {
 
     @Parameter(
             names = {"-n", "--namespace"},
-            description = "Oxia namespace"
-    )
+            description = "Oxia namespace")
     String namespace = "default";
 
     @Parameter(

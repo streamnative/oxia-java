@@ -95,8 +95,12 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
                 Retry.backoff(Long.MAX_VALUE, Duration.ofMillis(100))
                         .doBeforeRetry(signal -> log.warn("Retrying receiving shard assignments: {}", signal));
         var assignmentsFlux =
-                Flux.defer(() -> stub.getShardAssignments(ShardAssignmentsRequest
-                                .newBuilder().setNamespace(assignments.namespace).build()))
+                Flux.defer(
+                                () ->
+                                        stub.getShardAssignments(
+                                                ShardAssignmentsRequest.newBuilder()
+                                                        .setNamespace(assignments.namespace)
+                                                        .build()))
                         .doOnError(t -> log.warn("Error receiving shard assignments", t))
                         .retryWhen(retrySpec)
                         .repeat()
@@ -178,19 +182,15 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
     }
 
     public record ShardAssignmentChanges(
-            Set<Added> added, Set<Removed> removed, Set<Reassigned> reassigned) {
-    }
+            Set<Added> added, Set<Removed> removed, Set<Reassigned> reassigned) {}
 
     public sealed interface ShardAssignmentChange permits Added, Removed, Reassigned {
-        record Added(long shardId, @NonNull String leader) implements ShardAssignmentChange {
-        }
+        record Added(long shardId, @NonNull String leader) implements ShardAssignmentChange {}
 
-        record Removed(long shardId, @NonNull String leader) implements ShardAssignmentChange {
-        }
+        record Removed(long shardId, @NonNull String leader) implements ShardAssignmentChange {}
 
         record Reassigned(long shardId, @NonNull String fromLeader, @NonNull String toLeader)
-                implements ShardAssignmentChange {
-        }
+                implements ShardAssignmentChange {}
     }
 
     public long get(String key) {
