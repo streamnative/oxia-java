@@ -186,10 +186,13 @@ public class ShardManagerTest {
         void start(@Mock ReactorOxiaClientStub stub) {
             when(stubFactory.get()).thenReturn(stub);
             var assignment = ShardAssignment.newBuilder().setShardId(0).setLeader("leader0").build();
+            var nsAssignment = NamespaceShardsAssignment.newBuilder().addAssignments(assignment).build();
             when(stub.getShardAssignments(ShardAssignmentsRequest.getDefaultInstance()))
-                    .thenReturn(Flux.just(ShardAssignments.newBuilder()
-                                    .putNamespaces(DefaultNamespace, NamespaceShardsAssignment.newBuilder()
-                                            .addAssignments(assignment).build()).build()));
+                    .thenReturn(
+                            Flux.just(
+                                    ShardAssignments.newBuilder()
+                                            .putNamespaces(DefaultNamespace, nsAssignment)
+                                            .build()));
             var future = manager.start();
             assertThat(future).succeedsWithin(Duration.ofMillis(100));
 

@@ -15,15 +15,13 @@
  */
 package io.streamnative.oxia.client.shard;
 
+
 import lombok.Getter;
 import lombok.NonNull;
 
-/**
- * The namespace not found in shards assignments.
- */
+/** The namespace not found in shards assignments. */
 public class NamespaceNotFoundException extends RuntimeException {
-    @Getter
-    private final String namespace;
+    @Getter private final String namespace;
 
     /**
      * Creates an instance of the exception.

@@ -41,8 +41,11 @@ public class ModelFactory {
     static @NonNull ShardAssignments newShardAssignments(
             long id, int min, int max, @NonNull String leader) {
         return ShardAssignments.newBuilder()
-                .putNamespaces(DefaultNamespace, NamespaceShardsAssignment.newBuilder()
-                        .addAssignments(newShardAssignment(id, min, max, leader)).build())
+                .putNamespaces(
+                        DefaultNamespace,
+                        NamespaceShardsAssignment.newBuilder()
+                                .addAssignments(newShardAssignment(id, min, max, leader))
+                                .build())
                 .build();
     }
 }

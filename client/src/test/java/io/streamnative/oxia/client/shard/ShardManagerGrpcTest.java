@@ -75,12 +75,9 @@ class ShardManagerGrpcTest {
     String serverName = InProcessServerBuilder.generateName();
     Server server;
     ManagedChannel channel;
-    @Mock
-    Supplier<ReactorOxiaClientStub> stubFactory;
-    @Mock
-    Metrics metrics;
-    @Mock
-    Metrics.Histogram histogram;
+    @Mock Supplier<ReactorOxiaClientStub> stubFactory;
+    @Mock Metrics metrics;
+    @Mock Metrics.Histogram histogram;
 
     @BeforeEach
     void beforeEach() throws Exception {
@@ -106,10 +103,12 @@ class ShardManagerGrpcTest {
 
     @Test
     void start() {
-        var assignments = ShardAssignments.newBuilder()
-                .putNamespaces(DefaultNamespace, NamespaceShardsAssignment.newBuilder()
-                        .addAssignments(assignment(0, 0, 3)).build())
-                .build();
+        var assignments =
+                ShardAssignments.newBuilder()
+                        .putNamespaces(
+                                DefaultNamespace,
+                                NamespaceShardsAssignment.newBuilder().addAssignments(assignment(0, 0, 3)).build())
+                        .build();
         responses.offer(Flux.just(assignments).concatWith(Flux.never()));
         try (var shardManager = new ShardManager(stubFactory, metrics, DefaultNamespace)) {
             assertThat(shardManager.start()).succeedsWithin(Duration.ofSeconds(1));
@@ -130,16 +129,20 @@ class ShardManagerGrpcTest {
 
     @Test
     void update() {
-        var assignments0 = ShardAssignments.newBuilder()
-                .putNamespaces(DefaultNamespace, NamespaceShardsAssignment.newBuilder()
-                        .addAssignments(assignment(0, 0, 3))
-                        .build()).build();
+        var assignments0 =
+                ShardAssignments.newBuilder()
+                        .putNamespaces(
+                                DefaultNamespace,
+                                NamespaceShardsAssignment.newBuilder().addAssignments(assignment(0, 0, 3)).build())
+                        .build();
         var assignments1 =
                 ShardAssignments.newBuilder()
-                        .putNamespaces(DefaultNamespace, NamespaceShardsAssignment.newBuilder()
-                                .addAssignments(assignment(1, 0, 1))
-                                .addAssignments(assignment(2, 2, 3))
-                                .build())
+                        .putNamespaces(
+                                DefaultNamespace,
+                                NamespaceShardsAssignment.newBuilder()
+                                        .addAssignments(assignment(1, 0, 1))
+                                        .addAssignments(assignment(2, 2, 3))
+                                        .build())
                         .build();
         responses.offer(Flux.just(assignments0, assignments1).concatWith(Flux.never()));
         try (var shardManager = new ShardManager(stubFactory, metrics, DefaultNamespace)) {
@@ -157,10 +160,12 @@ class ShardManagerGrpcTest {
     @Test
     public void recoveryFromError() {
         responses.offer(Flux.error(Status.UNAVAILABLE.asException()));
-        var assignments = ShardAssignments.newBuilder()
-                .putNamespaces(DefaultNamespace, NamespaceShardsAssignment.newBuilder()
-                        .addAssignments(assignment(0, 0, 3)).build())
-                .build();
+        var assignments =
+                ShardAssignments.newBuilder()
+                        .putNamespaces(
+                                DefaultNamespace,
+                                NamespaceShardsAssignment.newBuilder().addAssignments(assignment(0, 0, 3)).build())
+                        .build();
         responses.offer(Flux.just(assignments).concatWith(Flux.never()));
         try (var shardManager = new ShardManager(stubFactory, metrics, DefaultNamespace)) {
             assertThat(shardManager.start()).succeedsWithin(Duration.ofSeconds(1));
@@ -173,11 +178,12 @@ class ShardManagerGrpcTest {
     @Test
     public void recoveryFromEndOfStream() {
         responses.offer(Flux.empty());
-        var assignments = ShardAssignments.newBuilder()
-                .putNamespaces(DefaultNamespace, NamespaceShardsAssignment.newBuilder()
-                        .addAssignments(assignment(0, 0, 3))
-                        .build())
-                .build();
+        var assignments =
+                ShardAssignments.newBuilder()
+                        .putNamespaces(
+                                DefaultNamespace,
+                                NamespaceShardsAssignment.newBuilder().addAssignments(assignment(0, 0, 3)).build())
+                        .build();
         responses.offer(Flux.just(assignments).concatWith(Flux.never()));
         try (var shardManager = new ShardManager(stubFactory, metrics, DefaultNamespace)) {
             assertThat(shardManager.start()).succeedsWithin(Duration.ofSeconds(1));

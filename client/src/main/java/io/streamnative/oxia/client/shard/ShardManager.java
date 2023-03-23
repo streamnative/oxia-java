@@ -77,7 +77,8 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
     }
 
     public ShardManager(
-            @NonNull Supplier<ReactorOxiaClientStub> stubFactory, @NonNull Metrics metrics,
+            @NonNull Supplier<ReactorOxiaClientStub> stubFactory,
+            @NonNull Metrics metrics,
             @NonNull String namespace) {
         this(
                 stubFactory,

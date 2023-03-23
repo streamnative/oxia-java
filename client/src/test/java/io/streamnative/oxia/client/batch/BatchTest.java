@@ -438,8 +438,16 @@ class BatchTest {
 
         ClientConfig config =
                 new ClientConfig(
-                        "address", ZERO, ZERO, 1, 1024 * 1024, 0,
-                        ZERO, "client_id", Metrics.nullObject, DefaultNamespace);
+                        "address",
+                        ZERO,
+                        ZERO,
+                        1,
+                        1024 * 1024,
+                        0,
+                        ZERO,
+                        "client_id",
+                        Metrics.nullObject,
+                        DefaultNamespace);
 
         @BeforeEach
         void mocking() {
