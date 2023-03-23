@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client.session;
 
-import static io.streamnative.oxia.client.ProtoUtil.longToUint32;
 import static lombok.AccessLevel.PACKAGE;
 import static lombok.AccessLevel.PUBLIC;
 
@@ -71,10 +70,7 @@ public class Session implements AutoCloseable {
                         Math.max(config.sessionTimeout().toMillis() / 10, Duration.ofSeconds(2).toMillis())),
                 shardId,
                 sessionId,
-                SessionHeartbeat.newBuilder()
-                        .setShardId(longToUint32(shardId))
-                        .setSessionId(sessionId)
-                        .build(),
+                SessionHeartbeat.newBuilder().setShardId(shardId).setSessionId(sessionId).build(),
                 metrics);
     }
 
@@ -109,10 +105,7 @@ public class Session implements AutoCloseable {
         keepAliveSubscription.dispose();
         var stub = stubByShardId.apply(shardId);
         var request =
-                CloseSessionRequest.newBuilder()
-                        .setShardId(longToUint32(shardId))
-                        .setSessionId(sessionId)
-                        .build();
+                CloseSessionRequest.newBuilder().setShardId(shardId).setSessionId(sessionId).build();
         stub.closeSession(request).block();
     }
 
@@ -128,7 +121,7 @@ public class Session implements AutoCloseable {
             var request =
                     CreateSessionRequest.newBuilder()
                             .setSessionTimeoutMs((int) config.sessionTimeout().toMillis())
-                            .setShardId(longToUint32(shardId))
+                            .setShardId(shardId)
                             .setClientIdentity(config.clientIdentifier())
                             .build();
             var response = stub.createSession(request).block();
