@@ -35,6 +35,12 @@ public class PerfArguments {
     String serviceAddr = "localhost:6648";
 
     @Parameter(
+            names = {"-n", "--namespace"},
+            description = "Oxia namespace"
+    )
+    String namespace = "default";
+
+    @Parameter(
             names = {"-r", "--rate"},
             description = "Request rate, ops/s")
     double requestsRate = 100.0;
