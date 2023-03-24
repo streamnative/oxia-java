@@ -27,9 +27,7 @@ import org.testng.annotations.Test;
 
 public class OxiaMetadataStoreProviderTest implements OxiaTestBase {
 
-    @Getter
-    @Setter
-    private OxiaContainer container;
+    @Getter @Setter private OxiaContainer container;
 
     @Test
     public void testCreateWithoutNamespace() throws Exception {
@@ -45,7 +43,8 @@ public class OxiaMetadataStoreProviderTest implements OxiaTestBase {
         var store =
                 MetadataStoreFactory.create(
                         "oxia://localhost:"
-                                + getContainer().getMappedPort(OxiaContainer.OXIA_PORT) + "/default",
+                                + getContainer().getMappedPort(OxiaContainer.OXIA_PORT)
+                                + "/default",
                         MetadataStoreConfig.builder().build());
         store.close();
     }
@@ -62,7 +61,8 @@ public class OxiaMetadataStoreProviderTest implements OxiaTestBase {
             var store =
                     MetadataStoreFactory.create(
                             "oxia://localhost:"
-                                    + getContainer().getMappedPort(OxiaContainer.OXIA_PORT) + "/default/aaa",
+                                    + getContainer().getMappedPort(OxiaContainer.OXIA_PORT)
+                                    + "/default/aaa",
                             MetadataStoreConfig.builder().build());
             Assert.fail("Expect failed by illegal url");
         } catch (MetadataStoreException ex) {
