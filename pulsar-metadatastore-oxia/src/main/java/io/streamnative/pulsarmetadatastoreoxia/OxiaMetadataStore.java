@@ -33,6 +33,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.metadata.api.GetResult;
 import org.apache.pulsar.metadata.api.MetadataEventSynchronizer;
@@ -52,7 +53,10 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
     private final Optional<MetadataEventSynchronizer> synchronizer;
 
     OxiaMetadataStore(
-            String serviceAddress, MetadataStoreConfig metadataStoreConfig, boolean enableSessionWatcher)
+            @NonNull String serviceAddress,
+            @NonNull String namespace,
+            @NonNull MetadataStoreConfig metadataStoreConfig,
+            boolean enableSessionWatcher)
             throws Exception {
         var linger = metadataStoreConfig.getBatchingMaxDelayMillis();
         if (!metadataStoreConfig.isBatchingEnabled()) {
@@ -63,6 +67,7 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
         client =
                 new OxiaClientBuilder(serviceAddress)
                         .clientIdentifier(identity)
+                        .namespace(namespace)
                         .sessionTimeout(Duration.ofMillis(metadataStoreConfig.getSessionTimeoutMillis()))
                         .batchLinger(Duration.ofMillis(linger))
                         .maxRequestsPerBatch(metadataStoreConfig.getBatchingMaxOperations())
