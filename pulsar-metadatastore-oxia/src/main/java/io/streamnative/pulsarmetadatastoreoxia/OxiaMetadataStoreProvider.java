@@ -16,12 +16,17 @@
 package io.streamnative.pulsarmetadatastoreoxia;
 
 
+import lombok.NonNull;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.pulsar.metadata.api.MetadataStore;
 import org.apache.pulsar.metadata.api.MetadataStoreConfig;
 import org.apache.pulsar.metadata.api.MetadataStoreException;
 import org.apache.pulsar.metadata.api.MetadataStoreProvider;
 
 public class OxiaMetadataStoreProvider implements MetadataStoreProvider {
+    // declare the specific namespace to avoid any changes in the future.
+    public static final String DefaultNamespace = "default";
+
 
     @Override
     public String urlScheme() {
@@ -29,21 +34,32 @@ public class OxiaMetadataStoreProvider implements MetadataStoreProvider {
     }
 
     @Override
-    public MetadataStore create(
+    public @NonNull MetadataStore create(
             String metadataURL, MetadataStoreConfig metadataStoreConfig, boolean enableSessionWatcher)
             throws MetadataStoreException {
-        var serviceAddress = getServiceAddress(metadataURL);
+        var serviceAddress = getServiceAddressAndNamespace(metadataURL);
         try {
-            return new OxiaMetadataStore(serviceAddress, metadataStoreConfig, enableSessionWatcher);
+            return new OxiaMetadataStore(serviceAddress.getLeft(), serviceAddress.getRight(),
+                    metadataStoreConfig, enableSessionWatcher);
         } catch (Exception e) {
             throw new MetadataStoreException(e);
         }
     }
 
-    String getServiceAddress(String metadataURL) throws MetadataStoreException {
-        if (!metadataURL.startsWith(urlScheme() + "://")) {
+    @NonNull Pair<String, String> getServiceAddressAndNamespace(String metadataURL) throws MetadataStoreException {
+        if (metadataURL == null || !metadataURL.startsWith(urlScheme() + "://")) {
             throw new MetadataStoreException("Invalid metadata URL. Must start with 'oxia://'.");
         }
-        return metadataURL.substring("oxia://".length());
+        final var addressWithNamespace = metadataURL.substring("oxia://".length());
+        final var split = addressWithNamespace.split("/");
+        if (split.length > 2) {
+            throw new MetadataStoreException("Invalid metadata URL."
+                    + " the oxia metadata format should be 'oxia://host:port/[namespace]'.");
+        }
+        if (split.length == 1) {
+            // Use default namespace
+            return Pair.of(split[0], DefaultNamespace);
+        }
+        return Pair.of(split[0], split[1]);
     }
 }
