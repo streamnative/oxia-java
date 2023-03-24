@@ -27,7 +27,6 @@ public class OxiaMetadataStoreProvider implements MetadataStoreProvider {
     // declare the specific namespace to avoid any changes in the future.
     public static final String DefaultNamespace = "default";
 
-
     @Override
     public String urlScheme() {
         return "oxia";
@@ -39,22 +38,28 @@ public class OxiaMetadataStoreProvider implements MetadataStoreProvider {
             throws MetadataStoreException {
         var serviceAddress = getServiceAddressAndNamespace(metadataURL);
         try {
-            return new OxiaMetadataStore(serviceAddress.getLeft(), serviceAddress.getRight(),
-                    metadataStoreConfig, enableSessionWatcher);
+            return new OxiaMetadataStore(
+                    serviceAddress.getLeft(),
+                    serviceAddress.getRight(),
+                    metadataStoreConfig,
+                    enableSessionWatcher);
         } catch (Exception e) {
             throw new MetadataStoreException(e);
         }
     }
 
-    @NonNull Pair<String, String> getServiceAddressAndNamespace(String metadataURL) throws MetadataStoreException {
+    @NonNull
+    Pair<String, String> getServiceAddressAndNamespace(String metadataURL)
+            throws MetadataStoreException {
         if (metadataURL == null || !metadataURL.startsWith(urlScheme() + "://")) {
             throw new MetadataStoreException("Invalid metadata URL. Must start with 'oxia://'.");
         }
         final var addressWithNamespace = metadataURL.substring("oxia://".length());
         final var split = addressWithNamespace.split("/");
         if (split.length > 2) {
-            throw new MetadataStoreException("Invalid metadata URL."
-                    + " the oxia metadata format should be 'oxia://host:port/[namespace]'.");
+            throw new MetadataStoreException(
+                    "Invalid metadata URL."
+                            + " the oxia metadata format should be 'oxia://host:port/[namespace]'.");
         }
         if (split.length == 1) {
             // Use default namespace
