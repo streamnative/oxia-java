@@ -28,7 +28,10 @@ import static java.util.stream.Collectors.toSet;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.streamnative.oxia.client.CompositeConsumer;
+import io.streamnative.oxia.client.grpc.CustomStatusCode;
 import io.streamnative.oxia.client.grpc.GrpcResponseStream;
 import io.streamnative.oxia.client.metrics.ShardAssignmentMetrics;
 import io.streamnative.oxia.client.metrics.api.Metrics;
@@ -90,9 +93,9 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
     @Override
     protected CompletableFuture<Void> start(
             ReactorOxiaClientStub stub, Consumer<Disposable> consumer) {
-        // TODO filter non-retriables?
         RetryBackoffSpec retrySpec =
                 Retry.backoff(Long.MAX_VALUE, Duration.ofMillis(100))
+                        .filter(this::isErrorRetryable)
                         .doBeforeRetry(signal -> log.warn("Retrying receiving shard assignments: {}", signal));
         var assignmentsFlux =
                 Flux.defer(
@@ -101,7 +104,7 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
                                                 ShardAssignmentsRequest.newBuilder()
                                                         .setNamespace(assignments.namespace)
                                                         .build()))
-                        .doOnError(t -> log.warn("Error receiving shard assignments", t))
+                        .doOnError(this::processError)
                         .retryWhen(retrySpec)
                         .repeat()
                         .publishOn(Schedulers.newSingle("shard-assignments"))
@@ -115,10 +118,41 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
         return future;
     }
 
+    /**
+     * Process errors of repeated flux, it will auto suppress unknown status #{@link
+     * StatusRuntimeException}.
+     *
+     * @param error Error from flux
+     */
+    private void processError(@NonNull Throwable error) {
+        if (error instanceof StatusRuntimeException statusError) {
+            var status = statusError.getStatus();
+            if (status.getCode() == Status.Code.UNKNOWN) {
+                // Suppress unknown errors
+                final var description = status.getDescription();
+                if (description != null) {
+                    var customStatusCode = CustomStatusCode.fromDescription(description);
+                    if (customStatusCode == CustomStatusCode.ErrorNamespaceNotFound) {
+                        final var ex = new NamespaceNotFoundException(assignments.namespace);
+                        log.error("Failed receiving shard assignments", ex);
+                        throw ex;
+                    }
+                }
+            }
+        }
+        log.warn("Failed receiving shard assignments", error);
+    }
+
     private void updateAssignments(ShardAssignments shardAssignments) {
         var nsSharedAssignments = shardAssignments.getNamespacesMap().get(assignments.namespace);
         if (nsSharedAssignments == null) {
-            throw new NamespaceNotFoundException(assignments.namespace);
+            /*
+            It shouldn't happen, but we have to do some defensive programming to avoid server nodes
+            Allowing namespaces to be deleted in the future.
+
+            Retries are available so that the client does not panic until the namespace is recreated.
+            */
+            throw new NamespaceNotFoundException(assignments.namespace, true);
         }
         var updates =
                 nsSharedAssignments.getAssignmentsList().stream().map(Shard::fromProto).collect(toList());
@@ -269,5 +303,13 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
                 wLock.unlock();
             }
         }
+    }
+
+    private boolean isErrorRetryable(@NonNull Throwable ex) {
+        if (ex instanceof NamespaceNotFoundException nsNotFoundError) {
+            return nsNotFoundError.isRetryable();
+        }
+        // Allow the rest of the errors to retry.
+        return true;
     }
 }

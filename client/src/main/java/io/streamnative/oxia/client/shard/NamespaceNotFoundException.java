@@ -22,6 +22,7 @@ import lombok.NonNull;
 /** The namespace not found in shards assignments. */
 public class NamespaceNotFoundException extends RuntimeException {
     @Getter private final String namespace;
+    @Getter private final boolean retryable;
 
     /**
      * Creates an instance of the exception.
@@ -30,6 +31,19 @@ public class NamespaceNotFoundException extends RuntimeException {
      */
     public NamespaceNotFoundException(@NonNull String namespace) {
         super(String.format("namespace %s not found in shards assignments", namespace));
+        this.retryable = false;
+        this.namespace = namespace;
+    }
+
+    /**
+     * Creates a retryable instance of the exception.
+     *
+     * @param namespace The namespace specified in the call.
+     * @param retryable If the exception is retryable
+     */
+    public NamespaceNotFoundException(@NonNull String namespace, boolean retryable) {
+        super(String.format("namespace %s not found in shards assignments", namespace));
+        this.retryable = retryable;
         this.namespace = namespace;
     }
 }

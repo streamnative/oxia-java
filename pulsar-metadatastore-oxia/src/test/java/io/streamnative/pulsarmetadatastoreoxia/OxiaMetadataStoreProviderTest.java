@@ -50,11 +50,6 @@ public class OxiaMetadataStoreProviderTest implements OxiaTestBase {
     }
 
     @Test
-    public void testCreateWithUnknownNamespace() {
-        // Todo
-    }
-
-    @Test
     public void testCreateWithIllegalURL() {
         // Test with multiple url parts
         try {
