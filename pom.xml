@@ -22,7 +22,7 @@
 
     <groupId>io.streamnative.oxia</groupId>
     <artifactId>oxia-java</artifactId>
-    <version>0.0.8-SNAPSHOT</version>
+    <version>0.0.8</version>
     <packaging>pom</packaging>
     <name>Oxia Implementations for Java</name>
 
