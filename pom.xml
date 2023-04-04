@@ -252,6 +252,7 @@
                             <header>etc/APACHE-2.txt</header>
                             <excludes>
                                 <exclude>NOTICE</exclude>
+                                <exclude>.ci/**/*</exclude>
                             </excludes>
                         </licenseSet>
                     </licenseSets>
