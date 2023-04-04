@@ -57,5 +57,5 @@ jobs:
           file: {context}/.ci/Dockerfile
           tags: $PUBLISH_IMAGE:$PULSAR_TAG-oxia-$OXIA_VERSION
           build-args:
-            PULSAR_IMAGE: $PULSAR_FQ_IMAGE
+            PULSAR_FQ_IMAGE: $PULSAR_FQ_IMAGE
             OXIA_VERSION: $OXIA_VERSION
