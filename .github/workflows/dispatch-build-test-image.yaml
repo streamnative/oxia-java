@@ -48,7 +48,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Build and push
         uses: docker/build-push-action@v3
-        envs:
+        env:
           OXIA_VERSION: ${{ steps.version.outputs.version }}
         with:
           context: .
