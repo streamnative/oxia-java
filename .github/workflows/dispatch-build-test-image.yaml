@@ -49,6 +49,6 @@ jobs:
           push: true
           file: ./.ci/Dockerfile
           tags: ${{ github.event.inputs.publish_image }}:${{ github.event.inputs.pulsar_tag }}-oxia-${{ steps.version.outputs.version }}
-          build-args:
-            - PULSAR_FQ_IMAGE=${{ github.event.inputs.pulsar_image }}:${{ github.event.inputs.pulsar_tag }}
-            - OXIA_VERSION=${{ steps.version.outputs.version }}
+          build-args: |
+              PULSAR_FQ_IMAGE=${{ github.event.inputs.pulsar_image }}:${{ github.event.inputs.pulsar_tag }}
+              OXIA_VERSION=${{ steps.version.outputs.version }}
