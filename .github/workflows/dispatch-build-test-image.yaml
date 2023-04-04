@@ -13,7 +13,7 @@ on:
         description: publish image
         required: true
 
-envs:
+env:
   PULSAR_TAG: ${{ github.event.inputs.pulsar_tag }}
   PULSAR_FQ_IMAGE: ${{ github.event.inputs.pulsar_image }}:${{ github.event.inputs.pulsar_cloud_tag }}
   PUBLISH_IMAGE: ${{ github.event.inputs.publish_image }}
