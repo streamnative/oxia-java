@@ -1,14 +1,17 @@
-name: Build & Publish testing pulsar cloud image
+name: Build & Publish testing pulsar image
 
 on:
   workflow_dispatch:
     inputs:
-      pulsar_cloud_tag:
-        description: pulsar cloud docker image with tag
+      pulsar_image:
+        description: pulsar image
+        required: true
+      pulsar_tag:
+        description: pulsar tag
         required: true
 envs:
-  PULSAR_CLOUD_TAG: ${{ github.event.inputs.pulsar_cloud_tag }}
-  PULSAR_CLOUD_IMAGE: docker.cloudsmith.io/streamnative/cloud-pulsar/pulsar-cloud:${{ github.event.inputs.pulsar_cloud_tag }}
+  PULSAR_TAG: ${{ github.event.inputs.pulsar_tag }}
+  PULSAR_IMAGE: ${{ github.event.inputs.pulsar_image }}:${{ github.event.inputs.pulsar_cloud_tag }}
 
 jobs:
   build-publish:
@@ -47,7 +50,7 @@ jobs:
           platforms: linux/x86_64,linux/arm64
           push: true
           file: {context}/.ci/Dockerfile
-          tags: streamnative/pulsar-cloud:$PULSAR_CLOUD_TAG-oxia-$OXIA_VERSION
+          tags: streamnative/pulsar-cloud:$PULSAR_IMAGE-oxia-$OXIA_VERSION
           build-args:
-            PULSAR_CLOUD: $PULSAR_CLOUD_IMAGE
+            PULSAR_IMAGE: $PULSAR_IMAGE
             OXIA_VERSION: $OXIA_VERSION
