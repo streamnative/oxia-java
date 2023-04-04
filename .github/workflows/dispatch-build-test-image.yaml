@@ -9,9 +9,14 @@ on:
       pulsar_tag:
         description: pulsar tag
         required: true
+      publish_image:
+        description: publish image
+        required: true
+
 envs:
   PULSAR_TAG: ${{ github.event.inputs.pulsar_tag }}
   PULSAR_IMAGE: ${{ github.event.inputs.pulsar_image }}:${{ github.event.inputs.pulsar_cloud_tag }}
+  PUBLISH_IMAGE: ${{ github.event.inputs.publish_image }}
 
 jobs:
   build-publish:
@@ -50,7 +55,7 @@ jobs:
           platforms: linux/x86_64,linux/arm64
           push: true
           file: {context}/.ci/Dockerfile
-          tags: streamnative/pulsar-cloud:$PULSAR_IMAGE-oxia-$OXIA_VERSION
+          tags: $PUBLISH_IMAGE:$PULSAR_IMAGE-oxia-$OXIA_VERSION
           build-args:
             PULSAR_IMAGE: $PULSAR_IMAGE
             OXIA_VERSION: $OXIA_VERSION
