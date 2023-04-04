@@ -52,7 +52,7 @@ jobs:
           context: .
           platforms: linux/x86_64,linux/arm64
           push: true
-          file: ${context}/.ci/Dockerfile
+          file: ./.ci/Dockerfile
           tags: $PUBLISH_IMAGE:$PULSAR_TAG-oxia-${{ steps.version.outputs.version }}
           build-args:
             PULSAR_FQ_IMAGE=$PULSAR_FQ_IMAGE
