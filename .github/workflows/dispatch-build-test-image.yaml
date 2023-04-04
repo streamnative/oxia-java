@@ -13,7 +13,7 @@ on:
         description: publish image
         required: true
 
-envs:
+env:
   PULSAR_TAG: ${{ github.event.inputs.pulsar_tag }}
   PULSAR_FQ_IMAGE: ${{ github.event.inputs.pulsar_image }}:${{ github.event.inputs.pulsar_cloud_tag }}
   PUBLISH_IMAGE: ${{ github.event.inputs.publish_image }}
@@ -48,14 +48,12 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Build and push
         uses: docker/build-push-action@v3
-        envs:
-          OXIA_VERSION: ${{ steps.version.outputs.version }}
         with:
           context: .
           platforms: linux/x86_64,linux/arm64
           push: true
-          file: {context}/.ci/Dockerfile
-          tags: $PUBLISH_IMAGE:$PULSAR_TAG-oxia-$OXIA_VERSION
+          file: ./.ci/Dockerfile
+          tags: $PUBLISH_IMAGE:$PULSAR_TAG-oxia-${{ steps.version.outputs.version }}
           build-args:
-            PULSAR_FQ_IMAGE: $PULSAR_FQ_IMAGE
-            OXIA_VERSION: $OXIA_VERSION
+            PULSAR_FQ_IMAGE=$PULSAR_FQ_IMAGE
+            OXIA_VERSION=${{ steps.version.outputs.version }}
