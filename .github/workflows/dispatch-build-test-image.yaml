@@ -15,7 +15,7 @@ on:
 
 envs:
   PULSAR_TAG: ${{ github.event.inputs.pulsar_tag }}
-  PULSAR_IMAGE: ${{ github.event.inputs.pulsar_image }}:${{ github.event.inputs.pulsar_cloud_tag }}
+  PULSAR_FQ_IMAGE: ${{ github.event.inputs.pulsar_image }}:${{ github.event.inputs.pulsar_cloud_tag }}
   PUBLISH_IMAGE: ${{ github.event.inputs.publish_image }}
 
 jobs:
@@ -55,7 +55,7 @@ jobs:
           platforms: linux/x86_64,linux/arm64
           push: true
           file: {context}/.ci/Dockerfile
-          tags: $PUBLISH_IMAGE:$PULSAR_IMAGE-oxia-$OXIA_VERSION
+          tags: $PUBLISH_IMAGE:$PULSAR_TAG-oxia-$OXIA_VERSION
           build-args:
-            PULSAR_IMAGE: $PULSAR_IMAGE
+            PULSAR_IMAGE: $PULSAR_FQ_IMAGE
             OXIA_VERSION: $OXIA_VERSION
