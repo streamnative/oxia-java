@@ -48,14 +48,12 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Build and push
         uses: docker/build-push-action@v3
-        env:
-          OXIA_VERSION: ${{ steps.version.outputs.version }}
         with:
           context: .
           platforms: linux/x86_64,linux/arm64
           push: true
           file: {context}/.ci/Dockerfile
-          tags: $PUBLISH_IMAGE:$PULSAR_TAG-oxia-$OXIA_VERSION
+          tags: $PUBLISH_IMAGE:$PULSAR_TAG-oxia-${{ steps.version.outputs.version }}
           build-args:
             PULSAR_FQ_IMAGE: $PULSAR_FQ_IMAGE
-            OXIA_VERSION: $OXIA_VERSION
+            OXIA_VERSION: ${{ steps.version.outputs.version }}
