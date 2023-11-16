@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client.it;
 
-
 import io.streamnative.oxia.client.OxiaClientBuilder;
 import io.streamnative.oxia.client.shard.NamespaceNotFoundException;
 import io.streamnative.oxia.testcontainers.OxiaContainer;

@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client.metrics.api;
 
-
 import java.util.Map;
 import lombok.NonNull;
 

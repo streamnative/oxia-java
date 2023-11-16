@@ -15,7 +15,6 @@
  */
 package io.streamnative.pulsarmetadatastoreoxia;
 
-
 import io.streamnative.oxia.testcontainers.OxiaContainer;
 import lombok.Getter;
 import lombok.Setter;

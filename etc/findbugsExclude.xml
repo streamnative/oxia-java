@@ -28,4 +28,8 @@
     <Class name="io.streamnative.oxia.client.OxiaClientBuilder" />
     <Bug pattern="URF_UNREAD_FIELD" />
   </Match>
+  <Match>
+    <Package name="io.streamnative.oxia.client" />
+    <Bug pattern="CT_CONSTRUCTOR_THROW" />
+  </Match>
 </FindBugsFilter>

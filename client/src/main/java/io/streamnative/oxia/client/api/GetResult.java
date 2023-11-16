@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client.api;
 
-
 import io.streamnative.oxia.proto.GetResponse;
 import lombok.NonNull;
 import lombok.Value;
@@ -25,6 +24,7 @@ import lombok.Value;
 public class GetResult {
     /** The value associated with the key specified in the call. */
     byte @NonNull [] value;
+
     /** Metadata for the record associated with the key specified in the call. */
     @NonNull Version version;
 

@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client.grpc;
 
-
 import lombok.NonNull;
 import lombok.SneakyThrows;
 

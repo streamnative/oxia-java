@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client;
 
-
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;

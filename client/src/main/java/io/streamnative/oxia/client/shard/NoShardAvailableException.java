@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client.shard;
 
-
 import lombok.Getter;
 import lombok.NonNull;
 
@@ -34,6 +33,7 @@ public class NoShardAvailableException extends RuntimeException {
         this.key = key;
         this.shardId = null;
     }
+
     /**
      * Creates an instance of the exception.
      *

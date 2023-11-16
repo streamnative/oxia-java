@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client.api;
 
-
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;

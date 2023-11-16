@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client.shard;
 
-
 import java.util.function.Predicate;
 import lombok.NonNull;
 
