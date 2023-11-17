@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client;
 
-
 import java.util.Comparator;
 import java.util.function.Predicate;
 import lombok.NonNull;

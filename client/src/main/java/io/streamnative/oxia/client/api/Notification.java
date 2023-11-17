@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client.api;
 
-
 import lombok.NonNull;
 
 /** A notification from an Oxia server indicating a change to a record associated with a key. */

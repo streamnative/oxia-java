@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client;
 
-
 import io.streamnative.oxia.client.metrics.api.Metrics;
 import java.time.Duration;
 import lombok.NonNull;

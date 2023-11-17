@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client.perf;
 
-
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import io.streamnative.oxia.client.OxiaClientBuilder;

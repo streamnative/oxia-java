@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client.api;
 
-
 import io.streamnative.oxia.proto.PutResponse;
 import lombok.NonNull;
 

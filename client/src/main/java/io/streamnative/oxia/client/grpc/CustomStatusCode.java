@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client.grpc;
 
-
 import java.util.Objects;
 import lombok.NonNull;
 

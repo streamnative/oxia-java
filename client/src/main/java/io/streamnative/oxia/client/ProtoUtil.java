@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client;
 
-
 import java.nio.ByteBuffer;
 
 public class ProtoUtil {

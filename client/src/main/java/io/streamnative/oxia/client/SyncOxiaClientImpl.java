@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client;
 
-
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.DeleteOption;
 import io.streamnative.oxia.client.api.GetResult;

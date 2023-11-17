@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client.api;
 
-
 import java.util.Optional;
 import lombok.NonNull;
 
