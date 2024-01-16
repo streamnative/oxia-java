@@ -57,6 +57,8 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
             @NonNull MetadataStoreConfig metadataStoreConfig,
             boolean enableSessionWatcher)
             throws Exception {
+        super("oxia-metadata");
+
         var linger = metadataStoreConfig.getBatchingMaxDelayMillis();
         if (!metadataStoreConfig.isBatchingEnabled()) {
             linger = 0;

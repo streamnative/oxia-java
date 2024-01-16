@@ -36,7 +36,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <shade.relocation.package>io.streamnative.pulsarmetadatastoreoxia.shaded</shade.relocation.package>
 
-        <pulsar.version>2.11.0.3</pulsar.version>
+        <pulsar.version>3.0.2</pulsar.version>
 
         <checkstyle.version>10.3.3</checkstyle.version>
         <testng.version>7.7.0</testng.version>
@@ -61,7 +61,7 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>io.streamnative</groupId>
+            <groupId>org.apache.pulsar</groupId>
             <artifactId>pulsar-metadata</artifactId>
             <version>${pulsar.version}</version>
             <scope>provided</scope>
@@ -79,13 +79,13 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>io.streamnative</groupId>
+            <groupId>org.apache.pulsar</groupId>
             <artifactId>buildtools</artifactId>
             <version>${pulsar.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>io.streamnative</groupId>
+            <groupId>org.apache.pulsar</groupId>
             <artifactId>pulsar-metadata</artifactId>
             <version>${pulsar.version}</version>
             <type>test-jar</type>
