@@ -40,6 +40,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.retry.Retry;
 import reactor.util.retry.RetryBackoffSpec;
@@ -54,6 +55,8 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
     private final @NonNull NotificationMetrics metrics;
     private @NonNull Optional<Long> startingOffset = Optional.empty();
 
+
+    private Scheduler scheduler;
     private long offset;
 
     ShardNotificationReceiver(
@@ -76,6 +79,15 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
     }
 
     @Override
+    public void close() {
+        super.close();
+
+        if (scheduler != null) {
+            scheduler.dispose();
+        }
+    }
+
+    @Override
     protected @NonNull CompletableFuture<Void> start(
             @NonNull ReactorOxiaClientStub stub, @NonNull Consumer<Disposable> consumer) {
         var request = NotificationsRequest.newBuilder().setShardId(shardId);
@@ -87,13 +99,14 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
                                 signal ->
                                         log.warn("Retrying receiving notifications for shard {}: {}", shardId, signal));
         var threadName = String.format("shard-%s-notifications", shardId);
+        scheduler = Schedulers.newSingle(threadName);
         var disposable =
                 Flux.defer(() -> stub.getNotifications(request.build()))
                         .doOnError(t -> log.warn("Error receiving notifications for shard {}", shardId, t))
                         .doOnEach(metrics::recordBatch)
                         .retryWhen(retrySpec)
                         .repeat()
-                        .publishOn(Schedulers.newSingle(threadName))
+                        .publishOn(scheduler)
                         .subscribe(this::notify);
         consumer.accept(disposable);
         return completedFuture(null);
