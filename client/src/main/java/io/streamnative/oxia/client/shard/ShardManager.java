@@ -57,6 +57,7 @@ import lombok.extern.slf4j.Slf4j;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.retry.Retry;
 import reactor.util.retry.RetryBackoffSpec;
@@ -66,6 +67,8 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
     private final @NonNull Assignments assignments;
     private final @NonNull CompositeConsumer<ShardAssignmentChanges> callbacks;
     private final @NonNull ShardAssignmentMetrics metrics;
+
+    private final Scheduler scheduler;
 
     @VisibleForTesting
     ShardManager(
@@ -77,6 +80,7 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
         this.assignments = assignments;
         this.callbacks = callbacks;
         this.metrics = metrics;
+        this.scheduler = Schedulers.newSingle("shard-assignments");
     }
 
     public ShardManager(
@@ -88,6 +92,12 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
                 new Assignments(Xxh332HashRangeShardStrategy, namespace),
                 new CompositeConsumer<>(),
                 ShardAssignmentMetrics.create(metrics));
+    }
+
+    @Override
+    public void close() {
+        super.close();
+        scheduler.dispose();
     }
 
     @Override
@@ -107,7 +117,7 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
                         .doOnError(this::processError)
                         .retryWhen(retrySpec)
                         .repeat()
-                        .publishOn(Schedulers.newSingle("shard-assignments"))
+                        .publishOn(scheduler)
                         .doOnNext(this::updateAssignments)
                         .doOnEach(metrics::recordAssignments)
                         .publish();

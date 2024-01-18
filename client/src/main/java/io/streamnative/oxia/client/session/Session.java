@@ -33,6 +33,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.retry.Retry;
 import reactor.util.retry.RetryBackoffSpec;
@@ -55,6 +56,7 @@ public class Session implements AutoCloseable {
     private final @NonNull SessionHeartbeat heartbeat;
     private final @NonNull SessionMetrics metrics;
 
+    private Scheduler scheduler;
     private Disposable keepAliveSubscription;
 
     Session(
@@ -72,6 +74,8 @@ public class Session implements AutoCloseable {
                 sessionId,
                 SessionHeartbeat.newBuilder().setShardId(shardId).setSessionId(sessionId).build(),
                 metrics);
+        var threadName = String.format("session-[id=%s,shard=%s]-keep-alive", sessionId, shardId);
+        scheduler = Schedulers.newSingle(threadName);
     }
 
     void start() {
@@ -84,8 +88,6 @@ public class Session implements AutoCloseable {
                                                 sessionId,
                                                 shardId,
                                                 signal));
-        var threadName = String.format("session-[id=%s,shard=%s]-keep-alive", sessionId, shardId);
-
         keepAliveSubscription =
                 Mono.just(heartbeat)
                         .repeat()
@@ -93,7 +95,7 @@ public class Session implements AutoCloseable {
                         .flatMap(hb -> stubByShardId.apply(shardId).keepAlive(hb))
                         .retryWhen(retrySpec)
                         .timeout(sessionTimeout)
-                        .publishOn(Schedulers.newSingle(threadName))
+                        .publishOn(scheduler)
                         .doOnEach(metrics::recordKeepAlive)
                         .doOnError(
                                 t -> log.warn("Session keep-alive error: [id={},shard={}]", sessionId, shardId, t))
@@ -107,6 +109,7 @@ public class Session implements AutoCloseable {
         var request =
                 CloseSessionRequest.newBuilder().setShardId(shardId).setSessionId(sessionId).build();
         stub.closeSession(request).block();
+        scheduler.dispose();
     }
 
     @RequiredArgsConstructor(access = PACKAGE)
