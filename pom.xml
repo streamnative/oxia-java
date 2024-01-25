@@ -64,6 +64,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
+        <grpc.version>1.59.0</grpc.version>
+
         <assertj.version>3.24.1</assertj.version>
         <awaitility.version>3.0.0</awaitility.version>
         <checkstyle.version>10.12.5</checkstyle.version>
@@ -87,6 +89,13 @@
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-bom</artifactId>
+                <version>${grpc.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <dependency>
                 <groupId>io.opentelemetry</groupId>
                 <artifactId>opentelemetry-bom</artifactId>
