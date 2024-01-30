@@ -24,9 +24,10 @@
     <artifactId>oxia-java</artifactId>
     <version>0.0.15-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <name>Oxia Implementations for Java</name>
-
-    <inceptionYear>2022</inceptionYear>
+    <name>Oxia Client SDK for Java</name>
+    <description>Oxia Client SDK for Java</description>
+    <url>http://github.com/streanative/oxia-java</url>
+    <inceptionYear>2023</inceptionYear>
 
     <organization>
         <name>StreamNative Inc.</name>
@@ -50,12 +51,23 @@
         <module>pulsar-metadatastore-oxia</module>
     </modules>
 
+    <scm>
+        <connection>scm:git:git://github.com/streamnative/oxia-java.git</connection>
+        <developerConnection>scm:git:ssh://github.com:streamnative/oxia-java.git</developerConnection>
+        <url>https://github.com/streamnative/oxia-java</url>
+    </scm>
+
     <distributionManagement>
         <repository>
-            <id>github</id>
-            <name>GitHub Packages</name>
-            <url>https://maven.pkg.github.com/streamnative/oxia-java</url>
+            <id>ossrh</id>
+            <name>Central Repository OSSRH</name>
+            <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
         </repository>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <name>Snapshot Repository OSSRH</name>
+            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
     </distributionManagement>
 
     <properties>
@@ -350,40 +362,6 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.6.3</version>
-                <configuration>
-                    <doclint>none</doclint>
-                    <notimestamp>true</notimestamp>
-                    <sourceFileExcludes>
-                        <sourceFileExclude>**/generated-sources/*.java</sourceFileExclude>
-                    </sourceFileExcludes>
-                </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>javadoc</goal>
-                            <goal>jar</goal>
-                        </goals>
-                        <phase>verify</phase>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-source-plugin</artifactId>
-                <version>3.3.0</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                        <phase>verify</phase>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${maven.surefire.plugin.version}</version>
             </plugin>
@@ -464,5 +442,89 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <!-- calculate checksums of source release for Apache dist area -->
+                    <plugin>
+                        <groupId>net.nicoulaj.maven.plugins</groupId>
+                        <artifactId>checksum-maven-plugin</artifactId>
+                        <version>1.11</version>
+                        <executions>
+                            <execution>
+                                <id>source-release-checksum</id>
+                                <goals>
+                                    <goal>artifacts</goal>
+                                </goals>
+                                <phase>post-integration-test</phase>
+                                <configuration>
+                                    <algorithms>
+                                        <algorithm>MD5</algorithm>
+                                        <algorithm>SHA-1</algorithm>
+                                        <algorithm>SHA-512</algorithm>
+                                    </algorithms>
+                                    <includeClassifiers>source-release</includeClassifiers>
+                                    <excludeMainArtifact>true</excludeMainArtifact>
+                                    <csvSummary>false</csvSummary>
+                                    <attachChecksums>true</attachChecksums>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <!-- We want to sign the artifact, the POM, and all attached artifacts (except for SHA-512 checksum) -->
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <executions>
+                            <execution>
+                                <id>sign-release-artifacts</id>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>3.6.3</version>
+                        <configuration>
+                            <doclint>none</doclint>
+                            <notimestamp>true</notimestamp>
+                            <sourceFileExcludes>
+                                <sourceFileExclude>**/generated-sources/*.java</sourceFileExclude>
+                            </sourceFileExcludes>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>javadoc</goal>
+                                    <goal>jar</goal>
+                                </goals>
+                                <phase>verify</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>3.3.0</version>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                                <phase>verify</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>
