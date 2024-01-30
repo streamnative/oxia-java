@@ -207,7 +207,7 @@
                     </java>
                     <markdown>
                         <includes>
-                            <include>**/*.md</include>
+                            <include>**/README.md</include>
                         </includes>
                         <flexmark/>
                     </markdown>
@@ -346,6 +346,40 @@
                             <goal>integration-test</goal>
                             <goal>verify</goal>
                         </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.6.3</version>
+                <configuration>
+                    <doclint>none</doclint>
+                    <notimestamp>true</notimestamp>
+                    <sourceFileExcludes>
+                        <sourceFileExclude>**/generated-sources/*.java</sourceFileExclude>
+                    </sourceFileExcludes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>javadoc</goal>
+                            <goal>jar</goal>
+                        </goals>
+                        <phase>verify</phase>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.3.0</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                        <phase>verify</phase>
                     </execution>
                 </executions>
             </plugin>
