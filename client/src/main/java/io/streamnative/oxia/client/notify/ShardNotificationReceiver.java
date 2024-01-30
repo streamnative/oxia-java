@@ -55,7 +55,6 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
     private final @NonNull NotificationMetrics metrics;
     private @NonNull Optional<Long> startingOffset = Optional.empty();
 
-
     private Scheduler scheduler;
     private long offset;
 
