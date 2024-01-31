@@ -23,7 +23,7 @@
     <parent>
         <groupId>io.streamnative.oxia</groupId>
         <artifactId>oxia-java</artifactId>
-        <version>0.0.15-SNAPSHOT</version>
+        <version>0.1.0</version>
     </parent>
 
     <artifactId>oxia-client-metrics-api</artifactId>
