@@ -41,6 +41,13 @@
         </license>
     </licenses>
 
+    <developers>
+        <developer>
+            <organization>StreamNative Inc.</organization>
+            <organizationUrl>https://streamnative.io/</organizationUrl>
+        </developer>
+    </developers>
+
     <modules>
         <module>client</module>
         <module>client-metrics-api</module>
@@ -448,42 +455,14 @@
             <id>release</id>
             <build>
                 <plugins>
-                    <!-- calculate checksums of source release for Apache dist area -->
                     <plugin>
-                        <groupId>net.nicoulaj.maven.plugins</groupId>
-                        <artifactId>checksum-maven-plugin</artifactId>
-                        <version>1.11</version>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>3.2.1</version>
                         <executions>
                             <execution>
-                                <id>source-release-checksum</id>
+                                <id>attach-sources</id>
                                 <goals>
-                                    <goal>artifacts</goal>
-                                </goals>
-                                <phase>post-integration-test</phase>
-                                <configuration>
-                                    <algorithms>
-                                        <algorithm>MD5</algorithm>
-                                        <algorithm>SHA-1</algorithm>
-                                        <algorithm>SHA-512</algorithm>
-                                    </algorithms>
-                                    <includeClassifiers>source-release</includeClassifiers>
-                                    <excludeMainArtifact>true</excludeMainArtifact>
-                                    <csvSummary>false</csvSummary>
-                                    <attachChecksums>true</attachChecksums>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <!-- We want to sign the artifact, the POM, and all attached artifacts (except for SHA-512 checksum) -->
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-gpg-plugin</artifactId>
-                        <version>3.1.0</version>
-                        <executions>
-                            <execution>
-                                <id>sign-release-artifacts</id>
-                                <goals>
-                                    <goal>sign</goal>
+                                    <goal>jar</goal>
                                 </goals>
                             </execution>
                         </executions>
@@ -505,26 +484,43 @@
                                     <goal>javadoc</goal>
                                     <goal>jar</goal>
                                 </goals>
-                                <phase>verify</phase>
                             </execution>
                         </executions>
                     </plugin>
                     <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-source-plugin</artifactId>
-                        <version>3.3.0</version>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <configuration>
+                            <!-- Prevent `gpg` from using pinentry programs -->
+                            <gpgArguments>
+                                <arg>--pinentry-mode</arg>
+                                <arg>loopback</arg>
+                            </gpgArguments>
+                        </configuration>
                         <executions>
                             <execution>
+                                <id>sign-artifacts</id>
                                 <goals>
-                                    <goal>jar-no-fork</goal>
+                                    <goal>sign</goal>
                                 </goals>
                                 <phase>verify</phase>
                             </execution>
                         </executions>
                     </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.plugins</groupId>
+                        <artifactId>nexus-staging-maven-plugin</artifactId>
+                        <version>1.6.13</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <serverId>ossrh</serverId>
+                            <nexusUrl>https://s01.oss.sonatype.org/</nexusUrl>
+                            <autoReleaseAfterClose>true</autoReleaseAfterClose>
+                            <stagingProgressTimeoutMinutes>15</stagingProgressTimeoutMinutes>
+                        </configuration>
+                    </plugin>
                 </plugins>
             </build>
         </profile>
     </profiles>
-
 </project>
