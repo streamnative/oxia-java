@@ -46,7 +46,7 @@ public class OxiaClientFailFastIT {
             Assertions.fail("Unexpected behaviour!");
         } catch (CompletionException exception) {
             Assertions.assertNotNull(exception.getCause());
-            Assertions.assertTrue(exception.getCause() instanceof NamespaceNotFoundException);
+            Assertions.assertInstanceOf(NamespaceNotFoundException.class, exception.getCause());
         }
     }
 }

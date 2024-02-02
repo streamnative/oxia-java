@@ -150,7 +150,7 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
         return getChildrenFromStore(path)
                 .thenCompose(
                         children -> {
-                            if (children.size() > 0) {
+                            if (!children.isEmpty()) {
                                 return CompletableFuture.failedFuture(
                                         new MetadataStoreException("Key '" + path + "' has children"));
                             } else {
@@ -237,7 +237,7 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
 
     private CompletableFuture<Void> createParents(String path) {
         var parent = parent(path);
-        if (parent == null || parent.length() == 0) {
+        if (parent == null || parent.isEmpty()) {
             return CompletableFuture.completedFuture(null);
         }
         return exists(parent)
