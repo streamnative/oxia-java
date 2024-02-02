@@ -26,7 +26,7 @@
     <packaging>pom</packaging>
     <name>Oxia Client SDK for Java</name>
     <description>Oxia Client SDK for Java</description>
-    <url>http://github.com/streanative/oxia-java</url>
+    <url>http://github.com/streamnative/oxia-java</url>
     <inceptionYear>2022</inceptionYear>
 
     <organization>
