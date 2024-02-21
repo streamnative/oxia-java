@@ -51,7 +51,7 @@ jobs:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Build
-      run: mvn --no-transfer-progress --batch-mode package -DskipTests
+      run: mvn --no-transfer-progress --batch-mode package -DskipTests -Dlicense.skip=true
 
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
