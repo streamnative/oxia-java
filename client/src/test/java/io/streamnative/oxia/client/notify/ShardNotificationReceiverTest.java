@@ -22,11 +22,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-
-import io.grpc.ManagedChannel;
 import io.grpc.Server;
 import io.grpc.Status;
 import io.grpc.inprocess.InProcessChannelBuilder;
@@ -35,17 +32,15 @@ import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.Notification.KeyCreated;
 import io.streamnative.oxia.client.api.Notification.KeyDeleted;
 import io.streamnative.oxia.client.api.Notification.KeyModified;
+import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.metrics.NotificationMetrics;
 import io.streamnative.oxia.proto.NotificationBatch;
 import io.streamnative.oxia.proto.NotificationsRequest;
-import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.OxiaClientImplBase;
-import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -76,11 +71,10 @@ class ShardNotificationReceiverTest {
 
     String serverName = InProcessServerBuilder.generateName();
     Server server;
-    ManagedChannel channel;
 
     long shardId = 1L;
     String leader = "address";
-    @Mock Supplier<ReactorOxiaClientStub> stubFactory;
+    @Mock OxiaStub stub;
     @Mock Consumer<Notification> notificationCallback;
     @Mock NotificationMetrics metrics;
 
@@ -94,14 +88,12 @@ class ShardNotificationReceiverTest {
                         .addService(serviceImpl)
                         .build()
                         .start();
-        channel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
-        var stub = ReactorOxiaClientGrpc.newReactorStub(channel);
-        doReturn(stub).when(stubFactory).get();
+        stub = new OxiaStub(InProcessChannelBuilder.forName(serverName).directExecutor().build());
     }
 
     @AfterEach
-    void afterEach() {
-        channel.shutdownNow();
+    void afterEach() throws Exception {
+        stub.close();
         server.shutdownNow();
     }
 
@@ -115,7 +107,7 @@ class ShardNotificationReceiverTest {
                         .build();
         responses.offer(Flux.just(notifications).concatWith(Flux.never()));
         try (var notificationReceiver =
-                new ShardNotificationReceiver(stubFactory, shardId, notificationCallback, metrics)) {
+                new ShardNotificationReceiver(stub, shardId, notificationCallback, metrics)) {
             assertThat(notificationReceiver.start()).isCompleted();
             await()
                     .untilAsserted(
@@ -132,7 +124,7 @@ class ShardNotificationReceiverTest {
     void neverStarts() {
         responses.offer(Flux.never());
         try (var notificationReceiver =
-                new ShardNotificationReceiver(stubFactory, shardId, notificationCallback, metrics)) {
+                new ShardNotificationReceiver(stub, shardId, notificationCallback, metrics)) {
             assertThat(notificationReceiver.start()).isCompleted();
             await()
                     .untilAsserted(
@@ -149,7 +141,7 @@ class ShardNotificationReceiverTest {
                 NotificationBatch.newBuilder().putNotifications("key1", created(1L)).build();
         responses.offer(Flux.just(notifications).concatWith(Flux.never()));
         try (var notificationReceiver =
-                new ShardNotificationReceiver(stubFactory, shardId, notificationCallback, metrics)) {
+                new ShardNotificationReceiver(stub, shardId, notificationCallback, metrics)) {
             assertThat(notificationReceiver.start()).isCompleted();
             await()
                     .untilAsserted(
@@ -167,7 +159,7 @@ class ShardNotificationReceiverTest {
                 NotificationBatch.newBuilder().putNotifications("key1", created(1L)).build();
         responses.offer(Flux.just(notifications).concatWith(Flux.never()));
         try (var notificationReceiver =
-                new ShardNotificationReceiver(stubFactory, shardId, notificationCallback, metrics)) {
+                new ShardNotificationReceiver(stub, shardId, notificationCallback, metrics)) {
             assertThat(notificationReceiver.start()).isCompleted();
             await()
                     .untilAsserted(

@@ -25,7 +25,6 @@ import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
-
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import io.grpc.Status;
@@ -33,9 +32,9 @@ import io.grpc.StatusRuntimeException;
 import io.streamnative.oxia.client.CompositeConsumer;
 import io.streamnative.oxia.client.grpc.CustomStatusCode;
 import io.streamnative.oxia.client.grpc.GrpcResponseStream;
+import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.metrics.ShardAssignmentMetrics;
 import io.streamnative.oxia.client.metrics.api.Metrics;
-import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import io.streamnative.oxia.proto.ShardAssignments;
 import io.streamnative.oxia.proto.ShardAssignmentsRequest;
 import java.time.Duration;
@@ -50,7 +49,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -72,11 +70,11 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
 
     @VisibleForTesting
     ShardManager(
-            @NonNull Supplier<ReactorOxiaClientStub> stubFactory,
+            @NonNull OxiaStub stub,
             @NonNull Assignments assignments,
             @NonNull CompositeConsumer<ShardAssignmentChanges> callbacks,
             @NonNull ShardAssignmentMetrics metrics) {
-        super(stubFactory);
+        super(stub);
         this.assignments = assignments;
         this.callbacks = callbacks;
         this.metrics = metrics;
@@ -84,11 +82,11 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
     }
 
     public ShardManager(
-            @NonNull Supplier<ReactorOxiaClientStub> stubFactory,
+            @NonNull OxiaStub stub,
             @NonNull Metrics metrics,
             @NonNull String namespace) {
         this(
-                stubFactory,
+                stub,
                 new Assignments(Xxh332HashRangeShardStrategy, namespace),
                 new CompositeConsumer<>(),
                 ShardAssignmentMetrics.create(metrics));
@@ -102,7 +100,7 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
 
     @Override
     protected CompletableFuture<Void> start(
-            ReactorOxiaClientStub stub, Consumer<Disposable> consumer) {
+            OxiaStub stub, Consumer<Disposable> consumer) {
         RetryBackoffSpec retrySpec =
                 Retry.backoff(Long.MAX_VALUE, Duration.ofMillis(100))
                         .filter(this::isErrorRetryable)
@@ -110,7 +108,7 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
         var assignmentsFlux =
                 Flux.defer(
                                 () ->
-                                        stub.getShardAssignments(
+                                        stub.reactor().getShardAssignments(
                                                 ShardAssignmentsRequest.newBuilder()
                                                         .setNamespace(assignments.namespace)
                                                         .build()))

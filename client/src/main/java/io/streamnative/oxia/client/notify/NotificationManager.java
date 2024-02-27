@@ -16,17 +16,15 @@
 package io.streamnative.oxia.client.notify;
 
 import static lombok.AccessLevel.PACKAGE;
-
 import io.streamnative.oxia.client.CompositeConsumer;
 import io.streamnative.oxia.client.api.Notification;
-import io.streamnative.oxia.client.grpc.ChannelManager.StubFactory;
 import io.streamnative.oxia.client.grpc.GrpcResponseStream;
+import io.streamnative.oxia.client.grpc.OxiaStubManager;
 import io.streamnative.oxia.client.metrics.NotificationMetrics;
 import io.streamnative.oxia.client.metrics.api.Metrics;
 import io.streamnative.oxia.client.shard.ShardManager;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChange.Added;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChanges;
-import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -50,12 +48,12 @@ public class NotificationManager implements AutoCloseable, Consumer<ShardAssignm
     private volatile boolean closed = false;
 
     public NotificationManager(
-            @NonNull StubFactory<ReactorOxiaClientStub> reactorStubFactory,
+            @NonNull OxiaStubManager stubManager,
             @NonNull ShardManager shardManager,
             @NonNull Metrics metrics) {
         this.compositeCallback = new CompositeConsumer<>();
         this.recieverFactory =
-                new ShardNotificationReceiver.Factory(reactorStubFactory, compositeCallback);
+                new ShardNotificationReceiver.Factory(stubManager, compositeCallback);
         this.shardManager = shardManager;
         this.metrics = NotificationMetrics.create(metrics);
     }

@@ -27,10 +27,10 @@ import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperatio
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation.SessionInfo;
+import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.metrics.BatchMetrics;
 import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.proto.GetResponse;
-import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import io.streamnative.oxia.proto.ReadRequest;
 import io.streamnative.oxia.proto.WriteRequest;
 import java.time.Clock;
@@ -70,7 +70,7 @@ public interface Batch {
         private long bytes;
 
         WriteBatch(
-                @NonNull Function<Long, ReactorOxiaClientStub> stubByShardId,
+                @NonNull Function<Long, OxiaStub> stubByShardId,
                 @NonNull SessionManager sessionManager,
                 @NonNull String clientIdentifier,
                 long shardId,
@@ -125,7 +125,7 @@ public interface Batch {
             sample.startExec();
             Throwable t = null;
             try {
-                var response = getStub().write(toProto()).block();
+                var response = getStub().reactor().write(toProto()).block();
                 for (var i = 0; i < deletes.size(); i++) {
                     deletes.get(i).complete(response.getDeletes(i));
                 }
@@ -180,7 +180,7 @@ public interface Batch {
         }
 
         ReadBatch(
-                @NonNull Function<Long, ReactorOxiaClientStub> stubByShardId,
+                @NonNull Function<Long, OxiaStub> stubByShardId,
                 long shardId,
                 long createTime,
                 BatchMetrics.Sample sample) {
@@ -199,7 +199,7 @@ public interface Batch {
             LongAdder bytes = new LongAdder();
             try {
                 var responses =
-                        getStub()
+                        getStub().reactor()
                                 .read(toProto())
                                 .flatMapSequential(response -> Flux.fromIterable(response.getGetsList()))
                                 .doOnNext(r -> bytes.add(r.getValue().size()));
@@ -227,19 +227,19 @@ public interface Batch {
 
     @RequiredArgsConstructor(access = PRIVATE)
     abstract class BatchBase {
-        private final @NonNull Function<Long, ReactorOxiaClientStub> stubByShardId;
+        private final @NonNull Function<Long, OxiaStub> stubByShardId;
         @Getter private final long shardId;
         @Getter private final long startTime;
         final BatchMetrics.Sample sample;
 
-        protected ReactorOxiaClientStub getStub() {
+        protected OxiaStub getStub() {
             return stubByShardId.apply(shardId);
         }
     }
 
     @RequiredArgsConstructor(access = PACKAGE)
     abstract class BatchFactory implements Function<Long, Batch> {
-        final @NonNull Function<Long, ReactorOxiaClientStub> stubByShardId;
+        final @NonNull Function<Long, OxiaStub> stubByShardId;
 
         @Getter(PACKAGE)
         private final @NonNull ClientConfig config;
@@ -254,7 +254,7 @@ public interface Batch {
         final @NonNull SessionManager sessionManager;
 
         public WriteBatchFactory(
-                @NonNull Function<Long, ReactorOxiaClientStub> stubByShardId,
+                @NonNull Function<Long, OxiaStub> stubByShardId,
                 @NonNull SessionManager sessionManager,
                 @NonNull ClientConfig config,
                 @NonNull Clock clock,
@@ -278,7 +278,7 @@ public interface Batch {
 
     class ReadBatchFactory extends BatchFactory {
         public ReadBatchFactory(
-                @NonNull Function<Long, ReactorOxiaClientStub> stubByShardId,
+                @NonNull Function<Long, OxiaStub> stubByShardId,
                 @NonNull ClientConfig config,
                 @NonNull Clock clock,
                 @NonNull BatchMetrics metrics) {

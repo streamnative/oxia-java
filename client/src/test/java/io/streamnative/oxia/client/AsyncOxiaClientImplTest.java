@@ -27,7 +27,6 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-
 import io.streamnative.oxia.client.api.DeleteOption;
 import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.PutResult;
@@ -38,8 +37,8 @@ import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
-import io.streamnative.oxia.client.grpc.ChannelManager;
-import io.streamnative.oxia.client.grpc.ChannelManager.StubFactory;
+import io.streamnative.oxia.client.grpc.OxiaStub;
+import io.streamnative.oxia.client.grpc.OxiaStubManager;
 import io.streamnative.oxia.client.metrics.OperationMetrics;
 import io.streamnative.oxia.client.metrics.OperationMetrics.Sample;
 import io.streamnative.oxia.client.notify.NotificationManager;
@@ -60,14 +59,14 @@ import reactor.core.publisher.Flux;
 
 @ExtendWith(MockitoExtension.class)
 class AsyncOxiaClientImplTest {
-    @Mock ChannelManager channelManager;
+    @Mock
+    OxiaStubManager stubManager;
     @Mock ShardManager shardManager;
     @Mock NotificationManager notificationManager;
     @Mock BatchManager readBatchManager;
     @Mock BatchManager writeBatchManager;
     @Mock SessionManager sessionManager;
     @Mock Batcher batcher;
-    @Mock StubFactory<ReactorOxiaClientStub> reactorStubFactory;
     @Mock OperationMetrics metrics;
 
     AsyncOxiaClientImpl client;
@@ -76,13 +75,12 @@ class AsyncOxiaClientImplTest {
     void setUp() {
         client =
                 new AsyncOxiaClientImpl(
-                        channelManager,
+                        stubManager,
                         shardManager,
                         notificationManager,
                         readBatchManager,
                         writeBatchManager,
                         sessionManager,
-                        reactorStubFactory,
                         metrics);
     }
 
@@ -412,8 +410,8 @@ class AsyncOxiaClientImplTest {
 
     @Test
     void list(
-            @Mock ReactorOxiaClientStub stub0,
-            @Mock ReactorOxiaClientStub stub1,
+            @Mock OxiaStub stub0,
+            @Mock OxiaStub stub1,
             @Mock Sample<List<String>> sample) {
         when(metrics.recordList()).thenReturn(sample);
         when(shardManager.getAll()).thenReturn(List.of(0L, 1L));
@@ -447,10 +445,14 @@ class AsyncOxiaClientImplTest {
         assertThat(client.list("a", null)).isCompletedExceptionally();
     }
 
-    private void setupListStub(long shardId, String leader, ReactorOxiaClientStub stub) {
+    private void setupListStub(long shardId, String leader, OxiaStub stub) {
         when(shardManager.leader(shardId)).thenReturn(leader);
-        when(reactorStubFactory.apply(leader)).thenReturn(stub);
-        when(stub.list(any(ListRequest.class)))
+        when(stubManager.getStub(leader)).thenReturn(stub);
+
+        var reactor = mock(ReactorOxiaClientStub.class);
+        when(stub.reactor()).thenReturn(reactor);
+        when(reactor
+                .list(any(ListRequest.class)))
                 .thenReturn(
                         Flux.just(listResponse(shardId, "a", "b"), listResponse(shardId, "c", "d"))
                                 .delayElements(Duration.ofMillis(1)));
@@ -467,11 +469,11 @@ class AsyncOxiaClientImplTest {
         client.close();
         var inOrder =
                 inOrder(
-                        readBatchManager, writeBatchManager, notificationManager, shardManager, channelManager);
+                        readBatchManager, writeBatchManager, notificationManager, shardManager, stubManager);
         inOrder.verify(readBatchManager).close();
         inOrder.verify(writeBatchManager).close();
         inOrder.verify(notificationManager).close();
         inOrder.verify(shardManager).close();
-        inOrder.verify(channelManager).close();
+        inOrder.verify(stubManager).close();
     }
 }

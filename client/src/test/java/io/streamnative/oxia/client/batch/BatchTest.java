@@ -17,7 +17,6 @@ package io.streamnative.oxia.client.batch;
 
 import static io.streamnative.oxia.client.OxiaClientBuilder.DefaultNamespace;
 import static io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientImplBase;
-import static io.streamnative.oxia.proto.ReactorOxiaClientGrpc.newReactorStub;
 import static io.streamnative.oxia.proto.Status.KEY_NOT_FOUND;
 import static io.streamnative.oxia.proto.Status.OK;
 import static io.streamnative.oxia.proto.Status.UNEXPECTED_VERSION_ID;
@@ -30,8 +29,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-
-import io.grpc.ManagedChannel;
 import io.grpc.Server;
 import io.grpc.StatusRuntimeException;
 import io.grpc.inprocess.InProcessChannelBuilder;
@@ -48,6 +45,7 @@ import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperatio
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation.SessionInfo;
+import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.metrics.BatchMetrics;
 import io.streamnative.oxia.client.metrics.api.Metrics;
 import io.streamnative.oxia.client.session.Session;
@@ -57,7 +55,6 @@ import io.streamnative.oxia.proto.DeleteRangeResponse;
 import io.streamnative.oxia.proto.DeleteResponse;
 import io.streamnative.oxia.proto.GetResponse;
 import io.streamnative.oxia.proto.PutResponse;
-import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import io.streamnative.oxia.proto.ReadRequest;
 import io.streamnative.oxia.proto.ReadResponse;
 import io.streamnative.oxia.proto.WriteRequest;
@@ -81,7 +78,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class BatchTest {
-    Function<Long, ReactorOxiaClientStub> clientByShardId;
+    Function<Long, OxiaStub> clientByShardId;
     @Mock SessionManager sessionManager;
     @Mock Session session;
     long shardId = 1L;
@@ -107,7 +104,7 @@ class BatchTest {
                             }));
 
     private Server server;
-    private ManagedChannel channel;
+    private OxiaStub stub;
     private final List<Consumer<StreamObserver<WriteResponse>>> writeResponses = new ArrayList<>();
     private final List<Consumer<StreamObserver<ReadResponse>>> readResponses = new ArrayList<>();
 
@@ -121,14 +118,14 @@ class BatchTest {
                         .addService(serviceImpl)
                         .build()
                         .start();
-        channel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
-        clientByShardId = s -> newReactorStub(channel);
+        stub = new OxiaStub(InProcessChannelBuilder.forName(serverName).directExecutor().build());
+        clientByShardId = s -> stub;
     }
 
     @AfterEach
-    void tearDown() {
+    void tearDown() throws Exception {
         server.shutdownNow();
-        channel.shutdownNow();
+        stub.close();
     }
 
     @Nested

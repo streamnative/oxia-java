@@ -21,12 +21,11 @@ import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.verify;
-
-import io.grpc.ManagedChannel;
 import io.grpc.Server;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
 import io.streamnative.oxia.client.ClientConfig;
+import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.metrics.SessionMetrics;
 import io.streamnative.oxia.client.metrics.api.Metrics;
 import io.streamnative.oxia.proto.CloseSessionRequest;
@@ -53,7 +52,7 @@ import reactor.test.StepVerifier;
 @ExtendWith(MockitoExtension.class)
 class SessionTest {
 
-    Function<Long, ReactorOxiaClientGrpc.ReactorOxiaClientStub> stubByShardId;
+    Function<Long, OxiaStub> stubByShardId;
     ClientConfig config;
     long shardId = 1L;
     long sessionId = 2L;
@@ -61,7 +60,7 @@ class SessionTest {
     String clientId = "client";
 
     private Server server;
-    private ManagedChannel channel;
+    private OxiaStub stub;
     private TestService service;
 
     @Mock SessionMetrics metrics;
@@ -91,18 +90,19 @@ class SessionTest {
                         .addService(service)
                         .build()
                         .start();
-        channel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
-        stubByShardId = s -> ReactorOxiaClientGrpc.newReactorStub(channel);
+        stub = new OxiaStub(InProcessChannelBuilder.forName(serverName).directExecutor().build());
+
+        stubByShardId = s -> stub;
     }
 
     @AfterEach
-    public void stopServer() throws InterruptedException {
+    public void stopServer() throws Exception {
         server.shutdown();
         server.awaitTermination();
-        channel.shutdown();
+        stub.close();
 
         server = null;
-        channel = null;
+        stub = null;
     }
 
     @Test

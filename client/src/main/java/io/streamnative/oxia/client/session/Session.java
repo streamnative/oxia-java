@@ -17,13 +17,12 @@ package io.streamnative.oxia.client.session;
 
 import static lombok.AccessLevel.PACKAGE;
 import static lombok.AccessLevel.PUBLIC;
-
 import com.google.common.annotations.VisibleForTesting;
 import io.streamnative.oxia.client.ClientConfig;
+import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.metrics.SessionMetrics;
 import io.streamnative.oxia.proto.CloseSessionRequest;
 import io.streamnative.oxia.proto.CreateSessionRequest;
-import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
 import io.streamnative.oxia.proto.SessionHeartbeat;
 import java.time.Duration;
 import java.util.function.Function;
@@ -42,7 +41,7 @@ import reactor.util.retry.RetryBackoffSpec;
 @Slf4j
 public class Session implements AutoCloseable {
 
-    private final @NonNull Function<Long, ReactorOxiaClientGrpc.ReactorOxiaClientStub> stubByShardId;
+    private final @NonNull Function<Long, OxiaStub> stubByShardId;
     private final @NonNull Duration sessionTimeout;
     private final @NonNull Duration heartbeatInterval;
 
@@ -60,7 +59,7 @@ public class Session implements AutoCloseable {
     private Disposable keepAliveSubscription;
 
     Session(
-            @NonNull Function<Long, ReactorOxiaClientGrpc.ReactorOxiaClientStub> stubByShardId,
+            @NonNull Function<Long, OxiaStub> stubByShardId,
             @NonNull ClientConfig config,
             long shardId,
             long sessionId,
@@ -92,7 +91,7 @@ public class Session implements AutoCloseable {
                 Mono.just(heartbeat)
                         .repeat()
                         .delayElements(heartbeatInterval)
-                        .flatMap(hb -> stubByShardId.apply(shardId).keepAlive(hb))
+                        .flatMap(hb -> stubByShardId.apply(shardId).reactor().keepAlive(hb))
                         .retryWhen(retrySpec)
                         .timeout(sessionTimeout)
                         .publishOn(scheduler)
@@ -108,14 +107,14 @@ public class Session implements AutoCloseable {
         var stub = stubByShardId.apply(shardId);
         var request =
                 CloseSessionRequest.newBuilder().setShardId(shardId).setSessionId(sessionId).build();
-        stub.closeSession(request).block();
+        stub.reactor().closeSession(request).block();
         scheduler.dispose();
     }
 
     @RequiredArgsConstructor(access = PACKAGE)
     static class Factory {
         @NonNull ClientConfig config;
-        @NonNull Function<Long, ReactorOxiaClientGrpc.ReactorOxiaClientStub> stubByShardId;
+        @NonNull Function<Long, OxiaStub> stubByShardId;
         @NonNull SessionMetrics metrics;
 
         @NonNull
@@ -127,7 +126,7 @@ public class Session implements AutoCloseable {
                             .setShardId(shardId)
                             .setClientIdentity(config.clientIdentifier())
                             .build();
-            var response = stub.createSession(request).block();
+            var response = stub.reactor().createSession(request).block();
             if (response == null) {
                 throw new IllegalStateException("Empty session returned for shardId: " + shardId);
             }

@@ -18,22 +18,20 @@ package io.streamnative.oxia.client.notify;
 import static io.streamnative.oxia.client.api.Notification.KeyModified;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static lombok.AccessLevel.PACKAGE;
-
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.Notification.KeyCreated;
 import io.streamnative.oxia.client.api.Notification.KeyDeleted;
-import io.streamnative.oxia.client.grpc.ChannelManager.StubFactory;
 import io.streamnative.oxia.client.grpc.GrpcResponseStream;
+import io.streamnative.oxia.client.grpc.OxiaStub;
+import io.streamnative.oxia.client.grpc.OxiaStubManager;
 import io.streamnative.oxia.client.metrics.NotificationMetrics;
 import io.streamnative.oxia.proto.NotificationBatch;
 import io.streamnative.oxia.proto.NotificationsRequest;
-import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -59,11 +57,11 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
     private long offset;
 
     ShardNotificationReceiver(
-            @NonNull Supplier<ReactorOxiaClientStub> stubFactory,
+            @NonNull OxiaStub stub,
             long shardId,
             @NonNull Consumer<Notification> callback,
             @NonNull NotificationMetrics metrics) {
-        super(stubFactory);
+        super(stub);
         this.shardId = shardId;
         this.callback = callback;
         this.metrics = metrics;
@@ -88,7 +86,7 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
 
     @Override
     protected @NonNull CompletableFuture<Void> start(
-            @NonNull ReactorOxiaClientStub stub, @NonNull Consumer<Disposable> consumer) {
+            @NonNull OxiaStub stub, @NonNull Consumer<Disposable> consumer) {
         var request = NotificationsRequest.newBuilder().setShardId(shardId);
         startingOffset.ifPresent(o -> request.setStartOffsetExclusive(o));
         // TODO filter non-retriables?
@@ -100,7 +98,7 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
         var threadName = String.format("shard-%s-notifications", shardId);
         scheduler = Schedulers.newSingle(threadName);
         var disposable =
-                Flux.defer(() -> stub.getNotifications(request.build()))
+                Flux.defer(() -> stub.reactor().getNotifications(request.build()))
                         .doOnError(t -> log.warn("Error receiving notifications for shard {}", shardId, t))
                         .doOnEach(metrics::recordBatch)
                         .retryWhen(retrySpec)
@@ -135,14 +133,14 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
 
     @RequiredArgsConstructor(access = PACKAGE)
     static class Factory {
-        private final @NonNull StubFactory<ReactorOxiaClientStub> reactorStubFactory;
+        private final @NonNull OxiaStubManager stubManager;
         private final @NonNull Consumer<Notification> callback;
 
         @NonNull
         ShardNotificationReceiver newReceiver(
                 long shardId, @NonNull String leader, @NonNull NotificationMetrics metrics) {
             return new ShardNotificationReceiver(
-                    () -> reactorStubFactory.apply(leader), shardId, callback, metrics);
+                    stubManager.getStub(leader), shardId, callback, metrics);
         }
     }
 }
