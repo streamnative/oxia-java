@@ -16,6 +16,7 @@
 package io.streamnative.oxia.client.grpc;
 
 import static lombok.AccessLevel.PROTECTED;
+
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import lombok.NonNull;

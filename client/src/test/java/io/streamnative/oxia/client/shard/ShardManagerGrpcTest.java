@@ -23,6 +23,7 @@ import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
+
 import io.grpc.Server;
 import io.grpc.Status;
 import io.grpc.inprocess.InProcessChannelBuilder;
@@ -70,12 +71,9 @@ class ShardManagerGrpcTest {
     String serverName = InProcessServerBuilder.generateName();
     Server server;
 
-    @Mock
-    OxiaStub stub;
-    @Mock
-    Metrics metrics;
-    @Mock
-    Metrics.Histogram histogram;
+    @Mock OxiaStub stub;
+    @Mock Metrics metrics;
+    @Mock Metrics.Histogram histogram;
 
     @BeforeEach
     void beforeEach() throws Exception {

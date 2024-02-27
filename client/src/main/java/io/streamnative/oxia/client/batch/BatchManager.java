@@ -18,6 +18,7 @@ package io.streamnative.oxia.client.batch;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toList;
 import static lombok.AccessLevel.PACKAGE;
+
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.metrics.BatchMetrics;

@@ -17,6 +17,7 @@ package io.streamnative.oxia.client.session;
 
 import static java.util.Collections.unmodifiableMap;
 import static lombok.AccessLevel.PACKAGE;
+
 import com.google.common.annotations.VisibleForTesting;
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.grpc.OxiaStub;
@@ -43,8 +44,7 @@ public class SessionManager implements AutoCloseable, Consumer<ShardAssignmentCh
     private volatile boolean closed = false;
 
     public SessionManager(
-            @NonNull ClientConfig config,
-            @NonNull Function<Long, OxiaStub> stubByShardId) {
+            @NonNull ClientConfig config, @NonNull Function<Long, OxiaStub> stubByShardId) {
         this(new Session.Factory(config, stubByShardId, SessionMetrics.create(config.metrics())));
     }
 

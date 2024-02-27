@@ -16,6 +16,7 @@
 package io.streamnative.oxia.client.grpc;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+
 import io.grpc.Grpc;
 import io.grpc.InsecureChannelCredentials;
 import io.grpc.ManagedChannel;
@@ -31,10 +32,7 @@ public class OxiaStub implements AutoCloseable {
     private final @NonNull OxiaClientGrpc.OxiaClientBlockingStub blockingStub;
 
     public OxiaStub(String address) {
-        this(
-                Grpc.newChannelBuilder(address, InsecureChannelCredentials.create())
-                .build()
-        );
+        this(Grpc.newChannelBuilder(address, InsecureChannelCredentials.create()).build());
     }
 
     public OxiaStub(ManagedChannel channel) {

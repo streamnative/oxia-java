@@ -16,6 +16,7 @@
 package io.streamnative.oxia.client;
 
 import static java.util.stream.Collectors.toList;
+
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.DeleteOption;
 import io.streamnative.oxia.client.api.GetResult;
@@ -55,8 +56,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
         var serviceAddrStub = stubManager.getStub(config.serviceAddress());
         var shardManager = new ShardManager(serviceAddrStub, config.metrics(), config.namespace());
-        var notificationManager =
-                new NotificationManager(stubManager, shardManager, config.metrics());
+        var notificationManager = new NotificationManager(stubManager, shardManager, config.metrics());
 
         Function<Long, String> leaderFn = shardManager::leader;
         var stubByShardId = leaderFn.andThen(stubManager::getStub);

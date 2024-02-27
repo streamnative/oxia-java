@@ -25,6 +25,7 @@ import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import io.grpc.Status;
@@ -81,10 +82,7 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
         this.scheduler = Schedulers.newSingle("shard-assignments");
     }
 
-    public ShardManager(
-            @NonNull OxiaStub stub,
-            @NonNull Metrics metrics,
-            @NonNull String namespace) {
+    public ShardManager(@NonNull OxiaStub stub, @NonNull Metrics metrics, @NonNull String namespace) {
         this(
                 stub,
                 new Assignments(Xxh332HashRangeShardStrategy, namespace),
@@ -99,8 +97,7 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
     }
 
     @Override
-    protected CompletableFuture<Void> start(
-            OxiaStub stub, Consumer<Disposable> consumer) {
+    protected CompletableFuture<Void> start(OxiaStub stub, Consumer<Disposable> consumer) {
         RetryBackoffSpec retrySpec =
                 Retry.backoff(Long.MAX_VALUE, Duration.ofMillis(100))
                         .filter(this::isErrorRetryable)
@@ -108,10 +105,11 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
         var assignmentsFlux =
                 Flux.defer(
                                 () ->
-                                        stub.reactor().getShardAssignments(
-                                                ShardAssignmentsRequest.newBuilder()
-                                                        .setNamespace(assignments.namespace)
-                                                        .build()))
+                                        stub.reactor()
+                                                .getShardAssignments(
+                                                        ShardAssignmentsRequest.newBuilder()
+                                                                .setNamespace(assignments.namespace)
+                                                                .build()))
                         .doOnError(this::processError)
                         .retryWhen(retrySpec)
                         .repeat()

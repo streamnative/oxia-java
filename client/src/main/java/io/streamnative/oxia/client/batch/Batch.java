@@ -199,7 +199,8 @@ public interface Batch {
             LongAdder bytes = new LongAdder();
             try {
                 var responses =
-                        getStub().reactor()
+                        getStub()
+                                .reactor()
                                 .read(toProto())
                                 .flatMapSequential(response -> Flux.fromIterable(response.getGetsList()))
                                 .doOnNext(r -> bytes.add(r.getValue().size()));

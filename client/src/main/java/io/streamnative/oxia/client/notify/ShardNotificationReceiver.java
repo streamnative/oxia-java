@@ -18,6 +18,7 @@ package io.streamnative.oxia.client.notify;
 import static io.streamnative.oxia.client.api.Notification.KeyModified;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static lombok.AccessLevel.PACKAGE;
+
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.Notification.KeyCreated;
 import io.streamnative.oxia.client.api.Notification.KeyDeleted;
@@ -139,8 +140,7 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
         @NonNull
         ShardNotificationReceiver newReceiver(
                 long shardId, @NonNull String leader, @NonNull NotificationMetrics metrics) {
-            return new ShardNotificationReceiver(
-                    stubManager.getStub(leader), shardId, callback, metrics);
+            return new ShardNotificationReceiver(stubManager.getStub(leader), shardId, callback, metrics);
         }
     }
 }

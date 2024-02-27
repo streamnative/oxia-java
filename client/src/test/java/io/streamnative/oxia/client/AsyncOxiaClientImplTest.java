@@ -27,6 +27,7 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
 import io.streamnative.oxia.client.api.DeleteOption;
 import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.PutResult;
@@ -59,8 +60,7 @@ import reactor.core.publisher.Flux;
 
 @ExtendWith(MockitoExtension.class)
 class AsyncOxiaClientImplTest {
-    @Mock
-    OxiaStubManager stubManager;
+    @Mock OxiaStubManager stubManager;
     @Mock ShardManager shardManager;
     @Mock NotificationManager notificationManager;
     @Mock BatchManager readBatchManager;
@@ -409,10 +409,7 @@ class AsyncOxiaClientImplTest {
     }
 
     @Test
-    void list(
-            @Mock OxiaStub stub0,
-            @Mock OxiaStub stub1,
-            @Mock Sample<List<String>> sample) {
+    void list(@Mock OxiaStub stub0, @Mock OxiaStub stub1, @Mock Sample<List<String>> sample) {
         when(metrics.recordList()).thenReturn(sample);
         when(shardManager.getAll()).thenReturn(List.of(0L, 1L));
         setupListStub(0L, "leader0", stub0);
@@ -451,8 +448,7 @@ class AsyncOxiaClientImplTest {
 
         var reactor = mock(ReactorOxiaClientStub.class);
         when(stub.reactor()).thenReturn(reactor);
-        when(reactor
-                .list(any(ListRequest.class)))
+        when(reactor.list(any(ListRequest.class)))
                 .thenReturn(
                         Flux.just(listResponse(shardId, "a", "b"), listResponse(shardId, "c", "d"))
                                 .delayElements(Duration.ofMillis(1)));

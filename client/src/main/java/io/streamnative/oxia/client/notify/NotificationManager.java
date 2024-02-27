@@ -16,6 +16,7 @@
 package io.streamnative.oxia.client.notify;
 
 import static lombok.AccessLevel.PACKAGE;
+
 import io.streamnative.oxia.client.CompositeConsumer;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.grpc.GrpcResponseStream;
@@ -52,8 +53,7 @@ public class NotificationManager implements AutoCloseable, Consumer<ShardAssignm
             @NonNull ShardManager shardManager,
             @NonNull Metrics metrics) {
         this.compositeCallback = new CompositeConsumer<>();
-        this.recieverFactory =
-                new ShardNotificationReceiver.Factory(stubManager, compositeCallback);
+        this.recieverFactory = new ShardNotificationReceiver.Factory(stubManager, compositeCallback);
         this.shardManager = shardManager;
         this.metrics = NotificationMetrics.create(metrics);
     }
