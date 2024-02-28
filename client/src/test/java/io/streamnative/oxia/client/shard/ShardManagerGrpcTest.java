@@ -22,20 +22,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
-import io.grpc.ManagedChannel;
 import io.grpc.Server;
 import io.grpc.Status;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
+import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.metrics.api.Metrics;
 import io.streamnative.oxia.proto.Int32HashRange;
 import io.streamnative.oxia.proto.NamespaceShardsAssignment;
-import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.OxiaClientImplBase;
-import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import io.streamnative.oxia.proto.ShardAssignment;
 import io.streamnative.oxia.proto.ShardAssignments;
 import io.streamnative.oxia.proto.ShardAssignmentsRequest;
@@ -44,7 +41,6 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Supplier;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -74,8 +70,8 @@ class ShardManagerGrpcTest {
 
     String serverName = InProcessServerBuilder.generateName();
     Server server;
-    ManagedChannel channel;
-    @Mock Supplier<ReactorOxiaClientStub> stubFactory;
+
+    @Mock OxiaStub stub;
     @Mock Metrics metrics;
     @Mock Metrics.Histogram histogram;
 
@@ -89,15 +85,14 @@ class ShardManagerGrpcTest {
                         .addService(serviceImpl)
                         .build()
                         .start();
-        channel = InProcessChannelBuilder.forName(serverName).directExecutor().build();
-        var stub = ReactorOxiaClientGrpc.newReactorStub(channel);
-        doReturn(stub).when(stubFactory).get();
+
+        stub = new OxiaStub(InProcessChannelBuilder.forName(serverName).directExecutor().build());
         when(metrics.histogram(anyString(), any(Metrics.Unit.class))).thenReturn(histogram);
     }
 
     @AfterEach
-    void afterEach() {
-        channel.shutdownNow();
+    void afterEach() throws Exception {
+        stub.close();
         server.shutdownNow();
     }
 
@@ -110,7 +105,7 @@ class ShardManagerGrpcTest {
                                 NamespaceShardsAssignment.newBuilder().addAssignments(assignment(0, 0, 3)).build())
                         .build();
         responses.offer(Flux.just(assignments).concatWith(Flux.never()));
-        try (var shardManager = new ShardManager(stubFactory, metrics, DefaultNamespace)) {
+        try (var shardManager = new ShardManager(stub, metrics, DefaultNamespace)) {
             assertThat(shardManager.start()).succeedsWithin(Duration.ofSeconds(1));
             assertThat(shardManager.getAll()).containsExactlyInAnyOrder(0L);
             assertThat(shardManager.leader(0)).isEqualTo("leader0");
@@ -120,7 +115,7 @@ class ShardManagerGrpcTest {
     @Test
     void neverStarts() {
         responses.offer(Flux.never());
-        try (var shardManager = new ShardManager(stubFactory, metrics, DefaultNamespace)) {
+        try (var shardManager = new ShardManager(stub, metrics, DefaultNamespace)) {
             assertThatThrownBy(() -> shardManager.start().get(1, SECONDS))
                     .isInstanceOf(TimeoutException.class);
             assertThat(shardManager.getAll()).isEmpty();
@@ -145,7 +140,7 @@ class ShardManagerGrpcTest {
                                         .build())
                         .build();
         responses.offer(Flux.just(assignments0, assignments1).concatWith(Flux.never()));
-        try (var shardManager = new ShardManager(stubFactory, metrics, DefaultNamespace)) {
+        try (var shardManager = new ShardManager(stub, metrics, DefaultNamespace)) {
             shardManager.start().join();
             await()
                     .untilAsserted(
@@ -167,7 +162,7 @@ class ShardManagerGrpcTest {
                                 NamespaceShardsAssignment.newBuilder().addAssignments(assignment(0, 0, 3)).build())
                         .build();
         responses.offer(Flux.just(assignments).concatWith(Flux.never()));
-        try (var shardManager = new ShardManager(stubFactory, metrics, DefaultNamespace)) {
+        try (var shardManager = new ShardManager(stub, metrics, DefaultNamespace)) {
             assertThat(shardManager.start()).succeedsWithin(Duration.ofSeconds(1));
             assertThat(shardManager.getAll()).containsExactlyInAnyOrder(0L);
             assertThat(shardManager.leader(0)).isEqualTo("leader0");
@@ -185,7 +180,7 @@ class ShardManagerGrpcTest {
                                 NamespaceShardsAssignment.newBuilder().addAssignments(assignment(0, 0, 3)).build())
                         .build();
         responses.offer(Flux.just(assignments).concatWith(Flux.never()));
-        try (var shardManager = new ShardManager(stubFactory, metrics, DefaultNamespace)) {
+        try (var shardManager = new ShardManager(stub, metrics, DefaultNamespace)) {
             assertThat(shardManager.start()).succeedsWithin(Duration.ofSeconds(1));
             assertThat(shardManager.getAll()).containsExactlyInAnyOrder(0L);
             assertThat(shardManager.leader(0)).isEqualTo("leader0");

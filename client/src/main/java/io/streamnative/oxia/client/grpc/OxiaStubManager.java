@@ -15,17 +15,20 @@
  */
 package io.streamnative.oxia.client.grpc;
 
-import lombok.NonNull;
-import lombok.SneakyThrows;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-record ServiceAddress(@NonNull String serviceAddress) {
+public class OxiaStubManager implements AutoCloseable {
+    private final Map<String, OxiaStub> stubs = new ConcurrentHashMap<>();
 
-    public @NonNull String host() {
-        return serviceAddress.split(":")[0];
+    public OxiaStub getStub(String address) {
+        return stubs.computeIfAbsent(address, OxiaStub::new);
     }
 
-    @SneakyThrows
-    public int port() {
-        return Integer.parseInt(serviceAddress.split(":")[1]);
+    @Override
+    public void close() throws Exception {
+        for (OxiaStub stub : stubs.values()) {
+            stub.close();
+        }
     }
 }

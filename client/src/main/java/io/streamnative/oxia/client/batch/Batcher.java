@@ -20,9 +20,9 @@ import static lombok.AccessLevel.PACKAGE;
 
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.batch.Operation.CloseOperation;
+import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.metrics.BatchMetrics;
 import io.streamnative.oxia.client.session.SessionManager;
-import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import java.time.Clock;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
@@ -112,7 +112,7 @@ public class Batcher implements Runnable, AutoCloseable {
 
     static @NonNull Function<Long, Batcher> newReadBatcherFactory(
             @NonNull ClientConfig config,
-            @NonNull Function<Long, ReactorOxiaClientStub> stubByShardId,
+            @NonNull Function<Long, OxiaStub> stubByShardId,
             Clock clock,
             BatchMetrics metrics) {
         return s ->
@@ -121,7 +121,7 @@ public class Batcher implements Runnable, AutoCloseable {
 
     static @NonNull Function<Long, Batcher> newWriteBatcherFactory(
             @NonNull ClientConfig config,
-            @NonNull Function<Long, ReactorOxiaClientStub> stubByShardId,
+            @NonNull Function<Long, OxiaStub> stubByShardId,
             @NonNull SessionManager sessionManager,
             Clock clock,
             BatchMetrics metrics) {

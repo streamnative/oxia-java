@@ -25,14 +25,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.streamnative.oxia.client.CompositeConsumer;
+import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.metrics.ShardAssignmentMetrics;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChange.Added;
 import io.streamnative.oxia.proto.NamespaceShardsAssignment;
-import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
+import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
 import io.streamnative.oxia.proto.ShardAssignment;
 import io.streamnative.oxia.proto.ShardAssignments;
 import io.streamnative.oxia.proto.ShardAssignmentsRequest;
@@ -42,7 +44,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
-import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -175,21 +176,26 @@ public class ShardManagerTest {
         ShardManager.Assignments assignments =
                 new ShardManager.Assignments(Xxh332HashRangeShardStrategy, DefaultNamespace);
 
-        @Mock Supplier<ReactorOxiaClientStub> stubFactory;
+        @Mock ReactorOxiaClientGrpc.ReactorOxiaClientStub reactor;
+        @Mock OxiaStub stub;
         @Mock ShardAssignmentMetrics metrics;
         ShardManager manager;
 
         @BeforeEach
         void mocking() {
-            manager = new ShardManager(stubFactory, assignments, new CompositeConsumer<>(), metrics);
+            stub = mock(OxiaStub.class);
+            reactor = mock(ReactorOxiaClientGrpc.ReactorOxiaClientStub.class);
+
+            manager = new ShardManager(stub, assignments, new CompositeConsumer<>(), metrics);
         }
 
         @Test
-        void start(@Mock ReactorOxiaClientStub stub) {
-            when(stubFactory.get()).thenReturn(stub);
+        void start() {
             var assignment = ShardAssignment.newBuilder().setShardId(0).setLeader("leader0").build();
             var nsAssignment = NamespaceShardsAssignment.newBuilder().addAssignments(assignment).build();
-            when(stub.getShardAssignments(
+
+            when(stub.reactor()).thenReturn(reactor);
+            when(reactor.getShardAssignments(
                             ShardAssignmentsRequest.newBuilder().setNamespace(namespace).build()))
                     .thenReturn(
                             Flux.just(

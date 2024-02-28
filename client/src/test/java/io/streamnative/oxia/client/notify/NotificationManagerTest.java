@@ -38,7 +38,8 @@ import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.Notification.KeyCreated;
 import io.streamnative.oxia.client.api.Notification.KeyDeleted;
 import io.streamnative.oxia.client.api.Notification.KeyModified;
-import io.streamnative.oxia.client.grpc.ChannelManager.StubFactory;
+import io.streamnative.oxia.client.grpc.OxiaStub;
+import io.streamnative.oxia.client.grpc.OxiaStubManager;
 import io.streamnative.oxia.client.metrics.NotificationMetrics;
 import io.streamnative.oxia.client.metrics.api.Metrics;
 import io.streamnative.oxia.client.shard.ShardManager;
@@ -49,7 +50,6 @@ import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChanges;
 import io.streamnative.oxia.proto.NotificationBatch;
 import io.streamnative.oxia.proto.NotificationsRequest;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
-import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -256,7 +256,7 @@ class NotificationManagerTest {
 
         long shardId1 = 1L;
         long shardId2 = 2L;
-        @Mock StubFactory<ReactorOxiaClientStub> stubByShardId;
+        @Mock OxiaStubManager stubManager;
         @Mock ShardManager shardManager;
         @Mock ShardManager.Assignments assignments;
         @Mock Consumer<Notification> notificationCallback;
@@ -281,10 +281,10 @@ class NotificationManagerTest {
                             .start();
             channel1 = InProcessChannelBuilder.forName(serverName1).directExecutor().build();
             channel2 = InProcessChannelBuilder.forName(serverName2).directExecutor().build();
-            var stub1 = ReactorOxiaClientGrpc.newReactorStub(channel1);
-            var stub2 = ReactorOxiaClientGrpc.newReactorStub(channel2);
-            when(stubByShardId.apply("leader1")).thenReturn(stub1);
-            when(stubByShardId.apply("leader2")).thenReturn(stub2);
+            var stub1 = new OxiaStub(channel1);
+            var stub2 = new OxiaStub(channel2);
+            when(stubManager.getStub("leader1")).thenReturn(stub1);
+            when(stubManager.getStub("leader2")).thenReturn(stub2);
             when(metrics.histogram(anyString(), any(Metrics.Unit.class))).thenReturn(histogram);
         }
 
@@ -302,7 +302,7 @@ class NotificationManagerTest {
             responses1.offer(Flux.just(notifications1).concatWith(Flux.never()));
             responses2.offer(Flux.just(notifications2).concatWith(Flux.never()));
 
-            try (var manager = new NotificationManager(stubByShardId, shardManager, metrics)) {
+            try (var manager = new NotificationManager(stubManager, shardManager, metrics)) {
                 manager.registerCallback(notificationCallback);
                 var changes =
                         new ShardAssignmentChanges(
