@@ -38,7 +38,9 @@ public class OpenTelemetryMetrics implements Metrics {
     public Histogram histogram(String name, Unit unit) {
         var histogram = meter.histogramBuilder(name)
                 .ofLongs()
-                .setExplicitBucketBoundariesAdvice(List.of(0L, 1L, 2L, 5L, 10L, 20L, 30L, 50L, 75L, 100L, 200L, 500L, 1_000L, 10_000L, 30_000L, 60_000L))
+                .setExplicitBucketBoundariesAdvice(
+                        List.of(0L, 1L, 2L, 5L, 10L, 20L, 30L, 50L, 75L, 100L, 200L, 500L, 1_000L, 10_000L, 30_000L,
+                                60_000L))
                 .setUnit(unit(unit))
                 .build();
         return (value, attributes) -> histogram.record(value, attributes(attributes));
