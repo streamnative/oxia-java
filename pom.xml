@@ -84,6 +84,13 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <grpc.version>1.59.0</grpc.version>
+        <!-- The protoc version should match the used protobuf-java version.
+             See https://protobuf.dev/support/cross-version-runtime-guarantee/.
+             Find out the compatible protobuf-java version for the respective grpc-protobuf version by looking up
+             the pom file in https://repo1.maven.org/maven2/io/grpc/grpc-protobuf/ and looking for the protobuf-java
+             version in that file.
+             -->
+        <protoc.version>3.24.0</protoc.version>
 
         <assertj.version>3.24.1</assertj.version>
         <awaitility.version>3.0.0</awaitility.version>
