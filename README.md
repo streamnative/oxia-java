@@ -18,7 +18,6 @@ Requirements:
 
 * JDK 17
 * Maven 3.8.6+
-* [protoc](https://grpc.io/docs/protoc-installation/)
 
 Common build actions:
 

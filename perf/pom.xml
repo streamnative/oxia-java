@@ -23,7 +23,7 @@
     <parent>
         <groupId>io.streamnative.oxia</groupId>
         <artifactId>oxia-java</artifactId>
-        <version>0.1.2-SNAPSHOT</version>
+        <version>0.1.3-SNAPSHOT</version>
     </parent>
 
     <artifactId>oxia-perf</artifactId>
@@ -43,8 +43,32 @@
             <scope>compile</scope>
         </dependency>
         <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-exporter-otlp</artifactId>
+            <version>${opentelemetry.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-exporter-prometheus</artifactId>
+            <version>${opentelemetry.version}-alpha</version>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-sdk</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-sdk-extension-autoconfigure</artifactId>
+            <version>${opentelemetry.version}</version>
+        </dependency>
+        <dependency>
             <groupId>io.streamnative.oxia</groupId>
             <artifactId>oxia-client</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.streamnative.oxia</groupId>
+            <artifactId>oxia-client-metrics-opentelemetry</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

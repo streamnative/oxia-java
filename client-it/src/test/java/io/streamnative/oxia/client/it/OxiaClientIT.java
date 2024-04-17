@@ -200,7 +200,7 @@ public class OxiaClientIT {
         assertThat(client.get("g").join()).isNull();
         assertThat(client.get("h").join()).isNotNull();
 
-        metricReader.flush();
+        metricReader.forceFlush();
         var metrics = metricReader.collectAllMetrics();
         var metricsByName = metrics.stream().collect(Collectors.toMap(MetricData::getName, identity()));
 

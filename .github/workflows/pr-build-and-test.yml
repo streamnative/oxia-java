@@ -29,11 +29,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Build and Verify
         run: mvn --no-transfer-progress --batch-mode verify
 

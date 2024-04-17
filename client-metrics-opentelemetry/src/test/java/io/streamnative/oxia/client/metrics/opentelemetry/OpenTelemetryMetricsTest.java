@@ -17,6 +17,7 @@ package io.streamnative.oxia.client.metrics.opentelemetry;
 
 import static io.opentelemetry.api.common.AttributeKey.stringKey;
 import static io.streamnative.oxia.client.metrics.api.Metrics.Unit.NONE;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -47,6 +48,7 @@ class OpenTelemetryMetricsTest {
         when(doubleBuilder.ofLongs()).thenReturn(longBuilder);
         when(longBuilder.setUnit("1")).thenReturn(longBuilder);
         when(longBuilder.build()).thenReturn(longHistogram);
+        when(longBuilder.setExplicitBucketBoundariesAdvice(any())).thenReturn(longBuilder);
 
         var metrics = OpenTelemetryMetrics.create(openTelemetry);
         var histogram = metrics.histogram("foo", NONE);
