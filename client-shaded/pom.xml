@@ -64,6 +64,7 @@
                                 </includes>
                                 <excludes>
                                     <exclude>org.slf4j:slf4j-api</exclude>
+                                    <exclude>io.grpc:grpc-netty-shaded</exclude>
                                 </excludes>
                             </artifactSet>
 
@@ -119,6 +120,10 @@
                                 <relocation>
                                     <pattern>reactor</pattern>
                                     <shadedPattern>${shade.relocation.package}.reactor</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>android</pattern>
+                                    <shadedPattern>${shade.relocation.package}.android</shadedPattern>
                                 </relocation>
                             </relocations>
                             <filters>
