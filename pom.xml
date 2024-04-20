@@ -56,7 +56,6 @@
         <module>client-it</module>
         <module>perf</module>
         <module>pulsar-metadatastore-oxia</module>
-        <module>client-shaded</module>
     </modules>
 
     <scm>
