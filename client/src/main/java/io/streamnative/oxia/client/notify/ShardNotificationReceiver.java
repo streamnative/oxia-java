@@ -103,8 +103,7 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
                         .doOnError(
                                 t ->
                                         log.warn(
-                                                "Error receiving notifications for shard {}: {}", shardId,
-                                                t.getMessage()))
+                                                "Error receiving notifications for shard {}: {}", shardId, t.getMessage()))
                         .doOnEach(metrics::recordBatch)
                         .retryWhen(retrySpec)
                         .repeat()
