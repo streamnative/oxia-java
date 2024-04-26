@@ -38,12 +38,10 @@
 
         <pulsar.version>3.0.2</pulsar.version>
 
-        <checkstyle.version>10.3.3</checkstyle.version>
         <testng.version>7.7.0</testng.version>
         <dropwizard.version>4.1.12.1</dropwizard.version>
         <snappy.version>1.1.10.4</snappy.version>
 
-        <checkstyle.plugin.version>3.2.0</checkstyle.plugin.version>
         <jacoco.plugin.version>0.8.8</jacoco.plugin.version>
         <license.plugin.version>4.1</license.plugin.version>
         <maven.compiler.plugin.version>3.10.1</maven.compiler.plugin.version>
@@ -220,34 +218,6 @@
                             <goal>check</goal>
                         </goals>
                         <phase>process-sources</phase>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <!-- Deeper code style check -->
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-checkstyle-plugin</artifactId>
-                <version>${checkstyle.plugin.version}</version>
-                <configuration>
-                    <consoleOutput>true</consoleOutput>
-                    <failOnViolation>true</failOnViolation>
-                    <failsOnError>true</failsOnError>
-                    <configLocation>etc/checkstyle.xml</configLocation>
-                    <includeTestSourceDirectory>true</includeTestSourceDirectory>
-                </configuration>
-                <dependencies>
-                    <dependency>
-                        <groupId>com.puppycrawl.tools</groupId>
-                        <artifactId>checkstyle</artifactId>
-                        <version>${checkstyle.version}</version>
-                    </dependency>
-                </dependencies>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                        <phase>validate</phase>
                     </execution>
                 </executions>
             </plugin>

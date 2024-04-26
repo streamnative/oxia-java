@@ -94,7 +94,6 @@
 
         <assertj.version>3.24.1</assertj.version>
         <awaitility.version>3.0.0</awaitility.version>
-        <checkstyle.version>10.12.5</checkstyle.version>
         <lombok.version>1.18.30</lombok.version>
         <slf4j.version>1.7.32</slf4j.version>
         <junit.jupiter.version>5.9.2</junit.jupiter.version>
@@ -103,7 +102,6 @@
         <testcontainers.version>1.17.6</testcontainers.version>
         <guava.version>32.1.3-jre</guava.version>
 
-        <checkstyle.plugin.version>3.3.1</checkstyle.plugin.version>
         <jacoco.plugin.version>0.8.8</jacoco.plugin.version>
         <license.plugin.version>4.1</license.plugin.version>
         <maven.compiler.plugin.version>3.10.1</maven.compiler.plugin.version>
@@ -311,34 +309,6 @@
                             <goal>check</goal>
                         </goals>
                         <phase>process-sources</phase>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <!-- Deeper code style check -->
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-checkstyle-plugin</artifactId>
-                <version>${checkstyle.plugin.version}</version>
-                <configuration>
-                    <consoleOutput>true</consoleOutput>
-                    <failOnViolation>true</failOnViolation>
-                    <failsOnError>true</failsOnError>
-                    <configLocation>etc/checkstyle.xml</configLocation>
-                    <includeTestSourceDirectory>true</includeTestSourceDirectory>
-                </configuration>
-                <dependencies>
-                    <dependency>
-                        <groupId>com.puppycrawl.tools</groupId>
-                        <artifactId>checkstyle</artifactId>
-                        <version>${checkstyle.version}</version>
-                    </dependency>
-                </dependencies>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                        <phase>validate</phase>
                     </execution>
                 </executions>
             </plugin>
