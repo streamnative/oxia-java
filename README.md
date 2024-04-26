@@ -26,7 +26,6 @@ Common build actions:
 | Full build and test             | `mvn clean verify`                       |
 | Skip tests                      | `mvn clean verify -DskipTests`           |
 | Skip Jacoco test coverage check | `mvn clean verify -Djacoco.skip`         |
-| Skip Checkstyle standards check | `mvn clean verify -Dcheckstyle.skip`     |
 | Skip Spotless formatting check  | `mvn clean verify -Dspotless.check.skip` |
 | Format code                     | `mvn spotless:apply`                     |
 | Generate license headers        | `mvn license:format`                     |
