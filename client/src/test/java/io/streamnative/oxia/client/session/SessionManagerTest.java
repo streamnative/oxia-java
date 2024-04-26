@@ -105,7 +105,8 @@ class SessionManagerTest {
                         Set.of(new Reassigned(shardId2, "leader2", "leader3"))));
 
         assertThat(manager.sessions()).doesNotContainKey(shardId1);
-        assertThat(manager.getSession(shardId2)).isSameAs(session22);
+        // Session here shouldn't have changed after the reassignment
+        assertThat(manager.getSession(shardId2)).isSameAs(session21);
         verify(session).close();
     }
 

@@ -86,15 +86,8 @@ public class SessionManager implements AutoCloseable, Consumer<ShardAssignmentCh
     @Override
     public void accept(@NonNull ShardAssignmentChanges changes) {
         if (!closed) {
-            // Added shards do not have any sessions to keep alive
-            var removed = changes.removed();
-            removed.forEach(s -> closeQuietly(sessionsByShardId.remove(s.shardId())));
-
-            var reassigned = changes.reassigned();
-            reassigned.forEach(
-                    s ->
-                            closeQuietly(sessionsByShardId.remove(s.shardId()))
-                                    .ifPresent(c -> getSession(s.shardId())));
+            // Removed shards do not have any sessions to keep alive
+            changes.removed().forEach(s -> closeQuietly(sessionsByShardId.remove(s.shardId())));
         }
     }
 
