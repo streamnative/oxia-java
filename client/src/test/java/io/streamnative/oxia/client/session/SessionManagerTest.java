@@ -18,6 +18,7 @@ package io.streamnative.oxia.client.session;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -37,8 +38,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class SessionManagerTest {
 
-    @Mock Session.Factory factory;
-    @Mock Session session;
+    @Mock
+    SessionFactory factory;
+    @Mock
+    Session session;
     SessionManager manager;
 
     @BeforeEach
@@ -108,6 +111,23 @@ class SessionManagerTest {
         // Session here shouldn't have changed after the reassignment
         assertThat(manager.getSession(shardId2)).isSameAs(session21);
         verify(session).close();
+    }
+
+    @Test
+    void testSessionClosed() throws Exception {
+        var shardId = 1L;
+        when(session.getSessionId()).thenReturn(shardId);
+        doAnswer(invocation -> {
+            manager.onSessionClosed(session);
+            return null;
+        }).when(session).close();
+        when(factory.create(shardId)).thenReturn(session);
+        manager.getSession(shardId);
+
+        assertThat(manager.sessions()).containsEntry(shardId, session);
+
+        session.close();
+        assertThat(manager.sessions()).doesNotContainKey(shardId);
     }
 
     @Test

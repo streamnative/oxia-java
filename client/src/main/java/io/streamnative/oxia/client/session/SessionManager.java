@@ -36,16 +36,19 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-@RequiredArgsConstructor(access = PACKAGE)
-public class SessionManager implements AutoCloseable, Consumer<ShardAssignmentChanges> {
+public class SessionManager implements AutoCloseable, Consumer<ShardAssignmentChanges>, SessionNotificationListener {
 
     private final ConcurrentMap<Long, Session> sessionsByShardId = new ConcurrentHashMap<>();
-    private final @NonNull Session.Factory factory;
+    private final SessionFactory factory;
     private volatile boolean closed = false;
 
     public SessionManager(
             @NonNull ClientConfig config, @NonNull Function<Long, OxiaStub> stubByShardId) {
-        this(new Session.Factory(config, stubByShardId, SessionMetrics.create(config.metrics())));
+        this.factory = new SessionFactory(config, this, stubByShardId, SessionMetrics.create(config.metrics()));
+    }
+
+    public SessionManager(SessionFactory factory) {
+        this.factory = factory;
     }
 
     @NonNull
@@ -67,15 +70,19 @@ public class SessionManager implements AutoCloseable, Consumer<ShardAssignmentCh
     }
 
     @Override
+    public void onSessionClosed(Session session) {
+        sessionsByShardId.remove(session.getSessionId(), session);
+    }
+
+    @Override
     public void close() throws Exception {
         if (closed) {
             return;
         }
         closed = true;
-        var closedSessions = new ArrayList<Session>();
         sessionsByShardId.entrySet().parallelStream()
-                .forEach(entry -> closeQuietly(entry.getValue()).ifPresent(closedSessions::add));
-        closedSessions.forEach(s -> sessionsByShardId.remove(s.getSessionId()));
+                .forEach(entry -> closeQuietly(entry.getValue())
+                );
     }
 
     @VisibleForTesting
