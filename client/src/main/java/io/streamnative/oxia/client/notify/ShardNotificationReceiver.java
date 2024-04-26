@@ -100,8 +100,10 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
         scheduler = Schedulers.newSingle(threadName);
         var disposable =
                 Flux.defer(() -> stub.reactor().getNotifications(request.build()))
-                        .doOnError(t -> log.warn("Error receiving notifications for shard {}: {}", shardId,
-                                t.getMessage()))
+                        .doOnError(
+                                t ->
+                                        log.warn(
+                                                "Error receiving notifications for shard {}: {}", shardId, t.getMessage()))
                         .doOnEach(metrics::recordBatch)
                         .retryWhen(retrySpec)
                         .repeat()
