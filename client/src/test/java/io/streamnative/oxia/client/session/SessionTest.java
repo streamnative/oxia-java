@@ -65,8 +65,7 @@ class SessionTest {
     private OxiaStub stub;
     private TestService service;
 
-    @Mock
-    SessionMetrics metrics;
+    @Mock SessionMetrics metrics;
 
     @BeforeEach
     void setup() throws IOException {
@@ -110,16 +109,28 @@ class SessionTest {
 
     @Test
     void sessionId() {
-        var session = new Session(stubByShardId, config, shardId, sessionId, metrics,
-                mock(SessionNotificationListener.class));
+        var session =
+                new Session(
+                        stubByShardId,
+                        config,
+                        shardId,
+                        sessionId,
+                        metrics,
+                        mock(SessionNotificationListener.class));
         assertThat(session.getShardId()).isEqualTo(shardId);
         assertThat(session.getSessionId()).isEqualTo(sessionId);
     }
 
     @Test
     void start() throws Exception {
-        var session = new Session(stubByShardId, config, shardId, sessionId, metrics,
-                mock(SessionNotificationListener.class));
+        var session =
+                new Session(
+                        stubByShardId,
+                        config,
+                        shardId,
+                        sessionId,
+                        metrics,
+                        mock(SessionNotificationListener.class));
         session.start();
 
         await()

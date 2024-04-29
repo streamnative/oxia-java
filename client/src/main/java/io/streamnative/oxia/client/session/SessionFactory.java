@@ -16,6 +16,7 @@
 package io.streamnative.oxia.client.session;
 
 import static lombok.AccessLevel.PACKAGE;
+
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.metrics.SessionMetrics;
@@ -27,17 +28,13 @@ import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor(access = PACKAGE)
 public class SessionFactory {
-    @NonNull
-    final ClientConfig config;
+    @NonNull final ClientConfig config;
 
-    @NonNull
-    final SessionNotificationListener listener;
+    @NonNull final SessionNotificationListener listener;
 
-    @NonNull
-    final Function<Long, OxiaStub> stubByShardId;
+    @NonNull final Function<Long, OxiaStub> stubByShardId;
 
-    @NonNull
-    final SessionMetrics metrics;
+    @NonNull final SessionMetrics metrics;
 
     @NonNull
     Session create(long shardId) {

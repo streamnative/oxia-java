@@ -38,10 +38,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class SessionManagerTest {
 
-    @Mock
-    SessionFactory factory;
-    @Mock
-    Session session;
+    @Mock SessionFactory factory;
+    @Mock Session session;
     SessionManager manager;
 
     @BeforeEach
@@ -76,10 +74,13 @@ class SessionManagerTest {
         var shardId = 1L;
         when(session.getSessionId()).thenReturn(shardId);
         when(factory.create(shardId)).thenReturn(session);
-        doAnswer(invocation -> {
-            manager.onSessionClosed(session);
-            return null;
-        }).when(session).close();
+        doAnswer(
+                        invocation -> {
+                            manager.onSessionClosed(session);
+                            return null;
+                        })
+                .when(session)
+                .close();
         manager.getSession(shardId);
 
         assertThat(manager.sessions()).containsEntry(shardId, session);
@@ -121,10 +122,13 @@ class SessionManagerTest {
     void testSessionClosed() throws Exception {
         var shardId = 1L;
         when(session.getSessionId()).thenReturn(shardId);
-        doAnswer(invocation -> {
-            manager.onSessionClosed(session);
-            return null;
-        }).when(session).close();
+        doAnswer(
+                        invocation -> {
+                            manager.onSessionClosed(session);
+                            return null;
+                        })
+                .when(session)
+                .close();
         when(factory.create(shardId)).thenReturn(session);
         manager.getSession(shardId);
 

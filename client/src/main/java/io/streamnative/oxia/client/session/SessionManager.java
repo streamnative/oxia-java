@@ -16,14 +16,12 @@
 package io.streamnative.oxia.client.session;
 
 import static java.util.Collections.unmodifiableMap;
-import static lombok.AccessLevel.PACKAGE;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.metrics.SessionMetrics;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChanges;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -32,11 +30,11 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class SessionManager implements AutoCloseable, Consumer<ShardAssignmentChanges>, SessionNotificationListener {
+public class SessionManager
+        implements AutoCloseable, Consumer<ShardAssignmentChanges>, SessionNotificationListener {
 
     private final ConcurrentMap<Long, Session> sessionsByShardId = new ConcurrentHashMap<>();
     private final SessionFactory factory;
@@ -44,7 +42,8 @@ public class SessionManager implements AutoCloseable, Consumer<ShardAssignmentCh
 
     public SessionManager(
             @NonNull ClientConfig config, @NonNull Function<Long, OxiaStub> stubByShardId) {
-        this.factory = new SessionFactory(config, this, stubByShardId, SessionMetrics.create(config.metrics()));
+        this.factory =
+                new SessionFactory(config, this, stubByShardId, SessionMetrics.create(config.metrics()));
     }
 
     public SessionManager(SessionFactory factory) {
@@ -80,9 +79,7 @@ public class SessionManager implements AutoCloseable, Consumer<ShardAssignmentCh
             return;
         }
         closed = true;
-        sessionsByShardId.entrySet().parallelStream()
-                .forEach(entry -> closeQuietly(entry.getValue())
-                );
+        sessionsByShardId.entrySet().parallelStream().forEach(entry -> closeQuietly(entry.getValue()));
     }
 
     @VisibleForTesting
