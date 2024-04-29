@@ -76,6 +76,10 @@ class SessionManagerTest {
         var shardId = 1L;
         when(session.getSessionId()).thenReturn(shardId);
         when(factory.create(shardId)).thenReturn(session);
+        doAnswer(invocation -> {
+            manager.onSessionClosed(session);
+            return null;
+        }).when(session).close();
         manager.getSession(shardId);
 
         assertThat(manager.sessions()).containsEntry(shardId, session);
