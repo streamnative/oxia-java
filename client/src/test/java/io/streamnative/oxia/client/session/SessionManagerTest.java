@@ -71,8 +71,8 @@ class SessionManagerTest {
 
     @Test
     void close() throws Exception {
-        var shardId = 1L;
-        when(session.getSessionId()).thenReturn(shardId);
+        var shardId = 5L;
+        when(session.getShardId()).thenReturn(shardId);
         when(factory.create(shardId)).thenReturn(session);
         doAnswer(
                         invocation -> {
@@ -121,7 +121,7 @@ class SessionManagerTest {
     @Test
     void testSessionClosed() throws Exception {
         var shardId = 1L;
-        when(session.getSessionId()).thenReturn(shardId);
+        when(session.getShardId()).thenReturn(shardId);
         doAnswer(
                         invocation -> {
                             manager.onSessionClosed(session);
