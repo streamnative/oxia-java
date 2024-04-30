@@ -70,7 +70,7 @@ public class SessionManager
 
     @Override
     public void onSessionClosed(Session session) {
-        sessionsByShardId.remove(session.getSessionId(), session);
+        sessionsByShardId.remove(session.getShardId(), session);
     }
 
     @Override
