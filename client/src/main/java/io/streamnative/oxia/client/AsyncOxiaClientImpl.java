@@ -134,13 +134,13 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                 instrumentProvider.newCounter(
                         "oxia.client.ops.size",
                         Unit.Bytes,
-                        "Total number of bytes written in put operations",
+                        "Total number of bytes in operations",
                         Attributes.of(AttributeKey.stringKey("oxia.op"), "put"));
         counterGetBytes =
                 instrumentProvider.newCounter(
                         "oxia.client.ops.size",
                         Unit.Bytes,
-                        "Total number of bytes read in get operations",
+                        "Total number of bytes in operations",
                         Attributes.of(AttributeKey.stringKey("oxia.op"), "get"));
         counterListBytes =
                 instrumentProvider.newCounter(
@@ -153,31 +153,31 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                 instrumentProvider.newUpDownCounter(
                         "oxia.client.ops.pending",
                         Unit.Events,
-                        "Current number of outstanding put requests",
+                        "Current number of outstanding requests",
                         Attributes.of(AttributeKey.stringKey("oxia.op"), "put"));
         gaugePendingGetRequests =
                 instrumentProvider.newUpDownCounter(
                         "oxia.client.ops.pending",
                         Unit.Events,
-                        "Current number of outstanding get requests",
+                        "Current number of outstanding requests",
                         Attributes.of(AttributeKey.stringKey("oxia.op"), "get"));
         gaugePendingListRequests =
                 instrumentProvider.newUpDownCounter(
                         "oxia.client.ops.pending",
                         Unit.Events,
-                        "Current number of outstanding list requests",
+                        "Current number of outstanding requests",
                         Attributes.of(AttributeKey.stringKey("oxia.op"), "list"));
         gaugePendingDeleteRequests =
                 instrumentProvider.newUpDownCounter(
                         "oxia.client.ops.pending",
                         Unit.Events,
-                        "Current number of outstanding list requests",
+                        "Current number of outstanding requests",
                         Attributes.of(AttributeKey.stringKey("oxia.op"), "delete"));
         gaugePendingDeleteRangeRequests =
                 instrumentProvider.newUpDownCounter(
                         "oxia.client.ops.pending",
                         Unit.Events,
-                        "Current number of outstanding delete requests",
+                        "Current number of outstanding requests",
                         Attributes.of(AttributeKey.stringKey("oxia.op"), "delete-range"));
 
         gaugePendingPutBytes =
@@ -190,31 +190,31 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         histogramPutLatency =
                 instrumentProvider.newLatencyHistogram(
                         "oxia.client.ops",
-                        "Duration of put operations",
+                        "Duration of operations",
                         Attributes.of(AttributeKey.stringKey("oxia.op"), "put"));
 
         histogramGetLatency =
                 instrumentProvider.newLatencyHistogram(
                         "oxia.client.ops",
-                        "Duration of get operations",
+                        "Duration of operations",
                         Attributes.of(AttributeKey.stringKey("oxia.op"), "get"));
 
         histogramDeleteLatency =
                 instrumentProvider.newLatencyHistogram(
                         "oxia.client.ops",
-                        "Duration of delete operations",
+                        "Duration of operations",
                         Attributes.of(AttributeKey.stringKey("oxia.op"), "delete"));
 
         histogramDeleteRangeLatency =
                 instrumentProvider.newLatencyHistogram(
                         "oxia.client.ops",
-                        "Duration of delete-range operations",
+                        "Duration of operations",
                         Attributes.of(AttributeKey.stringKey("oxia.op"), "delete-range"));
 
         histogramListLatency =
                 instrumentProvider.newLatencyHistogram(
                         "oxia.client.ops",
-                        "Duration of list operations",
+                        "Duration of operations",
                         Attributes.of(AttributeKey.stringKey("oxia.op"), "list"));
     }
 
@@ -350,7 +350,9 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                 (getResult, throwable) -> {
                     gaugePendingGetRequests.decrement();
                     if (throwable == null) {
-                        counterGetBytes.add(getResult.getValue().length);
+                        if (getResult != null) {
+                            counterGetBytes.add(getResult.getValue().length);
+                        }
                         histogramGetLatency.recordSuccess(System.nanoTime() - startTime);
                     } else {
                         histogramGetLatency.recordFailure(System.nanoTime() - startTime);
