@@ -88,7 +88,7 @@ public class OxiaClientIT {
 
         client =
                 new OxiaClientBuilder(oxia.getServiceAddress())
-                        .metrics(OpenTelemetryMetrics.create(openTelemetry))
+                        .openTelemetry(openTelemetry)
                         .asyncClient()
                         .join();
         client.notifications(notifications::add);
