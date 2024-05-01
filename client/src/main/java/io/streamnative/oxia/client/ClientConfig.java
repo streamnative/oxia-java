@@ -15,7 +15,7 @@
  */
 package io.streamnative.oxia.client;
 
-import io.streamnative.oxia.client.metrics.api.Metrics;
+import io.opentelemetry.api.OpenTelemetry;
 import java.time.Duration;
 import lombok.NonNull;
 
@@ -28,5 +28,5 @@ public record ClientConfig(
         int recordCacheCapacity,
         @NonNull Duration sessionTimeout,
         @NonNull String clientIdentifier,
-        @NonNull Metrics metrics,
+        OpenTelemetry openTelemetry,
         @NonNull String namespace) {}

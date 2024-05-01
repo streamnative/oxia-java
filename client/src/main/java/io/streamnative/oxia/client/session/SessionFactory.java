@@ -19,7 +19,7 @@ import static lombok.AccessLevel.PACKAGE;
 
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.grpc.OxiaStub;
-import io.streamnative.oxia.client.metrics.SessionMetrics;
+import io.streamnative.oxia.client.metrics.InstrumentProvider;
 import io.streamnative.oxia.proto.CreateSessionRequest;
 import io.streamnative.oxia.proto.CreateSessionResponse;
 import java.util.function.Function;
@@ -34,7 +34,7 @@ public class SessionFactory {
 
     @NonNull final Function<Long, OxiaStub> stubByShardId;
 
-    @NonNull final SessionMetrics metrics;
+    @NonNull final InstrumentProvider instrumentProvider;
 
     @NonNull
     Session create(long shardId) {
@@ -46,6 +46,7 @@ public class SessionFactory {
                         .setClientIdentity(config.clientIdentifier())
                         .build();
         CreateSessionResponse response = stub.blocking().createSession(request);
-        return new Session(stubByShardId, config, shardId, response.getSessionId(), metrics, listener);
+        return new Session(
+                stubByShardId, config, shardId, response.getSessionId(), instrumentProvider, listener);
     }
 }

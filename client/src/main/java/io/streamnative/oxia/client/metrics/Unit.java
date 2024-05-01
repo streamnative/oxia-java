@@ -13,21 +13,37 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.streamnative.oxia.client.batch;
+package io.streamnative.oxia.client.metrics;
 
-import lombok.NonNull;
+public enum Unit {
+    Bytes,
+    Events,
+    Requests,
+    Seconds,
+    Sessions,
+    None,
+    ;
 
-public interface Batch {
+    public String toString() {
+        switch (this) {
+            case Bytes:
+                return "By";
 
-    void add(@NonNull Operation<?> operation);
+            case Events:
+                return "{event}";
 
-    boolean canAdd(@NonNull Operation<?> operation);
+            case Requests:
+                return "{request}";
 
-    int size();
+            case Seconds:
+                return "s";
 
-    long getShardId();
+            case Sessions:
+                return "{session}";
 
-    void send();
-
-    long getStartTimeNanos();
+            case None:
+            default:
+                return "1";
+        }
+    }
 }

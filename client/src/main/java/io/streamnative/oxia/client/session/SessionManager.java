@@ -20,7 +20,7 @@ import static java.util.Collections.unmodifiableMap;
 import com.google.common.annotations.VisibleForTesting;
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.grpc.OxiaStub;
-import io.streamnative.oxia.client.metrics.SessionMetrics;
+import io.streamnative.oxia.client.metrics.InstrumentProvider;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChanges;
 import java.util.HashMap;
 import java.util.Map;
@@ -41,9 +41,10 @@ public class SessionManager
     private volatile boolean closed = false;
 
     public SessionManager(
-            @NonNull ClientConfig config, @NonNull Function<Long, OxiaStub> stubByShardId) {
-        this.factory =
-                new SessionFactory(config, this, stubByShardId, SessionMetrics.create(config.metrics()));
+            @NonNull ClientConfig config,
+            @NonNull Function<Long, OxiaStub> stubByShardId,
+            @NonNull InstrumentProvider instrumentProvider) {
+        this.factory = new SessionFactory(config, this, stubByShardId, instrumentProvider);
     }
 
     public SessionManager(SessionFactory factory) {

@@ -20,11 +20,9 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.ParameterException;
 import com.google.common.util.concurrent.RateLimiter;
-import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
 import io.streamnative.oxia.client.OxiaClientBuilder;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
-import io.streamnative.oxia.client.metrics.opentelemetry.OpenTelemetryMetrics;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -69,14 +67,13 @@ public class PerfClient {
 
         AutoConfiguredOpenTelemetrySdk sdk = AutoConfiguredOpenTelemetrySdk.builder()
                 .build();
-        OpenTelemetry openTelemetry = sdk.getOpenTelemetrySdk();
 
         AsyncOxiaClient client = new OxiaClientBuilder(arguments.serviceAddr)
                 .batchLinger(Duration.ofMillis(arguments.batchLingerMs))
                 .maxRequestsPerBatch(arguments.maxRequestsPerBatch)
                 .requestTimeout(Duration.ofMillis(arguments.requestTimeoutMs))
                 .namespace(arguments.namespace)
-                .metrics(OpenTelemetryMetrics.create(openTelemetry))
+                .openTelemetry(sdk.getOpenTelemetrySdk())
                 .asyncClient()
                 .get();
 

@@ -19,13 +19,13 @@ import static io.streamnative.oxia.client.api.Notification.KeyModified;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static lombok.AccessLevel.PACKAGE;
 
+import io.streamnative.oxia.client.CompositeConsumer;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.Notification.KeyCreated;
 import io.streamnative.oxia.client.api.Notification.KeyDeleted;
 import io.streamnative.oxia.client.grpc.GrpcResponseStream;
 import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.grpc.OxiaStubManager;
-import io.streamnative.oxia.client.metrics.NotificationMetrics;
 import io.streamnative.oxia.proto.NotificationBatch;
 import io.streamnative.oxia.proto.NotificationsRequest;
 import java.time.Duration;
@@ -47,11 +47,12 @@ import reactor.util.retry.RetryBackoffSpec;
 @Slf4j
 public class ShardNotificationReceiver extends GrpcResponseStream {
 
+    private final NotificationManager notificationManager;
+
     @Getter(PACKAGE)
     private final long shardId;
 
     private final @NonNull Consumer<Notification> callback;
-    private final @NonNull NotificationMetrics metrics;
     private @NonNull Optional<Long> startingOffset = Optional.empty();
 
     private Scheduler scheduler;
@@ -61,11 +62,11 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
             @NonNull OxiaStub stub,
             long shardId,
             @NonNull Consumer<Notification> callback,
-            @NonNull NotificationMetrics metrics) {
+            NotificationManager notificationManager) {
         super(stub);
+        this.notificationManager = notificationManager;
         this.shardId = shardId;
         this.callback = callback;
-        this.metrics = metrics;
     }
 
     public void start(@NonNull Optional<Long> offset) {
@@ -104,7 +105,13 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
                                 t ->
                                         log.warn(
                                                 "Error receiving notifications for shard {}: {}", shardId, t.getMessage()))
-                        .doOnEach(metrics::recordBatch)
+                        .doOnEach(
+                                batch -> {
+                                    notificationManager.getCounterNotificationsBatchesReceived().increment();
+                                    notificationManager
+                                            .getCounterNotificationsReceived()
+                                            .add(batch.get().getNotificationsCount());
+                                })
                         .retryWhen(retrySpec)
                         .repeat()
                         .publishOn(scheduler)
@@ -142,12 +149,15 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
     @RequiredArgsConstructor(access = PACKAGE)
     static class Factory {
         private final @NonNull OxiaStubManager stubManager;
-        private final @NonNull Consumer<Notification> callback;
+
+        @Getter
+        private final @NonNull CompositeConsumer<Notification> callback = new CompositeConsumer<>();
 
         @NonNull
         ShardNotificationReceiver newReceiver(
-                long shardId, @NonNull String leader, @NonNull NotificationMetrics metrics) {
-            return new ShardNotificationReceiver(stubManager.getStub(leader), shardId, callback, metrics);
+                long shardId, @NonNull String leader, @NonNull NotificationManager notificationManager) {
+            return new ShardNotificationReceiver(
+                    stubManager.getStub(leader), shardId, callback, notificationManager);
         }
     }
 }

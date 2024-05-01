@@ -15,15 +15,14 @@
  */
 package io.streamnative.oxia.client.batch;
 
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static lombok.AccessLevel.PACKAGE;
 
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.batch.Operation.CloseOperation;
 import io.streamnative.oxia.client.grpc.OxiaStub;
-import io.streamnative.oxia.client.metrics.BatchMetrics;
+import io.streamnative.oxia.client.metrics.InstrumentProvider;
 import io.streamnative.oxia.client.session.SessionManager;
-import java.time.Clock;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.function.Function;
@@ -38,17 +37,15 @@ public class Batcher implements Runnable, AutoCloseable {
 
     @NonNull private final ClientConfig config;
     private final long shardId;
-    @NonNull private final Function<Long, Batch> batchFactory;
+    @NonNull private final BatchFactory batchFactory;
     @NonNull private final BlockingQueue<Operation<?>> operations;
-    @NonNull private final Clock clock;
 
-    Batcher(@NonNull ClientConfig config, long shardId, @NonNull Function<Long, Batch> batchFactory) {
+    Batcher(@NonNull ClientConfig config, long shardId, @NonNull BatchFactory batchFactory) {
         this(
                 config,
                 shardId,
                 batchFactory,
-                new PriorityBlockingQueue<>(DEFAULT_INITIAL_QUEUE_CAPACITY, Operation.PriorityComparator),
-                Clock.systemUTC());
+                new PriorityBlockingQueue<>(DEFAULT_INITIAL_QUEUE_CAPACITY, Operation.PriorityComparator));
     }
 
     @SneakyThrows
@@ -64,16 +61,16 @@ public class Batcher implements Runnable, AutoCloseable {
     @Override
     public void run() {
         Batch batch = null;
-        var lingerBudgetMs = -1L;
+        long lingerBudgetNanos = -1L;
         while (true) {
             try {
-                Operation<?> operation = null;
+                Operation<?> operation;
                 if (batch == null) {
                     operation = operations.take();
                 } else {
-                    operation = operations.poll(lingerBudgetMs, MILLISECONDS);
-                    var spentLingerBudgetMs = Math.max(0, clock.millis() - batch.getStartTime());
-                    lingerBudgetMs = Math.max(0L, lingerBudgetMs - spentLingerBudgetMs);
+                    operation = operations.poll(lingerBudgetNanos, NANOSECONDS);
+                    long spentLingerBudgetNanos = Math.max(0, System.nanoTime() - batch.getStartTimeNanos());
+                    lingerBudgetNanos = Math.max(0L, lingerBudgetNanos - spentLingerBudgetNanos);
                 }
 
                 if (operation == CloseOperation.INSTANCE) {
@@ -82,14 +79,14 @@ public class Batcher implements Runnable, AutoCloseable {
 
                 if (operation != null) {
                     if (batch == null) {
-                        batch = batchFactory.apply(shardId);
-                        lingerBudgetMs = config.batchLinger().toMillis();
+                        batch = batchFactory.getBatch(shardId);
+                        lingerBudgetNanos = config.batchLinger().toNanos();
                     }
                     try {
                         if (!batch.canAdd(operation)) {
-                            batch.complete();
-                            batch = batchFactory.apply(shardId);
-                            lingerBudgetMs = config.batchLinger().toMillis();
+                            batch.send();
+                            batch = batchFactory.getBatch(shardId);
+                            lingerBudgetNanos = config.batchLinger().toNanos();
                         }
                         batch.add(operation);
                     } catch (Exception e) {
@@ -98,8 +95,8 @@ public class Batcher implements Runnable, AutoCloseable {
                 }
 
                 if (batch != null) {
-                    if (batch.size() == config.maxRequestsPerBatch() || lingerBudgetMs == 0) {
-                        batch.complete();
+                    if (batch.size() == config.maxRequestsPerBatch() || lingerBudgetNanos == 0) {
+                        batch.send();
                         batch = null;
                     }
                 }
@@ -113,27 +110,25 @@ public class Batcher implements Runnable, AutoCloseable {
     static @NonNull Function<Long, Batcher> newReadBatcherFactory(
             @NonNull ClientConfig config,
             @NonNull Function<Long, OxiaStub> stubByShardId,
-            Clock clock,
-            BatchMetrics metrics) {
+            InstrumentProvider instrumentProvider) {
         return s ->
-                new Batcher(config, s, new Batch.ReadBatchFactory(stubByShardId, config, clock, metrics));
+                new Batcher(config, s, new ReadBatchFactory(stubByShardId, config, instrumentProvider));
     }
 
     static @NonNull Function<Long, Batcher> newWriteBatcherFactory(
             @NonNull ClientConfig config,
             @NonNull Function<Long, OxiaStub> stubByShardId,
             @NonNull SessionManager sessionManager,
-            Clock clock,
-            BatchMetrics metrics) {
+            InstrumentProvider instrumentProvider) {
         return s ->
                 new Batcher(
                         config,
                         s,
-                        new Batch.WriteBatchFactory(stubByShardId, sessionManager, config, clock, metrics));
+                        new WriteBatchFactory(stubByShardId, sessionManager, config, instrumentProvider));
     }
 
     @Override
-    public void close() throws Exception {
+    public void close() {
         operations.add(CloseOperation.INSTANCE);
     }
 }

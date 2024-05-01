@@ -24,9 +24,6 @@ import static java.time.Duration.ZERO;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.AdditionalAnswers.delegatesTo;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -39,16 +36,13 @@ import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
-import io.streamnative.oxia.client.batch.Batch.ReadBatch;
-import io.streamnative.oxia.client.batch.Batch.WriteBatch;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation.SessionInfo;
 import io.streamnative.oxia.client.grpc.OxiaStub;
-import io.streamnative.oxia.client.metrics.BatchMetrics;
-import io.streamnative.oxia.client.metrics.api.Metrics;
+import io.streamnative.oxia.client.metrics.InstrumentProvider;
 import io.streamnative.oxia.client.session.Session;
 import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.client.shard.NoShardAvailableException;
@@ -60,7 +54,7 @@ import io.streamnative.oxia.proto.ReadRequest;
 import io.streamnative.oxia.proto.ReadResponse;
 import io.streamnative.oxia.proto.WriteRequest;
 import io.streamnative.oxia.proto.WriteResponse;
-import java.time.Clock;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -84,7 +78,19 @@ class BatchTest {
     @Mock Session session;
     long shardId = 1L;
     long sessionId = 1L;
-    long startTime = 2L;
+
+    static ClientConfig config =
+            new ClientConfig(
+                    "address",
+                    Duration.ofMillis(100),
+                    Duration.ofMillis(1000),
+                    10,
+                    1024 * 1024,
+                    0,
+                    Duration.ofMillis(1000),
+                    "client_id",
+                    null,
+                    DefaultNamespace);
 
     private final OxiaClientImplBase serviceImpl =
             mock(
@@ -146,19 +152,16 @@ class BatchTest {
 
         String clientIdentifier = "client-id";
         SessionInfo sessionInfo = new SessionInfo(sessionId, clientIdentifier);
-        @Mock BatchMetrics.Sample sample;
 
         @BeforeEach
         void setup() {
+
+            var factory =
+                    new WriteBatchFactory(
+                            x -> null, mock(SessionManager.class), config, InstrumentProvider.NOOP);
             batch =
                     new WriteBatch(
-                            clientByShardId,
-                            sessionManager,
-                            clientIdentifier,
-                            shardId,
-                            startTime,
-                            1024 * 1024,
-                            sample);
+                            factory, clientByShardId, sessionManager, clientIdentifier, shardId, 1024 * 1024);
         }
 
         @Test
@@ -197,7 +200,7 @@ class BatchTest {
         }
 
         @Test
-        public void completeOk() {
+        public void sendOk() {
             when(session.getSessionId()).thenReturn(sessionId);
             when(sessionManager.getSession(shardId)).thenReturn(session);
 
@@ -217,7 +220,7 @@ class BatchTest {
             batch.add(delete);
             batch.add(deleteRange);
 
-            batch.complete();
+            batch.send();
 
             assertThat(putCallable).isCompletedExceptionally();
             assertThat(putEphemeralCallable).isCompleted();
@@ -225,14 +228,10 @@ class BatchTest {
                     .hasCauseExactlyInstanceOf(UnexpectedVersionIdException.class);
             assertThat(deleteCallable).isCompletedWithValueMatching(r -> !r);
             assertThat(deleteRangeCallable).isCompleted();
-
-            var inOrder = inOrder(sample);
-            inOrder.verify(sample).startExec();
-            inOrder.verify(sample).stop(null, 0, 4);
         }
 
         @Test
-        public void completeFail() {
+        public void sendFail() {
             when(session.getSessionId()).thenReturn(sessionId);
             when(sessionManager.getSession(shardId)).thenReturn(session);
 
@@ -244,7 +243,7 @@ class BatchTest {
             batch.add(delete);
             batch.add(deleteRange);
 
-            batch.complete();
+            batch.send();
 
             assertThat(putCallable).isCompletedExceptionally();
             assertThatThrownBy(putCallable::get).hasCauseInstanceOf(StatusRuntimeException.class);
@@ -255,30 +254,26 @@ class BatchTest {
             assertThatThrownBy(deleteCallable::get).hasCauseInstanceOf(StatusRuntimeException.class);
             assertThat(deleteRangeCallable).isCompletedExceptionally();
             assertThatThrownBy(deleteRangeCallable::get).hasCauseInstanceOf(StatusRuntimeException.class);
-
-            var inOrder = inOrder(sample);
-            inOrder.verify(sample).startExec();
-            inOrder.verify(sample).stop(any(StatusRuntimeException.class), eq(0L), eq(4L));
         }
 
         @Test
-        public void completeFailNoClient() {
+        public void sendFailNoClient() {
             batch =
                     new WriteBatch(
+                            new WriteBatchFactory(
+                                    x -> null, mock(SessionManager.class), config, InstrumentProvider.NOOP),
                             s -> {
                                 throw new NoShardAvailableException(s);
                             },
                             sessionManager,
                             clientIdentifier,
                             shardId,
-                            startTime,
-                            1024 * 1024,
-                            sample);
+                            1024 * 1024);
             batch.add(put);
             batch.add(delete);
             batch.add(deleteRange);
 
-            batch.complete();
+            batch.send();
 
             assertThat(putCallable).isCompletedExceptionally();
             assertThatThrownBy(putCallable::get)
@@ -304,20 +299,11 @@ class BatchTest {
                                 assertThat(((NoShardAvailableException) e.getCause()).getShardId())
                                         .isEqualTo(shardId);
                             });
-
-            var inOrder = inOrder(sample);
-            inOrder.verify(sample).startExec();
-            inOrder.verify(sample).stop(any(NoShardAvailableException.class), eq(0L), eq(3L));
         }
 
         @Test
         public void shardId() {
             assertThat(batch.getShardId()).isEqualTo(shardId);
-        }
-
-        @Test
-        public void startTime() {
-            assertThat(batch.getStartTime()).isEqualTo(startTime);
         }
     }
 
@@ -327,11 +313,11 @@ class BatchTest {
         ReadBatch batch;
         CompletableFuture<GetResult> getCallable = new CompletableFuture<>();
         GetOperation get = new GetOperation(5L, getCallable, "");
-        @Mock BatchMetrics.Sample sample;
 
         @BeforeEach
         void setup() {
-            batch = new ReadBatch(clientByShardId, shardId, startTime, sample);
+            var factory = new ReadBatchFactory(l -> null, config, InstrumentProvider.NOOP);
+            batch = new ReadBatch(factory, clientByShardId, shardId);
         }
 
         @Test
@@ -358,50 +344,41 @@ class BatchTest {
         }
 
         @Test
-        public void completeOk() {
+        public void sendOk() {
             var getResponse = GetResponse.newBuilder().setStatus(KEY_NOT_FOUND).build();
             readResponses.add(o -> o.onNext(ReadResponse.newBuilder().addGets(getResponse).build()));
             readResponses.add(StreamObserver::onCompleted);
 
             batch.add(get);
-            batch.complete();
+            batch.send();
 
             assertThat(getCallable).isCompletedWithValueMatching(Objects::isNull);
-
-            var inOrder = inOrder(sample);
-            inOrder.verify(sample).startExec();
-            inOrder.verify(sample).stop(null, 0, 1);
         }
 
         @Test
-        public void completeFail() {
+        public void sendFail() {
             var batchError = new RuntimeException();
             readResponses.add(o -> o.onError(batchError));
 
             batch.add(get);
-            batch.complete();
+            batch.send();
 
             assertThat(getCallable).isCompletedExceptionally();
             assertThatThrownBy(getCallable::get).hasCauseInstanceOf(StatusRuntimeException.class);
-
-            var inOrder = inOrder(sample);
-            inOrder.verify(sample).startExec();
-            inOrder.verify(sample).stop(any(StatusRuntimeException.class), eq(0L), eq(1L));
         }
 
         @Test
-        public void completeFailNoClient() {
+        public void sendFailNoClient() {
             batch =
                     new ReadBatch(
+                            new ReadBatchFactory(l -> null, config, InstrumentProvider.NOOP),
                             s -> {
                                 throw new NoShardAvailableException(s);
                             },
-                            shardId,
-                            startTime,
-                            sample);
+                            shardId);
 
             batch.add(get);
-            batch.complete();
+            batch.send();
 
             assertThat(getCallable).isCompletedExceptionally();
             assertThatThrownBy(getCallable::get)
@@ -411,46 +388,20 @@ class BatchTest {
                                 assertThat(((NoShardAvailableException) e.getCause()).getShardId())
                                         .isEqualTo(shardId);
                             });
-
-            var inOrder = inOrder(sample);
-            inOrder.verify(sample).startExec();
-            inOrder.verify(sample).stop(any(NoShardAvailableException.class), eq(0L), eq(1L));
         }
 
         @Test
         public void shardId() {
             assertThat(batch.getShardId()).isEqualTo(shardId);
         }
-
-        @Test
-        public void startTime() {
-            assertThat(batch.getStartTime()).isEqualTo(startTime);
-        }
     }
 
     @Nested
     @DisplayName("Tests of write batch factory")
     class FactoryTests {
-        @Mock Clock clock;
-        @Mock BatchMetrics metrics;
-
         ClientConfig config =
                 new ClientConfig(
-                        "address",
-                        ZERO,
-                        ZERO,
-                        1,
-                        1024 * 1024,
-                        0,
-                        ZERO,
-                        "client_id",
-                        Metrics.nullObject,
-                        DefaultNamespace);
-
-        @BeforeEach
-        void mocking() {
-            when(clock.millis()).thenReturn(1L);
-        }
+                        "address", ZERO, ZERO, 1, 1024 * 1024, 0, ZERO, "client_id", null, DefaultNamespace);
 
         @Nested
         @DisplayName("Tests of write batch factory")
@@ -458,9 +409,8 @@ class BatchTest {
             @Test
             void apply() {
                 var batch =
-                        new Batch.WriteBatchFactory(clientByShardId, sessionManager, config, clock, metrics)
-                                .apply(shardId);
-                assertThat(batch.getStartTime()).isEqualTo(1L);
+                        new WriteBatchFactory(clientByShardId, sessionManager, config, InstrumentProvider.NOOP)
+                                .getBatch(shardId);
                 assertThat(batch.getShardId()).isEqualTo(shardId);
             }
         }
@@ -471,8 +421,8 @@ class BatchTest {
             @Test
             void apply() {
                 var batch =
-                        new Batch.ReadBatchFactory(clientByShardId, config, clock, metrics).apply(shardId);
-                assertThat(batch.getStartTime()).isEqualTo(1L);
+                        new ReadBatchFactory(clientByShardId, config, InstrumentProvider.NOOP)
+                                .getBatch(shardId);
                 assertThat(batch.getShardId()).isEqualTo(shardId);
             }
         }

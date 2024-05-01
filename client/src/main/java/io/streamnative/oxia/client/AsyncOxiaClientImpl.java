@@ -17,6 +17,8 @@ package io.streamnative.oxia.client;
 
 import static java.util.stream.Collectors.toList;
 
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.common.Attributes;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.DeleteOption;
 import io.streamnative.oxia.client.api.GetResult;
@@ -29,78 +31,206 @@ import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperatio
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
 import io.streamnative.oxia.client.grpc.OxiaStubManager;
-import io.streamnative.oxia.client.metrics.BatchMetrics;
-import io.streamnative.oxia.client.metrics.OperationMetrics;
+import io.streamnative.oxia.client.metrics.Counter;
+import io.streamnative.oxia.client.metrics.InstrumentProvider;
+import io.streamnative.oxia.client.metrics.LatencyHistogram;
+import io.streamnative.oxia.client.metrics.Unit;
+import io.streamnative.oxia.client.metrics.UpDownCounter;
 import io.streamnative.oxia.client.notify.NotificationManager;
 import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.client.shard.ShardManager;
 import io.streamnative.oxia.proto.ListRequest;
 import io.streamnative.oxia.proto.ListResponse;
-import java.time.Clock;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import lombok.AccessLevel;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Flux;
 
-@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
     static @NonNull CompletableFuture<AsyncOxiaClient> newInstance(@NonNull ClientConfig config) {
         var stubManager = new OxiaStubManager();
 
+        var instrumentProvider = new InstrumentProvider(config.openTelemetry(), config.namespace());
         var serviceAddrStub = stubManager.getStub(config.serviceAddress());
-        var shardManager = new ShardManager(serviceAddrStub, config.metrics(), config.namespace());
-        var notificationManager = new NotificationManager(stubManager, shardManager, config.metrics());
+        var shardManager = new ShardManager(serviceAddrStub, instrumentProvider, config.namespace());
+        var notificationManager =
+                new NotificationManager(stubManager, shardManager, instrumentProvider);
 
         Function<Long, String> leaderFn = shardManager::leader;
         var stubByShardId = leaderFn.andThen(stubManager::getStub);
 
         shardManager.addCallback(notificationManager);
-        var batchMetrics = BatchMetrics.create(Clock.systemUTC(), config.metrics());
-        var readBatchManager = BatchManager.newReadBatchManager(config, stubByShardId, batchMetrics);
-        var sessionManager = new SessionManager(config, stubByShardId);
+        var readBatchManager =
+                BatchManager.newReadBatchManager(config, stubByShardId, instrumentProvider);
+        var sessionManager = new SessionManager(config, stubByShardId, instrumentProvider);
         shardManager.addCallback(sessionManager);
         var writeBatchManager =
-                BatchManager.newWriteBatchManager(config, stubByShardId, sessionManager, batchMetrics);
-        var operationMetrics = OperationMetrics.create(Clock.systemUTC(), config.metrics());
+                BatchManager.newWriteBatchManager(
+                        config, stubByShardId, sessionManager, instrumentProvider);
 
         var client =
                 new AsyncOxiaClientImpl(
+                        instrumentProvider,
                         stubManager,
                         shardManager,
                         notificationManager,
                         readBatchManager,
                         writeBatchManager,
-                        sessionManager,
-                        operationMetrics);
+                        sessionManager);
 
         return shardManager.start().thenApply(v -> client);
     }
 
+    private final @NonNull InstrumentProvider instrumentProvider;
     private final @NonNull OxiaStubManager stubManager;
     private final @NonNull ShardManager shardManager;
     private final @NonNull NotificationManager notificationManager;
     private final @NonNull BatchManager readBatchManager;
     private final @NonNull BatchManager writeBatchManager;
     private final @NonNull SessionManager sessionManager;
-    private final @NonNull OperationMetrics metrics;
     private final AtomicLong sequence = new AtomicLong();
     private volatile boolean closed;
 
+    private final Counter counterPutBytes;
+    private final Counter counterGetBytes;
+    private final Counter counterListBytes;
+
+    private final UpDownCounter gaugePendingPutRequests;
+    private final UpDownCounter gaugePendingGetRequests;
+    private final UpDownCounter gaugePendingListRequests;
+    private final UpDownCounter gaugePendingDeleteRequests;
+    private final UpDownCounter gaugePendingDeleteRangeRequests;
+
+    private final UpDownCounter gaugePendingPutBytes;
+
+    private final LatencyHistogram histogramPutLatency;
+    private final LatencyHistogram histogramGetLatency;
+    private final LatencyHistogram histogramDeleteLatency;
+    private final LatencyHistogram histogramDeleteRangeLatency;
+    private final LatencyHistogram histogramListLatency;
+
+    AsyncOxiaClientImpl(
+            @NonNull InstrumentProvider instrumentProvider,
+            @NonNull OxiaStubManager stubManager,
+            @NonNull ShardManager shardManager,
+            @NonNull NotificationManager notificationManager,
+            @NonNull BatchManager readBatchManager,
+            @NonNull BatchManager writeBatchManager,
+            @NonNull SessionManager sessionManager) {
+        this.instrumentProvider = instrumentProvider;
+        this.stubManager = stubManager;
+        this.shardManager = shardManager;
+        this.notificationManager = notificationManager;
+        this.readBatchManager = readBatchManager;
+        this.writeBatchManager = writeBatchManager;
+        this.sessionManager = sessionManager;
+
+        counterPutBytes =
+                instrumentProvider.newCounter(
+                        "oxia.client.ops.size",
+                        Unit.Bytes,
+                        "Total number of bytes written in put operations",
+                        Attributes.of(AttributeKey.stringKey("oxia.op"), "put"));
+        counterGetBytes =
+                instrumentProvider.newCounter(
+                        "oxia.client.ops.size",
+                        Unit.Bytes,
+                        "Total number of bytes read in get operations",
+                        Attributes.of(AttributeKey.stringKey("oxia.op"), "get"));
+        counterListBytes =
+                instrumentProvider.newCounter(
+                        "oxia.client.list.size",
+                        Unit.Bytes,
+                        "Total number of bytes read in list operations",
+                        Attributes.of(AttributeKey.stringKey("oxia.op"), "list"));
+
+        gaugePendingPutRequests =
+                instrumentProvider.newUpDownCounter(
+                        "oxia.client.ops.pending",
+                        Unit.Events,
+                        "Current number of outstanding put requests",
+                        Attributes.of(AttributeKey.stringKey("oxia.op"), "put"));
+        gaugePendingGetRequests =
+                instrumentProvider.newUpDownCounter(
+                        "oxia.client.ops.pending",
+                        Unit.Events,
+                        "Current number of outstanding get requests",
+                        Attributes.of(AttributeKey.stringKey("oxia.op"), "get"));
+        gaugePendingListRequests =
+                instrumentProvider.newUpDownCounter(
+                        "oxia.client.ops.pending",
+                        Unit.Events,
+                        "Current number of outstanding list requests",
+                        Attributes.of(AttributeKey.stringKey("oxia.op"), "list"));
+        gaugePendingDeleteRequests =
+                instrumentProvider.newUpDownCounter(
+                        "oxia.client.ops.pending",
+                        Unit.Events,
+                        "Current number of outstanding list requests",
+                        Attributes.of(AttributeKey.stringKey("oxia.op"), "delete"));
+        gaugePendingDeleteRangeRequests =
+                instrumentProvider.newUpDownCounter(
+                        "oxia.client.ops.pending",
+                        Unit.Events,
+                        "Current number of outstanding delete requests",
+                        Attributes.of(AttributeKey.stringKey("oxia.op"), "delete-range"));
+
+        gaugePendingPutBytes =
+                instrumentProvider.newUpDownCounter(
+                        "oxia.client.ops.outstanding",
+                        Unit.Bytes,
+                        "Current number of outstanding bytes in put operations",
+                        Attributes.of(AttributeKey.stringKey("oxia.op"), "put"));
+
+        histogramPutLatency =
+                instrumentProvider.newLatencyHistogram(
+                        "oxia.client.ops",
+                        "Duration of put operations",
+                        Attributes.of(AttributeKey.stringKey("oxia.op"), "put"));
+
+        histogramGetLatency =
+                instrumentProvider.newLatencyHistogram(
+                        "oxia.client.ops",
+                        "Duration of get operations",
+                        Attributes.of(AttributeKey.stringKey("oxia.op"), "get"));
+
+        histogramDeleteLatency =
+                instrumentProvider.newLatencyHistogram(
+                        "oxia.client.ops",
+                        "Duration of delete operations",
+                        Attributes.of(AttributeKey.stringKey("oxia.op"), "delete"));
+
+        histogramDeleteRangeLatency =
+                instrumentProvider.newLatencyHistogram(
+                        "oxia.client.ops",
+                        "Duration of delete-range operations",
+                        Attributes.of(AttributeKey.stringKey("oxia.op"), "delete-range"));
+
+        histogramListLatency =
+                instrumentProvider.newLatencyHistogram(
+                        "oxia.client.ops",
+                        "Duration of list operations",
+                        Attributes.of(AttributeKey.stringKey("oxia.op"), "list"));
+    }
+
     @Override
     public @NonNull CompletableFuture<PutResult> put(String key, byte[] value, PutOption... options) {
-        var sample = metrics.recordPut(value == null ? 0 : value.length);
+        long startTime = System.nanoTime();
         var callback = new CompletableFuture<PutResult>();
+
         try {
             checkIfClosed();
             Objects.requireNonNull(key);
             Objects.requireNonNull(value);
+
+            gaugePendingPutRequests.increment();
+            gaugePendingPutBytes.add(value.length);
+
             var validatedOptions = PutOption.validate(options);
             var shardId = shardManager.get(key);
             var versionId = PutOption.toVersionId(validatedOptions);
@@ -116,12 +246,26 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         } catch (RuntimeException e) {
             callback.completeExceptionally(e);
         }
-        return callback.whenComplete(sample::stop);
+        return callback.whenComplete(
+                (putResult, throwable) -> {
+                    gaugePendingPutRequests.decrement();
+                    gaugePendingPutBytes.add(-value.length);
+
+                    if (throwable == null) {
+                        counterPutBytes.add(value.length);
+                        histogramPutLatency.recordSuccess(System.nanoTime() - startTime);
+                    } else {
+                        histogramPutLatency.recordFailure(System.nanoTime() - startTime);
+                    }
+                });
     }
 
     @Override
     public @NonNull CompletableFuture<Boolean> delete(String key, DeleteOption... options) {
-        var sample = metrics.recordDelete();
+        long startTime = System.nanoTime();
+
+        gaugePendingDeleteRequests.increment();
+
         var callback = new CompletableFuture<Boolean>();
         try {
             checkIfClosed();
@@ -135,13 +279,22 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         } catch (RuntimeException e) {
             callback.completeExceptionally(e);
         }
-        return callback.whenComplete(sample::stop);
+        return callback.whenComplete(
+                (putResult, throwable) -> {
+                    gaugePendingDeleteRequests.decrement();
+                    if (throwable == null) {
+                        histogramDeleteLatency.recordSuccess(System.nanoTime() - startTime);
+                    } else {
+                        histogramDeleteLatency.recordFailure(System.nanoTime() - startTime);
+                    }
+                });
     }
 
     @Override
     public @NonNull CompletableFuture<Void> deleteRange(
             String startKeyInclusive, String endKeyExclusive) {
-        var sample = metrics.recordDeleteRange();
+        long startTime = System.nanoTime();
+        gaugePendingDeleteRangeRequests.increment();
         CompletableFuture<Void> callback;
         try {
             checkIfClosed();
@@ -167,12 +320,21 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         } catch (RuntimeException e) {
             callback = CompletableFuture.failedFuture(e);
         }
-        return callback.whenComplete(sample::stop);
+        return callback.whenComplete(
+                (putResult, throwable) -> {
+                    gaugePendingDeleteRequests.decrement();
+                    if (throwable == null) {
+                        histogramDeleteRangeLatency.recordSuccess(System.nanoTime() - startTime);
+                    } else {
+                        histogramDeleteRangeLatency.recordFailure(System.nanoTime() - startTime);
+                    }
+                });
     }
 
     @Override
     public @NonNull CompletableFuture<GetResult> get(String key) {
-        var sample = metrics.recordGet();
+        long startTime = System.nanoTime();
+        gaugePendingGetRequests.increment();
         var callback = new CompletableFuture<GetResult>();
         try {
             checkIfClosed();
@@ -184,13 +346,23 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         } catch (RuntimeException e) {
             callback.completeExceptionally(e);
         }
-        return callback.whenComplete(sample::stop);
+        return callback.whenComplete(
+                (getResult, throwable) -> {
+                    gaugePendingGetRequests.decrement();
+                    if (throwable == null) {
+                        counterGetBytes.add(getResult.getValue().length);
+                        histogramGetLatency.recordSuccess(System.nanoTime() - startTime);
+                    } else {
+                        histogramGetLatency.recordFailure(System.nanoTime() - startTime);
+                    }
+                });
     }
 
     @Override
     public @NonNull CompletableFuture<List<String>> list(
             String startKeyInclusive, String endKeyExclusive) {
-        var sample = metrics.recordList();
+        long startTime = System.nanoTime();
+        gaugePendingListRequests.increment();
         CompletableFuture<List<String>> callback;
         try {
             checkIfClosed();
@@ -204,7 +376,16 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         } catch (Exception e) {
             callback = CompletableFuture.failedFuture(e);
         }
-        return callback.whenComplete(sample::stop);
+        return callback.whenComplete(
+                (listResult, throwable) -> {
+                    gaugePendingListRequests.decrement();
+                    if (throwable == null) {
+                        counterListBytes.add(listResult.stream().mapToInt(String::length).sum());
+                        histogramListLatency.recordSuccess(System.nanoTime() - startTime);
+                    } else {
+                        histogramListLatency.recordFailure(System.nanoTime() - startTime);
+                    }
+                });
     }
 
     @Override

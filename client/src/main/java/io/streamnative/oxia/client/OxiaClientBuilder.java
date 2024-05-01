@@ -18,9 +18,10 @@ package io.streamnative.oxia.client;
 import static java.time.Duration.ZERO;
 
 import com.google.common.base.Strings;
+import io.opentelemetry.api.GlobalOpenTelemetry;
+import io.opentelemetry.api.OpenTelemetry;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.SyncOxiaClient;
-import io.streamnative.oxia.client.metrics.api.Metrics;
 import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -46,8 +47,8 @@ public class OxiaClientBuilder {
     private int recordCacheCapacity = DefaultRecordCacheCapacity;
     @NonNull private Duration sessionTimeout = DefaultSessionTimeout;
     @NonNull private Supplier<String> clientIdentifier = OxiaClientBuilder::randomClientIdentifier;
-    @NonNull private Metrics metrics = Metrics.nullObject;
     @NonNull private String namespace = DefaultNamespace;
+    @NonNull private OpenTelemetry openTelemetry = GlobalOpenTelemetry.get();
 
     public @NonNull OxiaClientBuilder requestTimeout(@NonNull Duration requestTimeout) {
         if (requestTimeout.isNegative() || requestTimeout.equals(ZERO)) {
@@ -116,8 +117,8 @@ public class OxiaClientBuilder {
         return this;
     }
 
-    public @NonNull OxiaClientBuilder metrics(@NonNull Metrics metrics) {
-        this.metrics = metrics;
+    public @NonNull OxiaClientBuilder openTelemetry(@NonNull OpenTelemetry openTelemetry) {
+        this.openTelemetry = openTelemetry;
         return this;
     }
 
@@ -132,7 +133,7 @@ public class OxiaClientBuilder {
                         recordCacheCapacity,
                         sessionTimeout,
                         clientIdentifier.get(),
-                        metrics,
+                        openTelemetry,
                         namespace);
         var async = AsyncOxiaClientImpl.newInstance(config);
         if (config.recordCacheCapacity() > 0) {
@@ -146,7 +147,7 @@ public class OxiaClientBuilder {
         return new SyncOxiaClientImpl(asyncClient().join());
     }
 
-    public static @NonNull String randomClientIdentifier() {
+    private static @NonNull String randomClientIdentifier() {
         return "oxia-client-java:" + UUID.randomUUID();
     }
 }

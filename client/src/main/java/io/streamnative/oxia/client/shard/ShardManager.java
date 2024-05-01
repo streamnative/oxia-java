@@ -30,12 +30,14 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+import io.opentelemetry.api.common.Attributes;
 import io.streamnative.oxia.client.CompositeConsumer;
 import io.streamnative.oxia.client.grpc.CustomStatusCode;
 import io.streamnative.oxia.client.grpc.GrpcResponseStream;
 import io.streamnative.oxia.client.grpc.OxiaStub;
-import io.streamnative.oxia.client.metrics.ShardAssignmentMetrics;
-import io.streamnative.oxia.client.metrics.api.Metrics;
+import io.streamnative.oxia.client.metrics.Counter;
+import io.streamnative.oxia.client.metrics.InstrumentProvider;
+import io.streamnative.oxia.client.metrics.Unit;
 import io.streamnative.oxia.proto.ShardAssignments;
 import io.streamnative.oxia.proto.ShardAssignmentsRequest;
 import java.time.Duration;
@@ -65,7 +67,8 @@ import reactor.util.retry.RetryBackoffSpec;
 public class ShardManager extends GrpcResponseStream implements AutoCloseable {
     private final @NonNull Assignments assignments;
     private final @NonNull CompositeConsumer<ShardAssignmentChanges> callbacks;
-    private final @NonNull ShardAssignmentMetrics metrics;
+
+    private final Counter shardAssignmentsEvents;
 
     private final Scheduler scheduler;
 
@@ -74,20 +77,29 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
             @NonNull OxiaStub stub,
             @NonNull Assignments assignments,
             @NonNull CompositeConsumer<ShardAssignmentChanges> callbacks,
-            @NonNull ShardAssignmentMetrics metrics) {
+            @NonNull InstrumentProvider instrumentProvider) {
         super(stub);
         this.assignments = assignments;
         this.callbacks = callbacks;
-        this.metrics = metrics;
         this.scheduler = Schedulers.newSingle("shard-assignments");
+
+        this.shardAssignmentsEvents =
+                instrumentProvider.newCounter(
+                        "oxia.client.shard.assignments.count",
+                        Unit.None,
+                        "The total count of received shard assignment events",
+                        Attributes.empty());
     }
 
-    public ShardManager(@NonNull OxiaStub stub, @NonNull Metrics metrics, @NonNull String namespace) {
+    public ShardManager(
+            @NonNull OxiaStub stub,
+            @NonNull InstrumentProvider instrumentProvider,
+            @NonNull String namespace) {
         this(
                 stub,
                 new Assignments(Xxh332HashRangeShardStrategy, namespace),
                 new CompositeConsumer<>(),
-                ShardAssignmentMetrics.create(metrics));
+                instrumentProvider);
     }
 
     @Override
@@ -115,7 +127,7 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
                         .repeat()
                         .publishOn(scheduler)
                         .doOnNext(this::updateAssignments)
-                        .doOnEach(metrics::recordAssignments)
+                        .doOnEach(x -> shardAssignmentsEvents.increment())
                         .publish();
         // Complete after the first response has been processed
         var future = Mono.from(assignmentsFlux).then().toFuture();
@@ -166,7 +178,6 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
         var changes = computeShardLeaderChanges(assignments.shards, updatedMap);
         assignments.update(updates);
         callbacks.accept(changes);
-        metrics.recordChanges(changes);
     }
 
     @VisibleForTesting
