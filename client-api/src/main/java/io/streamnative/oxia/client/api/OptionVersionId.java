@@ -15,12 +15,23 @@
  */
 package io.streamnative.oxia.client.api;
 
-public sealed interface PutOption permits OptionEphemeral, OptionVersionId {
+public sealed interface OptionVersionId extends PutOption, DeleteOption
+        permits OptionVersionId.OptionRecordDoesNotExist, OptionVersionId.OptionVersionIdEqual {
 
-    PutOption IfRecordDoesNotExist = new OptionVersionId.OptionRecordDoesNotExist();
-    PutOption AsEphemeralRecord = new OptionEphemeral();
+    long versionId();
 
-    static PutOption IfVersionIdEquals(long versionId) {
-        return new OptionVersionId.OptionVersionIdEqual(versionId);
+    record OptionVersionIdEqual(long versionId) implements OptionVersionId {
+        public OptionVersionIdEqual {
+            if (versionId < 0) {
+                throw new IllegalArgumentException("versionId cannot be less than 0 - was: " + versionId);
+            }
+        }
+    }
+
+    record OptionRecordDoesNotExist() implements OptionVersionId {
+        @Override
+        public long versionId() {
+            return Version.KeyNotExists;
+        }
     }
 }

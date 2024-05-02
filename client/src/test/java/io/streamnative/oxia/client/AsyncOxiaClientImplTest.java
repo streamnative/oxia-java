@@ -15,7 +15,7 @@
  */
 package io.streamnative.oxia.client;
 
-import static io.streamnative.oxia.client.api.PutOption.ifVersionIdEquals;
+import static io.streamnative.oxia.client.api.PutOption.IfVersionIdEquals;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Optional.empty;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -47,6 +47,7 @@ import io.streamnative.oxia.proto.ListResponse;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -146,7 +147,7 @@ class AsyncOxiaClientImplTest {
         when(shardManager.get(key)).thenReturn(shardId);
         when(writeBatchManager.getBatcher(shardId)).thenReturn(batcher);
         doNothing().when(batcher).add(opCaptor.capture());
-        var result = client.put(key, value, ifVersionIdEquals(expectedVersionId));
+        var result = client.put(key, value, Set.of(IfVersionIdEquals(expectedVersionId)));
         assertThat(result).isNotCompleted();
         assertThat(opCaptor.getValue())
                 .satisfies(
@@ -161,7 +162,7 @@ class AsyncOxiaClientImplTest {
     void putInvalidOptions() {
         var key = "key";
         var value = "hello".getBytes(UTF_8);
-        var result = client.put(key, value, ifVersionIdEquals(1L), ifVersionIdEquals(2L));
+        var result = client.put(key, value, Set.of(IfVersionIdEquals(1L), IfVersionIdEquals(2L)));
         assertThat(result).isCompletedExceptionally();
     }
 
@@ -218,7 +219,7 @@ class AsyncOxiaClientImplTest {
         when(shardManager.get(key)).thenReturn(shardId);
         when(writeBatchManager.getBatcher(shardId)).thenReturn(batcher);
         doNothing().when(batcher).add(opCaptor.capture());
-        var result = client.delete(key, DeleteOption.ifVersionIdEquals(expectedVersionId));
+        var result = client.delete(key, Set.of(DeleteOption.IfVersionIdEquals(expectedVersionId)));
         assertThat(result).isNotCompleted();
         assertThat(opCaptor.getValue())
                 .satisfies(
@@ -232,7 +233,8 @@ class AsyncOxiaClientImplTest {
     void deleteInvalidOptions() {
         var key = "key";
         var result =
-                client.delete(key, DeleteOption.ifVersionIdEquals(1L), DeleteOption.ifVersionIdEquals(2L));
+                client.delete(
+                        key, Set.of(DeleteOption.IfVersionIdEquals(1L), DeleteOption.IfVersionIdEquals(2L)));
         assertThat(result).isCompletedExceptionally();
     }
 

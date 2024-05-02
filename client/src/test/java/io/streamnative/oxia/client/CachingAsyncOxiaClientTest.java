@@ -34,6 +34,7 @@ import io.streamnative.oxia.client.api.Notification.KeyDeleted;
 import io.streamnative.oxia.client.api.Notification.KeyModified;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.Version;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -72,22 +73,22 @@ class CachingAsyncOxiaClientTest {
         var value = "value".getBytes(UTF_8);
         var version = new Version(1L, 2L, 3L, 4L, Optional.empty(), Optional.empty());
         var result = CompletableFuture.completedFuture(new PutResult(version));
-        when(delegate.put("a", value)).thenReturn(result);
+        when(delegate.put("a", value, Collections.emptySet())).thenReturn(result);
         assertThat(client.put("a", value)).isSameAs(result);
         var inOrder = inOrder(delegate, syncCache);
         inOrder.verify(syncCache).invalidate("a");
-        inOrder.verify(delegate).put("a", value);
+        inOrder.verify(delegate).put("a", value, Collections.emptySet());
     }
 
     @Test
     void delete() {
         when(cache.synchronous()).thenReturn(syncCache);
         var result = CompletableFuture.completedFuture(true);
-        when(delegate.delete("a")).thenReturn(result);
+        when(delegate.delete("a", Collections.emptySet())).thenReturn(result);
         assertThat(client.delete("a")).isSameAs(result);
         var inOrder = inOrder(delegate, syncCache);
         inOrder.verify(syncCache).invalidate("a");
-        inOrder.verify(delegate).delete("a");
+        inOrder.verify(delegate).delete("a", Collections.emptySet());
     }
 
     @Test

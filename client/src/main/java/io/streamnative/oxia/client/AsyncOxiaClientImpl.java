@@ -41,8 +41,11 @@ import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.client.shard.ShardManager;
 import io.streamnative.oxia.proto.ListRequest;
 import io.streamnative.oxia.proto.ListResponse;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.OptionalLong;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -217,7 +220,13 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     }
 
     @Override
-    public @NonNull CompletableFuture<PutResult> put(String key, byte[] value, PutOption... options) {
+    public @NonNull CompletableFuture<PutResult> put(String key, byte[] value) {
+        return put(key, value, Collections.emptySet());
+    }
+
+    @Override
+    public @NonNull CompletableFuture<PutResult> put(
+            String key, byte[] value, Set<PutOption> options) {
         long startTime = System.nanoTime();
         var callback = new CompletableFuture<PutResult>();
 
@@ -229,12 +238,10 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
             gaugePendingPutRequests.increment();
             gaugePendingPutBytes.add(value.length);
 
-            var validatedOptions = PutOptionsUtil.validate(options);
             var shardId = shardManager.get(key);
-            var versionId = PutOptionsUtil.toVersionId(validatedOptions);
+            var versionId = PutOptionsUtil.getVersionId(options);
             var op =
-                    new PutOperation(
-                            callback, key, value, versionId, PutOptionsUtil.toEphemeral(validatedOptions));
+                    new PutOperation(callback, key, value, versionId, PutOptionsUtil.isEphemeral(options));
             writeBatchManager.getBatcher(shardId).add(op);
         } catch (RuntimeException e) {
             callback.completeExceptionally(e);
@@ -254,7 +261,12 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     }
 
     @Override
-    public @NonNull CompletableFuture<Boolean> delete(String key, DeleteOption... options) {
+    public @NonNull CompletableFuture<Boolean> delete(String key) {
+        return delete(key, Collections.emptySet());
+    }
+
+    @Override
+    public @NonNull CompletableFuture<Boolean> delete(String key, Set<DeleteOption> options) {
         long startTime = System.nanoTime();
 
         gaugePendingDeleteRequests.increment();
@@ -263,9 +275,9 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         try {
             checkIfClosed();
             Objects.requireNonNull(key);
-            var validatedOptions = DeleteOptionsUtil.validate(options);
+
+            OptionalLong versionId = DeleteOptionsUtil.getVersionId(options);
             var shardId = shardManager.get(key);
-            var versionId = DeleteOptionsUtil.toVersionId(validatedOptions);
             writeBatchManager.getBatcher(shardId).add(new DeleteOperation(callback, key, versionId));
         } catch (RuntimeException e) {
             callback.completeExceptionally(e);

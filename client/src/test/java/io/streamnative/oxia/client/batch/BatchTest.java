@@ -60,6 +60,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -145,10 +146,10 @@ class BatchTest {
         CompletableFuture<Boolean> deleteCallable = new CompletableFuture<>();
         CompletableFuture<Void> deleteRangeCallable = new CompletableFuture<>();
 
-        PutOperation put = new PutOperation(putCallable, "", new byte[0], Optional.of(1L), false);
+        PutOperation put = new PutOperation(putCallable, "", new byte[0], OptionalLong.of(1), false);
         PutOperation putEphemeral =
-                new PutOperation(putEphemeralCallable, "", new byte[0], Optional.of(1L), true);
-        DeleteOperation delete = new DeleteOperation(deleteCallable, "", Optional.of(1L));
+                new PutOperation(putEphemeralCallable, "", new byte[0], OptionalLong.of(1), true);
+        DeleteOperation delete = new DeleteOperation(deleteCallable, "", OptionalLong.of(1));
         DeleteRangeOperation deleteRange = new DeleteRangeOperation(deleteRangeCallable, "a", "b");
 
         String clientIdentifier = "client-id";

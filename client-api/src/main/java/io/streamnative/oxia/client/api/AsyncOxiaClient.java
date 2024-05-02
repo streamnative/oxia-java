@@ -17,6 +17,7 @@ package io.streamnative.oxia.client.api;
 
 import io.streamnative.oxia.client.api.exceptions.UnexpectedVersionIdException;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import lombok.NonNull;
@@ -29,7 +30,7 @@ public interface AsyncOxiaClient extends AutoCloseable {
      * specified, at the instant when the put is applied. The put will not be applied if the server's
      * versionId of the record does not match the expectation set in the call. If you wish the put to
      * succeed only if the key does not already exist on the server, then pass the {@link
-     * Version#KeyNotExists} value.
+     * PutOption#IfRecordDoesNotExist} value.
      *
      * @param key The key with which the value should be associated.
      * @param value The value to associate with the key.
@@ -40,7 +41,20 @@ public interface AsyncOxiaClient extends AutoCloseable {
      *     the call.
      */
     @NonNull
-    CompletableFuture<PutResult> put(String key, byte[] value, PutOption... options);
+    CompletableFuture<PutResult> put(String key, byte[] value, Set<PutOption> options);
+
+    /**
+     * Conditionally associates a value with a key if the server's versionId of the record is as
+     * specified, at the instant when the put is applied. The put will not be applied if the server's
+     * versionId of the record does not match the expectation set in the call.
+     *
+     * @param key The key with which the value should be associated.
+     * @param value The value to associate with the key.
+     * @return The result of the put at the specified key. Supplied via a future that returns the
+     *     {@link PutResult}.
+     */
+    @NonNull
+    CompletableFuture<PutResult> put(String key, byte[] value);
 
     /**
      * Conditionally deletes the record associated with the key if the record exists, and the server's
@@ -56,7 +70,17 @@ public interface AsyncOxiaClient extends AutoCloseable {
      *     versionId at the server did not that match supplied in the call.
      */
     @NonNull
-    CompletableFuture<Boolean> delete(String key, DeleteOption... options);
+    CompletableFuture<Boolean> delete(String key, Set<DeleteOption> options);
+
+    /**
+     * Unconditionally deletes the record associated with the key if the record exists.
+     *
+     * @param key Deletes the record with the specified key.
+     * @return A future that completes when the delete call has returned. The future can return a flag
+     *     that will be true if the key was actually present on the server, false otherwise.
+     */
+    @NonNull
+    CompletableFuture<Boolean> delete(String key);
 
     /**
      * Deletes any records with keys within the specified range. For more information on how keys are

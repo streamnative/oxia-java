@@ -15,50 +15,9 @@
  */
 package io.streamnative.oxia.client.api;
 
-import static io.streamnative.oxia.client.api.DeleteOption.VersionIdDeleteOption;
-import static io.streamnative.oxia.client.api.DeleteOption.VersionIdDeleteOption.IfVersionIdEquals;
-import static io.streamnative.oxia.client.api.DeleteOption.VersionIdDeleteOption.Unconditionally;
+public sealed interface DeleteOption permits OptionVersionId {
 
-public sealed interface DeleteOption permits VersionIdDeleteOption {
-
-    default boolean cannotCoExistWith(DeleteOption option) {
-        return false;
-    }
-
-    sealed interface VersionIdDeleteOption extends DeleteOption
-            permits IfVersionIdEquals, Unconditionally {
-
-        Long toVersionId();
-
-        default boolean cannotCoExistWith(DeleteOption option) {
-            return option instanceof VersionIdDeleteOption;
-        }
-
-        record IfVersionIdEquals(long versionId) implements VersionIdDeleteOption {
-
-            public IfVersionIdEquals {
-                if (versionId < 0) {
-                    throw new IllegalArgumentException("versionId cannot be less than 0 - was: " + versionId);
-                }
-            }
-
-            @Override
-            public Long toVersionId() {
-                return versionId();
-            }
-        }
-
-        record Unconditionally() implements VersionIdDeleteOption {
-            @Override
-            public Long toVersionId() {
-                return null;
-            }
-        }
-    }
-
-    VersionIdDeleteOption Unconditionally = new VersionIdDeleteOption.Unconditionally();
-
-    static VersionIdDeleteOption ifVersionIdEquals(long versionId) {
-        return new IfVersionIdEquals(versionId);
+    static DeleteOption IfVersionIdEquals(long versionId) {
+        return new OptionVersionId.OptionVersionIdEqual(versionId);
     }
 }

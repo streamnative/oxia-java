@@ -16,7 +16,7 @@
 package io.streamnative.oxia.client.it;
 
 import static io.streamnative.oxia.client.api.PutOption.IfRecordDoesNotExist;
-import static io.streamnative.oxia.client.api.PutOption.ifVersionIdEquals;
+import static io.streamnative.oxia.client.api.PutOption.IfVersionIdEquals;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.function.Function.identity;
@@ -46,6 +46,7 @@ import io.streamnative.oxia.client.api.exceptions.UnexpectedVersionIdException;
 import io.streamnative.oxia.testcontainers.OxiaContainer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterAll;
@@ -102,13 +103,14 @@ public class OxiaClientIT {
 
     @Test
     void test() throws Exception {
-        var a = client.put("a", "a".getBytes(UTF_8), IfRecordDoesNotExist);
-        var b = client.put("b", "b".getBytes(UTF_8), IfRecordDoesNotExist);
+        var a = client.put("a", "a".getBytes(UTF_8), Set.of(IfRecordDoesNotExist));
+        var b = client.put("b", "b".getBytes(UTF_8), Set.of(IfRecordDoesNotExist));
         var c = client.put("c", "c".getBytes(UTF_8));
         var d = client.put("d", "d".getBytes(UTF_8));
         allOf(a, b, c, d).join();
 
-        assertThatThrownBy(() -> client.put("a", "a".getBytes(UTF_8), IfRecordDoesNotExist).join())
+        assertThatThrownBy(
+                        () -> client.put("a", "a".getBytes(UTF_8), Set.of(IfRecordDoesNotExist)).join())
                 .hasCauseInstanceOf(KeyAlreadyExistsException.class);
         // verify 'a' is present
         var getResult = client.get("a").join();
@@ -122,7 +124,7 @@ public class OxiaClientIT {
                         () -> assertThat(notifications).contains(new KeyCreated("a", finalAVersion)));
 
         // update 'a' with expected version
-        client.put("a", "a2".getBytes(UTF_8), ifVersionIdEquals(aVersion)).join();
+        client.put("a", "a2".getBytes(UTF_8), Set.of(IfVersionIdEquals(aVersion))).join();
         getResult = client.get("a").join();
         assertThat(getResult.getValue()).isEqualTo("a2".getBytes(UTF_8));
         aVersion = getResult.getVersion().versionId();
@@ -136,13 +138,16 @@ public class OxiaClientIT {
         // put with unexpected version
         var bVersion = client.get("b").join().getVersion().versionId();
         assertThatThrownBy(
-                        () -> client.put("b", "b2".getBytes(UTF_8), ifVersionIdEquals(bVersion + 1L)).join())
+                        () ->
+                                client
+                                        .put("b", "b2".getBytes(UTF_8), Set.of(IfVersionIdEquals(bVersion + 1L)))
+                                        .join())
                 .hasCauseInstanceOf(UnexpectedVersionIdException.class);
 
         // delete with unexpected version
         var cVersion = client.get("c").join().getVersion().versionId();
         assertThatThrownBy(
-                        () -> client.delete("c", DeleteOption.ifVersionIdEquals(cVersion + 1L)).join())
+                        () -> client.delete("c", Set.of(DeleteOption.IfVersionIdEquals(cVersion + 1L))).join())
                 .hasCauseInstanceOf(UnexpectedVersionIdException.class);
 
         // list all keys
@@ -150,7 +155,7 @@ public class OxiaClientIT {
         assertThat(listResult).containsOnly("a", "b", "c", "d");
 
         // delete 'a' with expected version
-        client.delete("a", DeleteOption.ifVersionIdEquals(aVersion)).join();
+        client.delete("a", Set.of(DeleteOption.IfVersionIdEquals(aVersion))).join();
         getResult = client.get("a").join();
         assertThat(getResult).isNull();
 
@@ -178,13 +183,14 @@ public class OxiaClientIT {
                         .clientIdentifier(identity)
                         .asyncClient()
                         .join()) {
-            otherClient.put("f", "f".getBytes(), PutOption.AsEphemeralRecord).join();
+            otherClient.put("f", "f".getBytes(), Set.of(PutOption.AsEphemeralRecord)).join();
             getResult = client.get("f").join();
             var sessionId = getResult.getVersion().sessionId().get();
             assertThat(sessionId).isNotNull();
             assertThat(getResult.getVersion().clientIdentifier().get()).isEqualTo(identity);
 
-            var putResult = otherClient.put("g", "g".getBytes(), PutOption.AsEphemeralRecord).join();
+            var putResult =
+                    otherClient.put("g", "g".getBytes(), Set.of(PutOption.AsEphemeralRecord)).join();
             assertThat(putResult.version().clientIdentifier().get()).isEqualTo(identity);
             assertThat(putResult.version().sessionId().get()).isNotNull();
 

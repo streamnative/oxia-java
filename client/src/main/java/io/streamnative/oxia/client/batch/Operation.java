@@ -42,6 +42,7 @@ import io.streamnative.oxia.proto.Status;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.concurrent.CompletableFuture;
 import lombok.NonNull;
 
@@ -76,14 +77,15 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 @NonNull CompletableFuture<PutResult> callback,
                 @NonNull String key,
                 byte @NonNull [] value,
-                @NonNull Optional<Long> expectedVersionId,
+                @NonNull OptionalLong expectedVersionId,
                 boolean ephemeral)
                 implements WriteOperation<PutResult> {
 
             public PutOperation {
-                if (expectedVersionId.isPresent() && expectedVersionId.get() < KeyNotExists) {
+                if (expectedVersionId.isPresent() && expectedVersionId.getAsLong() < KeyNotExists) {
                     throw new IllegalArgumentException(
-                            "expectedVersionId must be >= -1 (KeyNotExists), was: " + expectedVersionId.get());
+                            "expectedVersionId must be >= -1 (KeyNotExists), was: "
+                                    + expectedVersionId.getAsLong());
                 }
             }
 
@@ -106,10 +108,10 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 switch (response.getStatus()) {
                     case SESSION_DOES_NOT_EXIST -> fail(new SessionDoesNotExistException());
                     case UNEXPECTED_VERSION_ID -> {
-                        if (expectedVersionId.get() == KeyNotExists) {
+                        if (expectedVersionId.getAsLong() == KeyNotExists) {
                             fail(new KeyAlreadyExistsException(key));
                         } else {
-                            fail(new UnexpectedVersionIdException(key, expectedVersionId.get()));
+                            fail(new UnexpectedVersionIdException(key, expectedVersionId.getAsLong()));
                         }
                     }
                     case OK -> callback.complete(ProtoUtil.getPutResultFromProto(response));
@@ -144,13 +146,13 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
         record DeleteOperation(
                 @NonNull CompletableFuture<Boolean> callback,
                 @NonNull String key,
-                @NonNull Optional<Long> expectedVersionId)
+                @NonNull OptionalLong expectedVersionId)
                 implements WriteOperation<Boolean> {
 
             public DeleteOperation {
-                if (expectedVersionId.isPresent() && expectedVersionId.get() < 0) {
+                if (expectedVersionId.isPresent() && expectedVersionId.getAsLong() < 0) {
                     throw new IllegalArgumentException(
-                            "expectedVersionId must be >= 0, was: " + expectedVersionId.get());
+                            "expectedVersionId must be >= 0, was: " + expectedVersionId.getAsLong());
                 }
             }
 
@@ -163,7 +165,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
             void complete(@NonNull DeleteResponse response) {
                 switch (response.getStatus()) {
                     case UNEXPECTED_VERSION_ID -> fail(
-                            new UnexpectedVersionIdException(key, expectedVersionId.get()));
+                            new UnexpectedVersionIdException(key, expectedVersionId.getAsLong()));
                     case KEY_NOT_FOUND -> callback.complete(false);
                     case OK -> callback.complete(true);
                     default -> fail(new IllegalStateException("GRPC.Status: " + response.getStatus().name()));
@@ -171,7 +173,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
             }
 
             public DeleteOperation(@NonNull CompletableFuture<Boolean> callback, @NonNull String key) {
-                this(callback, key, Optional.empty());
+                this(callback, key, OptionalLong.empty());
             }
         }
 

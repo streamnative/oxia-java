@@ -25,7 +25,9 @@ import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.PutOption;
 import io.streamnative.oxia.client.api.PutResult;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -49,15 +51,25 @@ class CachingAsyncOxiaClient implements AsyncOxiaClient {
     }
 
     @Override
+    public @NonNull CompletableFuture<PutResult> put(@NonNull String key, byte @NonNull [] value) {
+        return put(key, value, Collections.emptySet());
+    }
+
+    @Override
     public @NonNull CompletableFuture<PutResult> put(
-            @NonNull String key, byte @NonNull [] value, @NonNull PutOption... options) {
+            @NonNull String key, byte @NonNull [] value, @NonNull Set<PutOption> options) {
         recordCache.synchronous().invalidate(key);
         return delegate.put(key, value, options);
     }
 
     @Override
+    public @NonNull CompletableFuture<Boolean> delete(@NonNull String key) {
+        return delete(key, Collections.emptySet());
+    }
+
+    @Override
     public @NonNull CompletableFuture<Boolean> delete(
-            @NonNull String key, @NonNull DeleteOption... options) {
+            @NonNull String key, @NonNull Set<DeleteOption> options) {
         recordCache.synchronous().invalidate(key);
         return delegate.delete(key, options);
     }

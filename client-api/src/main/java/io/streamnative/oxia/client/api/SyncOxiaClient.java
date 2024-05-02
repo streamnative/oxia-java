@@ -17,11 +17,22 @@ package io.streamnative.oxia.client.api;
 
 import io.streamnative.oxia.client.api.exceptions.UnexpectedVersionIdException;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 import lombok.NonNull;
 
 /** Synchronous client for the Oxia service. */
 public interface SyncOxiaClient extends AutoCloseable {
+
+    /**
+     * Associates a value with a key if the server's versionId of the record is as specified, at the
+     * instant when the put is applied.
+     *
+     * @param key The key with which the value should be associated.
+     * @param value The value to associate with the key.
+     * @return The result of the put at the specified key.
+     */
+    PutResult put(@NonNull String key, byte @NonNull [] value);
 
     /**
      * Conditionally associates a value with a key if the server's versionId of the record is as
@@ -37,8 +48,16 @@ public interface SyncOxiaClient extends AutoCloseable {
      * @throws UnexpectedVersionIdException The versionId at the server did not that match supplied in
      *     the call.
      */
-    PutResult put(@NonNull String key, byte @NonNull [] value, PutOption... options)
+    PutResult put(@NonNull String key, byte @NonNull [] value, Set<PutOption> options)
             throws UnexpectedVersionIdException;
+
+    /**
+     * Unconditionally deletes the record associated with the key if the record exists.
+     *
+     * @param key Deletes the record with the specified key.
+     * @return True if the key was actually present on the server, false otherwise.
+     */
+    boolean delete(@NonNull String key);
 
     /**
      * Conditionally deletes the record associated with the key if the record exists, and the server's
@@ -52,7 +71,7 @@ public interface SyncOxiaClient extends AutoCloseable {
      * @throws UnexpectedVersionIdException The versionId at the server did not that match supplied in
      *     the call.
      */
-    boolean delete(@NonNull String key, @NonNull DeleteOption... options)
+    boolean delete(@NonNull String key, @NonNull Set<DeleteOption> options)
             throws UnexpectedVersionIdException;
 
     /**
