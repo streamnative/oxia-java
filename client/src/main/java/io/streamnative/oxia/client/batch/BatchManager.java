@@ -16,6 +16,7 @@
 package io.streamnative.oxia.client.batch;
 
 import static lombok.AccessLevel.PACKAGE;
+
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.metrics.InstrumentProvider;

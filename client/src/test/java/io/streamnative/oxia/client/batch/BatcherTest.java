@@ -22,13 +22,13 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.PutResult;
@@ -38,7 +38,6 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.LinkedBlockingQueue;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,10 +49,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class BatcherTest {
 
-    @Mock
-    BatchFactory batchFactory;
-    @Mock
-    Batch batch;
+    @Mock BatchFactory batchFactory;
+    @Mock Batch batch;
     long shardId = 1L;
     ClientConfig config =
             new ClientConfig(
@@ -179,10 +176,11 @@ class BatcherTest {
         when(batch.size()).thenReturn(1);
         batcher.add(op);
         var inOrder = inOrder(queue);
-        await().untilAsserted(
-                () -> {
-                    inOrder.verify(queue, atLeastOnce()).take();
-                    inOrder.verify(queue, atLeastOnce()).poll(anyLong(), eq(NANOSECONDS));
-                });
+        await()
+                .untilAsserted(
+                        () -> {
+                            inOrder.verify(queue, atLeastOnce()).take();
+                            inOrder.verify(queue, atLeastOnce()).poll(anyLong(), eq(NANOSECONDS));
+                        });
     }
 }

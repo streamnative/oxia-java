@@ -44,7 +44,6 @@ import io.streamnative.oxia.proto.ListResponse;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import lombok.NonNull;
@@ -235,11 +234,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
             var versionId = PutOption.toVersionId(validatedOptions);
             var op =
                     new PutOperation(
-                            callback,
-                            key,
-                            value,
-                            versionId,
-                            PutOption.toEphemeral(validatedOptions));
+                            callback, key, value, versionId, PutOption.toEphemeral(validatedOptions));
             writeBatchManager.getBatcher(shardId).add(op);
         } catch (RuntimeException e) {
             callback.completeExceptionally(e);
@@ -271,9 +266,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
             var validatedOptions = DeleteOption.validate(options);
             var shardId = shardManager.get(key);
             var versionId = DeleteOption.toVersionId(validatedOptions);
-            writeBatchManager
-                    .getBatcher(shardId)
-                    .add(new DeleteOperation(callback, key, versionId));
+            writeBatchManager.getBatcher(shardId).add(new DeleteOperation(callback, key, versionId));
         } catch (RuntimeException e) {
             callback.completeExceptionally(e);
         }
@@ -306,9 +299,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                                         var shardCallback = new CompletableFuture<Void>();
                                         b.add(
                                                 new DeleteRangeOperation(
-                                                        shardCallback,
-                                                        startKeyInclusive,
-                                                        endKeyExclusive));
+                                                        shardCallback, startKeyInclusive, endKeyExclusive));
                                         return shardCallback;
                                     })
                             .collect(toList())
@@ -337,9 +328,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
             checkIfClosed();
             Objects.requireNonNull(key);
             var shardId = shardManager.get(key);
-            readBatchManager
-                    .getBatcher(shardId)
-                    .add(new GetOperation(callback, key));
+            readBatchManager.getBatcher(shardId).add(new GetOperation(callback, key));
         } catch (RuntimeException e) {
             callback.completeExceptionally(e);
         }

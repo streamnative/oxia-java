@@ -16,6 +16,7 @@
 package io.streamnative.oxia.client.batch;
 
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
+
 import io.grpc.netty.shaded.io.netty.util.concurrent.DefaultThreadFactory;
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.grpc.OxiaStub;
@@ -31,26 +32,19 @@ public class Batcher implements AutoCloseable {
 
     private static final int DEFAULT_INITIAL_QUEUE_CAPACITY = 1_000;
 
-    @NonNull
-    private final ClientConfig config;
+    @NonNull private final ClientConfig config;
     private final long shardId;
-    @NonNull
-    private final BatchFactory batchFactory;
-    @NonNull
-    private final BlockingQueue<Operation<?>> operations;
+    @NonNull private final BatchFactory batchFactory;
+    @NonNull private final BlockingQueue<Operation<?>> operations;
 
     private final Thread thread;
 
     Batcher(@NonNull ClientConfig config, long shardId, @NonNull BatchFactory batchFactory) {
-        this(
-                config,
-                shardId,
-                batchFactory,
-                new ArrayBlockingQueue<>(DEFAULT_INITIAL_QUEUE_CAPACITY)
-        );
+        this(config, shardId, batchFactory, new ArrayBlockingQueue<>(DEFAULT_INITIAL_QUEUE_CAPACITY));
     }
 
-    Batcher(@NonNull ClientConfig config,
+    Batcher(
+            @NonNull ClientConfig config,
             long shardId,
             @NonNull BatchFactory batchFactory,
             @NonNull BlockingQueue<Operation<?>> operations) {
@@ -59,8 +53,9 @@ public class Batcher implements AutoCloseable {
         this.batchFactory = batchFactory;
         this.operations = operations;
 
-
-        this.thread = new DefaultThreadFactory(String.format("batcher-shard-%d", shardId)).newThread(this::batcherLoop);
+        this.thread =
+                new DefaultThreadFactory(String.format("batcher-shard-%d", shardId))
+                        .newThread(this::batcherLoop);
         this.thread.start();
     }
 
@@ -116,7 +111,6 @@ public class Batcher implements AutoCloseable {
                     batch = null;
                 }
             }
-
         }
     }
 

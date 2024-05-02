@@ -22,6 +22,7 @@ import static io.streamnative.oxia.client.batch.Operation.WriteOperation;
 import static io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import static io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import static io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
+
 import com.google.protobuf.ByteString;
 import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.KeyAlreadyExistsException;
@@ -52,8 +53,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
     }
 
     sealed interface ReadOperation<R> extends Operation<R> permits GetOperation {
-        record GetOperation(
-                @NonNull CompletableFuture<GetResult> callback, @NonNull String key)
+        record GetOperation(@NonNull CompletableFuture<GetResult> callback, @NonNull String key)
                 implements ReadOperation<GetResult> {
             GetRequest toProto() {
                 return GetRequest.newBuilder().setKey(key).setIncludeValue(true).build();

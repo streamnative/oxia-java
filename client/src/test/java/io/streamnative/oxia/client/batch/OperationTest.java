@@ -24,6 +24,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.google.protobuf.ByteString;
 import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.KeyAlreadyExistsException;
@@ -153,12 +154,10 @@ class OperationTest {
         void constructInvalidExpectedVersionId() {
             assertThatNoException()
                     .isThrownBy(
-                            () ->
-                                    new PutOperation(callback, "key", payload, Optional.of(KeyNotExists), false));
+                            () -> new PutOperation(callback, "key", payload, Optional.of(KeyNotExists), false));
             assertThatNoException()
                     .isThrownBy(() -> new PutOperation(callback, "key", payload, Optional.of(0L), false));
-            assertThatThrownBy(
-                    () -> new PutOperation(callback, "key", payload, Optional.of(-2L), false))
+            assertThatThrownBy(() -> new PutOperation(callback, "key", payload, Optional.of(-2L), false))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
