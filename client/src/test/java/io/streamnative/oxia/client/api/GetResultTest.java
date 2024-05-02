@@ -31,17 +31,17 @@ class GetResultTest {
     void fromProto() {
         var payload = "hello".getBytes(UTF_8);
         assertThat(
-                ProtoUtil.getResultFromProto(
-                        GetResponse.newBuilder()
-                                .setValue(ByteString.copyFrom(payload))
-                                .setVersion(
-                                        Version.newBuilder()
-                                                .setVersionId(1L)
-                                                .setCreatedTimestamp(2L)
-                                                .setModifiedTimestamp(3L)
-                                                .setModificationsCount(4L)
-                                                .build())
-                                .build()))
+                        ProtoUtil.getResultFromProto(
+                                GetResponse.newBuilder()
+                                        .setValue(ByteString.copyFrom(payload))
+                                        .setVersion(
+                                                Version.newBuilder()
+                                                        .setVersionId(1L)
+                                                        .setCreatedTimestamp(2L)
+                                                        .setModifiedTimestamp(3L)
+                                                        .setModificationsCount(4L)
+                                                        .build())
+                                        .build()))
                 .isEqualTo(
                         new GetResult(
                                 payload,

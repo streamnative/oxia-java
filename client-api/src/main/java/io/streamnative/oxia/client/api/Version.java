@@ -77,5 +77,4 @@ public record Version(
             throw new IllegalArgumentException("Invalid modificationsCount: " + modificationsCount);
         }
     }
-
 }

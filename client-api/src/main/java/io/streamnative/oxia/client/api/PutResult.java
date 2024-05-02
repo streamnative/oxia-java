@@ -22,5 +22,4 @@ import lombok.NonNull;
  *
  * @param version Metadata for the record associated with the key specified in the call.
  */
-public record PutResult(@NonNull Version version) {
-}
+public record PutResult(@NonNull Version version) {}
