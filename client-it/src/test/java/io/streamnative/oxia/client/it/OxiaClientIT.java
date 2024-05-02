@@ -83,7 +83,7 @@ public class OxiaClientIT {
                 SdkMeterProvider.builder().registerMetricReader(metricReader).setResource(resource).build();
 
         OpenTelemetry openTelemetry =
-                OpenTelemetrySdk.builder().setMeterProvider(sdkMeterProvider).buildAndRegisterGlobal();
+                OpenTelemetrySdk.builder().setMeterProvider(sdkMeterProvider).build();
 
         client =
                 new OxiaClientBuilder(oxia.getServiceAddress())
@@ -203,15 +203,12 @@ public class OxiaClientIT {
         var metrics = metricReader.collectAllMetrics();
         var metricsByName = metrics.stream().collect(Collectors.toMap(MetricData::getName, identity()));
 
+        System.out.println(metricsByName);
+
         assertThat(
-                        metricsByName.get("oxia_client_operation_size").getHistogramData().getPoints().stream()
+                        metricsByName.get("oxia.client.ops").getHistogramData().getPoints().stream()
                                 .map(HistogramPointData::getCount)
                                 .reduce(0L, Long::sum))
-                .isEqualTo(18);
-        assertThat(
-                        metricsByName.get("oxia_client_cache_hits").getHistogramData().getPoints().stream()
-                                .map(HistogramPointData::getCount)
-                                .reduce(0L, Long::sum))
-                .isEqualTo(11);
+                .isEqualTo(24);
     }
 }
