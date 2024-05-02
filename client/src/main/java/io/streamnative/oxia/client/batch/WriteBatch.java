@@ -20,16 +20,18 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.toList;
 
 import com.google.common.annotations.VisibleForTesting;
+import io.grpc.stub.StreamObserver;
 import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.proto.WriteRequest;
+import io.streamnative.oxia.proto.WriteResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 import lombok.NonNull;
 
-final class WriteBatch extends BatchBase implements Batch {
+final class WriteBatch extends BatchBase implements Batch, StreamObserver<WriteResponse> {
 
     private final WriteBatchFactory factory;
 
@@ -47,6 +49,7 @@ final class WriteBatch extends BatchBase implements Batch {
     private boolean containsEphemeral;
     private int byteSize;
     private long bytes;
+    private long startSendTimeNanos;
 
     WriteBatch(
             @NonNull WriteBatchFactory factory,
@@ -101,26 +104,40 @@ final class WriteBatch extends BatchBase implements Batch {
 
     @Override
     public void send() {
-        long startSendTimeNanos = System.nanoTime();
+        startSendTimeNanos = System.nanoTime();
         try {
-            var response = getStub().reactor().write(toProto()).block();
-            factory.writeRequestLatencyHistogram.recordSuccess(System.nanoTime() - startSendTimeNanos);
-
-            for (var i = 0; i < deletes.size(); i++) {
-                deletes.get(i).complete(response.getDeletes(i));
-            }
-            for (var i = 0; i < deleteRanges.size(); i++) {
-                deleteRanges.get(i).complete(response.getDeleteRanges(i));
-            }
-            for (var i = 0; i < puts.size(); i++) {
-                puts.get(i).complete(response.getPuts(i));
-            }
-        } catch (Throwable batchError) {
-            factory.writeRequestLatencyHistogram.recordFailure(System.nanoTime() - startSendTimeNanos);
-            deletes.forEach(d -> d.fail(batchError));
-            deleteRanges.forEach(f -> f.fail(batchError));
-            puts.forEach(p -> p.fail(batchError));
+            getStub().async().write(toProto(), this);
+        } catch (Throwable t) {
+            onError(t);
         }
+    }
+
+    @Override
+    public void onNext(WriteResponse response) {
+        factory.writeRequestLatencyHistogram.recordSuccess(System.nanoTime() - startSendTimeNanos);
+
+        for (var i = 0; i < deletes.size(); i++) {
+            deletes.get(i).complete(response.getDeletes(i));
+        }
+        for (var i = 0; i < deleteRanges.size(); i++) {
+            deleteRanges.get(i).complete(response.getDeleteRanges(i));
+        }
+        for (var i = 0; i < puts.size(); i++) {
+            puts.get(i).complete(response.getPuts(i));
+        }
+    }
+
+    @Override
+    public void onError(Throwable batchError) {
+        factory.writeRequestLatencyHistogram.recordFailure(System.nanoTime() - startSendTimeNanos);
+        deletes.forEach(d -> d.fail(batchError));
+        deleteRanges.forEach(f -> f.fail(batchError));
+        puts.forEach(p -> p.fail(batchError));
+    }
+
+    @Override
+    public void onCompleted() {
+        // Write is just single-rpc
     }
 
     @NonNull

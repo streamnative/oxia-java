@@ -31,6 +31,8 @@ public class OxiaStub implements AutoCloseable {
 
     private final @NonNull OxiaClientGrpc.OxiaClientBlockingStub blockingStub;
 
+    private final @NonNull OxiaClientGrpc.OxiaClientStub asyncStub;
+
     public OxiaStub(String address) {
         this(Grpc.newChannelBuilder(address, InsecureChannelCredentials.create()).build());
     }
@@ -39,6 +41,7 @@ public class OxiaStub implements AutoCloseable {
         this.channel = channel;
         this.reactorStub = ReactorOxiaClientGrpc.newReactorStub(channel);
         this.blockingStub = OxiaClientGrpc.newBlockingStub(channel);
+        this.asyncStub = OxiaClientGrpc.newStub(channel);
     }
 
     public ReactorOxiaClientGrpc.ReactorOxiaClientStub reactor() {
@@ -47,6 +50,10 @@ public class OxiaStub implements AutoCloseable {
 
     public OxiaClientGrpc.OxiaClientBlockingStub blocking() {
         return blockingStub;
+    }
+
+    public OxiaClientGrpc.OxiaClientStub async() {
+        return asyncStub;
     }
 
     @Override

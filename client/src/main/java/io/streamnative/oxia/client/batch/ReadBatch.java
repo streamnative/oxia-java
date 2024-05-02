@@ -18,21 +18,24 @@ package io.streamnative.oxia.client.batch;
 import static java.util.stream.Collectors.toList;
 
 import com.google.common.annotations.VisibleForTesting;
+import io.grpc.stub.StreamObserver;
 import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.proto.GetResponse;
 import io.streamnative.oxia.proto.ReadRequest;
+import io.streamnative.oxia.proto.ReadResponse;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
 import lombok.NonNull;
-import reactor.core.publisher.Flux;
 
-final class ReadBatch extends BatchBase implements Batch {
+final class ReadBatch extends BatchBase implements Batch, StreamObserver<ReadResponse> {
 
     private final ReadBatchFactory factory;
 
     @VisibleForTesting final List<Operation.ReadOperation.GetOperation> gets = new ArrayList<>();
+
+    private int responseIndex = 0;
+    long startSendTimeNanos;
 
     ReadBatch(ReadBatchFactory factory, Function<Long, OxiaStub> stubByShardId, long shardId) {
         super(stubByShardId, shardId);
@@ -57,31 +60,33 @@ final class ReadBatch extends BatchBase implements Batch {
 
     @Override
     public void send() {
-        long startSendTimeNanos = System.nanoTime();
-
-        LongAdder bytes = new LongAdder();
+        startSendTimeNanos = System.nanoTime();
         try {
-            var responses =
-                    getStub()
-                            .reactor()
-                            .read(toProto())
-                            .flatMapSequential(response -> Flux.fromIterable(response.getGetsList()))
-                            .doOnNext(r -> bytes.add(r.getValue().size()));
-            Flux.fromIterable(gets).zipWith(responses, this::complete).then().block();
-            factory
-                    .getReadRequestLatencyHistogram()
-                    .recordSuccess(System.nanoTime() - startSendTimeNanos);
-        } catch (Throwable batchError) {
-            gets.forEach(g -> g.fail(batchError));
-            factory
-                    .getReadRequestLatencyHistogram()
-                    .recordFailure(System.nanoTime() - startSendTimeNanos);
+            getStub().async().read(toProto(), this);
+        } catch (Throwable t) {
+            onError(t);
         }
     }
 
-    private boolean complete(Operation.ReadOperation.GetOperation operation, GetResponse response) {
-        operation.complete(response);
-        return true;
+    @Override
+    public void onNext(ReadResponse response) {
+        for (int i = 0; i < response.getGetsCount(); i++) {
+            GetResponse gr = response.getGets(i);
+            gets.get(responseIndex).complete(gr);
+
+            ++responseIndex;
+        }
+    }
+
+    @Override
+    public void onError(Throwable batchError) {
+        gets.forEach(g -> g.fail(batchError));
+        factory.getReadRequestLatencyHistogram().recordFailure(System.nanoTime() - startSendTimeNanos);
+    }
+
+    @Override
+    public void onCompleted() {
+        factory.getReadRequestLatencyHistogram().recordSuccess(System.nanoTime() - startSendTimeNanos);
     }
 
     @NonNull
