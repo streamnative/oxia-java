@@ -16,36 +16,52 @@
 package io.streamnative.oxia.client.batch;
 
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
-import static lombok.AccessLevel.PACKAGE;
-
+import io.grpc.netty.shaded.io.netty.util.concurrent.DefaultThreadFactory;
 import io.streamnative.oxia.client.ClientConfig;
-import io.streamnative.oxia.client.batch.Operation.CloseOperation;
 import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.metrics.InstrumentProvider;
 import io.streamnative.oxia.client.session.SessionManager;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.PriorityBlockingQueue;
 import java.util.function.Function;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 
-@RequiredArgsConstructor(access = PACKAGE)
-public class Batcher implements Runnable, AutoCloseable {
+public class Batcher implements AutoCloseable {
 
     private static final int DEFAULT_INITIAL_QUEUE_CAPACITY = 1_000;
 
-    @NonNull private final ClientConfig config;
+    @NonNull
+    private final ClientConfig config;
     private final long shardId;
-    @NonNull private final BatchFactory batchFactory;
-    @NonNull private final BlockingQueue<Operation<?>> operations;
+    @NonNull
+    private final BatchFactory batchFactory;
+    @NonNull
+    private final BlockingQueue<Operation<?>> operations;
+
+    private final Thread thread;
 
     Batcher(@NonNull ClientConfig config, long shardId, @NonNull BatchFactory batchFactory) {
         this(
                 config,
                 shardId,
                 batchFactory,
-                new PriorityBlockingQueue<>(DEFAULT_INITIAL_QUEUE_CAPACITY, Operation.PriorityComparator));
+                new ArrayBlockingQueue<>(DEFAULT_INITIAL_QUEUE_CAPACITY)
+        );
+    }
+
+    Batcher(@NonNull ClientConfig config,
+            long shardId,
+            @NonNull BatchFactory batchFactory,
+            @NonNull BlockingQueue<Operation<?>> operations) {
+        this.config = config;
+        this.shardId = shardId;
+        this.batchFactory = batchFactory;
+        this.operations = operations;
+
+
+        this.thread = new DefaultThreadFactory(String.format("batcher-shard-%d", shardId)).newThread(this::batcherLoop);
+        this.thread.start();
     }
 
     @SneakyThrows
@@ -58,13 +74,13 @@ public class Batcher implements Runnable, AutoCloseable {
         }
     }
 
-    @Override
-    public void run() {
+    public void batcherLoop() {
         Batch batch = null;
         long lingerBudgetNanos = -1L;
         while (true) {
+            Operation<?> operation;
+
             try {
-                Operation<?> operation;
                 if (batch == null) {
                     operation = operations.take();
                 } else {
@@ -72,38 +88,35 @@ public class Batcher implements Runnable, AutoCloseable {
                     long spentLingerBudgetNanos = Math.max(0, System.nanoTime() - batch.getStartTimeNanos());
                     lingerBudgetNanos = Math.max(0L, lingerBudgetNanos - spentLingerBudgetNanos);
                 }
+            } catch (InterruptedException e) {
+                // Exiting thread
+                return;
+            }
 
-                if (operation == CloseOperation.INSTANCE) {
-                    break;
+            if (operation != null) {
+                if (batch == null) {
+                    batch = batchFactory.getBatch(shardId);
+                    lingerBudgetNanos = config.batchLinger().toNanos();
                 }
-
-                if (operation != null) {
-                    if (batch == null) {
+                try {
+                    if (!batch.canAdd(operation)) {
+                        batch.send();
                         batch = batchFactory.getBatch(shardId);
                         lingerBudgetNanos = config.batchLinger().toNanos();
                     }
-                    try {
-                        if (!batch.canAdd(operation)) {
-                            batch.send();
-                            batch = batchFactory.getBatch(shardId);
-                            lingerBudgetNanos = config.batchLinger().toNanos();
-                        }
-                        batch.add(operation);
-                    } catch (Exception e) {
-                        operation.fail(e);
-                    }
+                    batch.add(operation);
+                } catch (Exception e) {
+                    operation.fail(e);
                 }
-
-                if (batch != null) {
-                    if (batch.size() == config.maxRequestsPerBatch() || lingerBudgetNanos == 0) {
-                        batch.send();
-                        batch = null;
-                    }
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new RuntimeException(e);
             }
+
+            if (batch != null) {
+                if (batch.size() == config.maxRequestsPerBatch() || lingerBudgetNanos == 0) {
+                    batch.send();
+                    batch = null;
+                }
+            }
+
         }
     }
 
@@ -129,6 +142,11 @@ public class Batcher implements Runnable, AutoCloseable {
 
     @Override
     public void close() {
-        operations.add(CloseOperation.INSTANCE);
+        thread.interrupt();
+        try {
+            thread.join();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 }

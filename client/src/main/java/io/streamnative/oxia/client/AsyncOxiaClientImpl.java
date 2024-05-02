@@ -93,7 +93,6 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     private final @NonNull BatchManager readBatchManager;
     private final @NonNull BatchManager writeBatchManager;
     private final @NonNull SessionManager sessionManager;
-    private final AtomicLong sequence = new AtomicLong();
     private volatile boolean closed;
 
     private final Counter counterPutBytes;
@@ -236,7 +235,6 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
             var versionId = PutOption.toVersionId(validatedOptions);
             var op =
                     new PutOperation(
-                            sequence.getAndIncrement(),
                             callback,
                             key,
                             value,
@@ -275,7 +273,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
             var versionId = DeleteOption.toVersionId(validatedOptions);
             writeBatchManager
                     .getBatcher(shardId)
-                    .add(new DeleteOperation(sequence.getAndIncrement(), callback, key, versionId));
+                    .add(new DeleteOperation(callback, key, versionId));
         } catch (RuntimeException e) {
             callback.completeExceptionally(e);
         }
@@ -308,7 +306,6 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                                         var shardCallback = new CompletableFuture<Void>();
                                         b.add(
                                                 new DeleteRangeOperation(
-                                                        sequence.getAndIncrement(),
                                                         shardCallback,
                                                         startKeyInclusive,
                                                         endKeyExclusive));
@@ -342,7 +339,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
             var shardId = shardManager.get(key);
             readBatchManager
                     .getBatcher(shardId)
-                    .add(new GetOperation(sequence.getAndIncrement(), callback, key));
+                    .add(new GetOperation(callback, key));
         } catch (RuntimeException e) {
             callback.completeExceptionally(e);
         }
