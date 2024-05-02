@@ -78,13 +78,4 @@ public record Version(
         }
     }
 
-    public static @NonNull Version fromProto(@NonNull io.streamnative.oxia.proto.Version version) {
-        return new Version(
-                version.getVersionId(),
-                version.getCreatedTimestamp(),
-                version.getModifiedTimestamp(),
-                version.getModificationsCount(),
-                version.hasSessionId() ? Optional.of(version.getSessionId()) : Optional.empty(),
-                version.hasClientIdentity() ? Optional.of(version.getClientIdentity()) : Optional.empty());
-    }
 }

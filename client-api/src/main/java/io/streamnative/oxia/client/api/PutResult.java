@@ -15,20 +15,12 @@
  */
 package io.streamnative.oxia.client.api;
 
-import lombok.Getter;
 import lombok.NonNull;
 
-/** The key already exists at the server. */
-public class KeyAlreadyExistsException extends OxiaException {
-    @Getter private final String key;
-
-    /**
-     * Creates an instance of the exception.
-     *
-     * @param key The key to which the call was scoped.
-     */
-    public KeyAlreadyExistsException(@NonNull String key) {
-        super("key already exists: " + key);
-        this.key = key;
-    }
+/**
+ * The result of a client get request.
+ *
+ * @param version Metadata for the record associated with the key specified in the call.
+ */
+public record PutResult(@NonNull Version version) {
 }

@@ -22,7 +22,7 @@ import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.PutOption;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.SyncOxiaClient;
-import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
+import io.streamnative.oxia.client.api.exceptions.UnexpectedVersionIdException;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;

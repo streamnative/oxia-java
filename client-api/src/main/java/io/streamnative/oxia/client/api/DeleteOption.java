@@ -19,12 +19,6 @@ import static io.streamnative.oxia.client.api.DeleteOption.VersionIdDeleteOption
 import static io.streamnative.oxia.client.api.DeleteOption.VersionIdDeleteOption.IfVersionIdEquals;
 import static io.streamnative.oxia.client.api.DeleteOption.VersionIdDeleteOption.Unconditionally;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
-
 public sealed interface DeleteOption permits VersionIdDeleteOption {
 
     default boolean cannotCoExistWith(DeleteOption option) {
@@ -66,32 +60,5 @@ public sealed interface DeleteOption permits VersionIdDeleteOption {
 
     static VersionIdDeleteOption ifVersionIdEquals(long versionId) {
         return new IfVersionIdEquals(versionId);
-    }
-
-    static Set<DeleteOption> validate(DeleteOption... args) {
-        if (args == null || args.length == 0) {
-            return Set.of(Unconditionally);
-        }
-        Arrays.stream(args)
-                .forEach(
-                        a -> {
-                            if (Arrays.stream(args)
-                                    .filter(c -> !c.equals(a))
-                                    .anyMatch(c -> a.cannotCoExistWith(c))) {
-                                throw new IllegalArgumentException(
-                                        "Incompatible "
-                                                + DeleteOption.class.getSimpleName()
-                                                + "s: "
-                                                + Arrays.toString(args));
-                            }
-                        });
-        return new HashSet<>(Arrays.asList(args));
-    }
-
-    static Optional<Long> toVersionId(Collection<DeleteOption> options) {
-        return options.stream()
-                .filter(o -> o instanceof VersionIdDeleteOption)
-                .findAny()
-                .map(o -> ((VersionIdDeleteOption) o).toVersionId());
     }
 }

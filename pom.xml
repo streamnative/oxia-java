@@ -49,6 +49,7 @@
     </developers>
 
     <modules>
+        <module>client-api</module>
         <module>client</module>
         <module>testcontainers</module>
         <module>client-it</module>

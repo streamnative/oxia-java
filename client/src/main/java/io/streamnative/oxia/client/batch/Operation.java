@@ -24,11 +24,12 @@ import static io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteR
 import static io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
 
 import com.google.protobuf.ByteString;
+import io.streamnative.oxia.client.ProtoUtil;
 import io.streamnative.oxia.client.api.GetResult;
-import io.streamnative.oxia.client.api.KeyAlreadyExistsException;
+import io.streamnative.oxia.client.api.exceptions.KeyAlreadyExistsException;
 import io.streamnative.oxia.client.api.PutResult;
-import io.streamnative.oxia.client.api.SessionDoesNotExistException;
-import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
+import io.streamnative.oxia.client.api.exceptions.SessionDoesNotExistException;
+import io.streamnative.oxia.client.api.exceptions.UnexpectedVersionIdException;
 import io.streamnative.oxia.proto.DeleteRangeRequest;
 import io.streamnative.oxia.proto.DeleteRangeResponse;
 import io.streamnative.oxia.proto.DeleteRequest;
@@ -62,7 +63,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
             void complete(@NonNull GetResponse response) {
                 switch (response.getStatus()) {
                     case KEY_NOT_FOUND -> callback.complete(null);
-                    case OK -> callback.complete(GetResult.fromProto(response));
+                    case OK -> callback.complete(ProtoUtil.getResultFromProto(response));
                     default -> fail(new IllegalStateException("GRPC.Status: " + response.getStatus().name()));
                 }
             }
@@ -111,7 +112,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                             fail(new UnexpectedVersionIdException(key, expectedVersionId.get()));
                         }
                     }
-                    case OK -> callback.complete(PutResult.fromProto(response));
+                    case OK -> callback.complete(ProtoUtil.getPutResultFromProto(response));
                     default -> fail(new IllegalStateException("GRPC.Status: " + response.getStatus().name()));
                 }
             }

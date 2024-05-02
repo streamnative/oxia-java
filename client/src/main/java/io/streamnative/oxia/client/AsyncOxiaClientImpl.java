@@ -229,12 +229,12 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
             gaugePendingPutRequests.increment();
             gaugePendingPutBytes.add(value.length);
 
-            var validatedOptions = PutOption.validate(options);
+            var validatedOptions = PutOptionsUtil.validate(options);
             var shardId = shardManager.get(key);
-            var versionId = PutOption.toVersionId(validatedOptions);
+            var versionId = PutOptionsUtil.toVersionId(validatedOptions);
             var op =
                     new PutOperation(
-                            callback, key, value, versionId, PutOption.toEphemeral(validatedOptions));
+                            callback, key, value, versionId, PutOptionsUtil.toEphemeral(validatedOptions));
             writeBatchManager.getBatcher(shardId).add(op);
         } catch (RuntimeException e) {
             callback.completeExceptionally(e);
@@ -263,9 +263,9 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         try {
             checkIfClosed();
             Objects.requireNonNull(key);
-            var validatedOptions = DeleteOption.validate(options);
+            var validatedOptions = DeleteOptionsUtil.validate(options);
             var shardId = shardManager.get(key);
-            var versionId = DeleteOption.toVersionId(validatedOptions);
+            var versionId = DeleteOptionsUtil.toVersionId(validatedOptions);
             writeBatchManager.getBatcher(shardId).add(new DeleteOperation(callback, key, versionId));
         } catch (RuntimeException e) {
             callback.completeExceptionally(e);

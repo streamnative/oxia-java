@@ -35,7 +35,7 @@ import io.grpc.stub.StreamObserver;
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.PutResult;
-import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
+import io.streamnative.oxia.client.api.exceptions.UnexpectedVersionIdException;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;

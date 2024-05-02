@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.streamnative.oxia.client.api;
+package io.streamnative.oxia.client.api.exceptions;
 
 import lombok.Getter;
 import lombok.NonNull;
