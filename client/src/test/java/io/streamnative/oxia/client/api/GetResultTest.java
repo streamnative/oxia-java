@@ -19,6 +19,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.protobuf.ByteString;
+import io.streamnative.oxia.client.ProtoUtil;
 import io.streamnative.oxia.proto.GetResponse;
 import io.streamnative.oxia.proto.Version;
 import java.util.Optional;
@@ -30,7 +31,7 @@ class GetResultTest {
     void fromProto() {
         var payload = "hello".getBytes(UTF_8);
         assertThat(
-                        GetResult.fromProto(
+                        ProtoUtil.getResultFromProto(
                                 GetResponse.newBuilder()
                                         .setValue(ByteString.copyFrom(payload))
                                         .setVersion(

@@ -13,23 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.streamnative.oxia.client.api;
+package io.streamnative.oxia.client.api.exceptions;
 
-import io.streamnative.oxia.proto.GetResponse;
+import lombok.Getter;
 import lombok.NonNull;
-import lombok.Value;
 
-/** The result of a client get request. */
-@Value
-public class GetResult {
-    /** The value associated with the key specified in the call. */
-    byte @NonNull [] value;
+/** The key already exists at the server. */
+public class KeyAlreadyExistsException extends OxiaException {
+    @Getter private final String key;
 
-    /** Metadata for the record associated with the key specified in the call. */
-    @NonNull Version version;
-
-    public static @NonNull GetResult fromProto(@NonNull GetResponse response) {
-        return new GetResult(
-                response.getValue().toByteArray(), Version.fromProto(response.getVersion()));
+    /**
+     * Creates an instance of the exception.
+     *
+     * @param key The key to which the call was scoped.
+     */
+    public KeyAlreadyExistsException(@NonNull String key) {
+        super("key already exists: " + key);
+        this.key = key;
     }
 }

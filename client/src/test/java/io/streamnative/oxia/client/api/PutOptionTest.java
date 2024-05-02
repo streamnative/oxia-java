@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.streamnative.oxia.client.PutOptionsUtil;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -104,7 +105,7 @@ class PutOptionTest {
     @Test
     void validate() {
         assertThat(
-                        PutOption.validate(
+                        PutOptionsUtil.validate(
                                 PutOption.AsEphemeralRecord,
                                 PutOption.AsEphemeralRecord,
                                 PutOption.ifVersionIdEquals(1L),
@@ -114,14 +115,14 @@ class PutOptionTest {
 
     @Test
     void validateEmpty() {
-        assertThat(PutOption.validate()).containsOnly(PutOption.Unconditionally);
+        assertThat(PutOptionsUtil.validate()).containsOnly(PutOption.Unconditionally);
     }
 
     @Test
     void validateFail() {
         assertThatThrownBy(
                         () ->
-                                PutOption.validate(
+                                PutOptionsUtil.validate(
                                         PutOption.Unconditionally,
                                         PutOption.IfRecordDoesNotExist,
                                         PutOption.ifVersionIdEquals(1L)))
@@ -130,20 +131,20 @@ class PutOptionTest {
 
     @Test
     void toVersionId() {
-        assertThat(PutOption.toVersionId(Set.of(PutOption.AsEphemeralRecord))).isEmpty();
-        assertThat(PutOption.toVersionId(Set.of(PutOption.Unconditionally))).isEmpty();
-        assertThat(PutOption.toVersionId(Set.of(PutOption.IfRecordDoesNotExist)))
+        assertThat(PutOptionsUtil.toVersionId(Set.of(PutOption.AsEphemeralRecord))).isEmpty();
+        assertThat(PutOptionsUtil.toVersionId(Set.of(PutOption.Unconditionally))).isEmpty();
+        assertThat(PutOptionsUtil.toVersionId(Set.of(PutOption.IfRecordDoesNotExist)))
                 .hasValue(Version.KeyNotExists);
-        assertThat(PutOption.toVersionId(Set.of(PutOption.ifVersionIdEquals(1L)))).hasValue(1L);
+        assertThat(PutOptionsUtil.toVersionId(Set.of(PutOption.ifVersionIdEquals(1L)))).hasValue(1L);
         assertThat(
-                        PutOption.toVersionId(
+                        PutOptionsUtil.toVersionId(
                                 Set.of(PutOption.AsEphemeralRecord, PutOption.ifVersionIdEquals(1L))))
                 .hasValue(1L);
     }
 
     @Test
     void toEphemeral() {
-        assertThat(PutOption.toEphemeral(Set.of(PutOption.AsEphemeralRecord))).isTrue();
-        assertThat(PutOption.toEphemeral(Set.of())).isFalse();
+        assertThat(PutOptionsUtil.toEphemeral(Set.of(PutOption.AsEphemeralRecord))).isTrue();
+        assertThat(PutOptionsUtil.toEphemeral(Set.of())).isFalse();
     }
 }

@@ -18,6 +18,7 @@ package io.streamnative.oxia.client.api;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.streamnative.oxia.client.ProtoUtil;
 import io.streamnative.oxia.proto.PutResponse;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -28,7 +29,7 @@ class PutResultTest {
     void fromProto() {
         var payload = "hello".getBytes(UTF_8);
         assertThat(
-                        PutResult.fromProto(
+                        ProtoUtil.getPutResultFromProto(
                                 PutResponse.newBuilder()
                                         .setVersion(
                                                 io.streamnative.oxia.proto.Version.newBuilder()

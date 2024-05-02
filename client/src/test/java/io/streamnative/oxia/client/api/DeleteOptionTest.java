@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.streamnative.oxia.client.DeleteOptionsUtil;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -68,28 +69,29 @@ class DeleteOptionTest {
     @Test
     void validate() {
         assertThat(
-                        DeleteOption.validate(
+                        DeleteOptionsUtil.validate(
                                 DeleteOption.ifVersionIdEquals(1L), DeleteOption.ifVersionIdEquals(1L)))
                 .containsOnly(DeleteOption.ifVersionIdEquals(1L));
     }
 
     @Test
     void validateEmpty() {
-        assertThat(DeleteOption.validate()).containsOnly(DeleteOption.Unconditionally);
+        assertThat(DeleteOptionsUtil.validate()).containsOnly(DeleteOption.Unconditionally);
     }
 
     @Test
     void validateFail() {
         assertThatThrownBy(
                         () ->
-                                DeleteOption.validate(
+                                DeleteOptionsUtil.validate(
                                         DeleteOption.Unconditionally, DeleteOption.ifVersionIdEquals(1L)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void toVersionId() {
-        assertThat(DeleteOption.toVersionId(Set.of(DeleteOption.Unconditionally))).isEmpty();
-        assertThat(DeleteOption.toVersionId(Set.of(DeleteOption.ifVersionIdEquals(1L)))).hasValue(1L);
+        assertThat(DeleteOptionsUtil.toVersionId(Set.of(DeleteOption.Unconditionally))).isEmpty();
+        assertThat(DeleteOptionsUtil.toVersionId(Set.of(DeleteOption.ifVersionIdEquals(1L))))
+                .hasValue(1L);
     }
 }

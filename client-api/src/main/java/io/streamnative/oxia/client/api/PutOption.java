@@ -21,12 +21,6 @@ import static io.streamnative.oxia.client.api.PutOption.VersionIdPutOption.IfRec
 import static io.streamnative.oxia.client.api.PutOption.VersionIdPutOption.IfVersionIdEquals;
 import static io.streamnative.oxia.client.api.PutOption.VersionIdPutOption.Unconditionally;
 
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
-
 public sealed interface PutOption permits VersionIdPutOption, AsEphemeralRecord {
 
     default boolean cannotCoExistWith(PutOption option) {
@@ -79,36 +73,5 @@ public sealed interface PutOption permits VersionIdPutOption, AsEphemeralRecord 
 
     static VersionIdPutOption ifVersionIdEquals(long versionId) {
         return new IfVersionIdEquals(versionId);
-    }
-
-    static Set<PutOption> validate(PutOption... args) {
-        if (args == null || args.length == 0) {
-            return Set.of(Unconditionally);
-        }
-        Arrays.stream(args)
-                .forEach(
-                        a -> {
-                            if (Arrays.stream(args)
-                                    .filter(c -> !c.equals(a))
-                                    .anyMatch(c -> a.cannotCoExistWith(c))) {
-                                throw new IllegalArgumentException(
-                                        "Incompatible "
-                                                + PutOption.class.getSimpleName()
-                                                + "s: "
-                                                + Arrays.toString(args));
-                            }
-                        });
-        return new HashSet<>(Arrays.asList(args));
-    }
-
-    static Optional<Long> toVersionId(Collection<PutOption> options) {
-        return options.stream()
-                .filter(o -> o instanceof VersionIdPutOption)
-                .findAny()
-                .map(o -> ((VersionIdPutOption) o).toVersionId());
-    }
-
-    static boolean toEphemeral(Collection<PutOption> options) {
-        return options.stream().anyMatch(o -> o instanceof PutOption.AsEphemeralRecord);
     }
 }

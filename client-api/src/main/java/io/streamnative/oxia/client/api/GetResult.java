@@ -15,9 +15,15 @@
  */
 package io.streamnative.oxia.client.api;
 
-/** A super-class of exceptions describing errors that occurred on an Oxia server. */
-public abstract class OxiaException extends Exception {
-    OxiaException(String message) {
-        super(message);
-    }
+import lombok.NonNull;
+import lombok.Value;
+
+/** The result of a client get request. */
+@Value
+public class GetResult {
+    /** The value associated with the key specified in the call. */
+    byte @NonNull [] value;
+
+    /** Metadata for the record associated with the key specified in the call. */
+    @NonNull Version version;
 }

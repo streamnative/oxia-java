@@ -27,10 +27,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.protobuf.ByteString;
 import io.streamnative.oxia.client.api.GetResult;
-import io.streamnative.oxia.client.api.KeyAlreadyExistsException;
 import io.streamnative.oxia.client.api.PutResult;
-import io.streamnative.oxia.client.api.SessionDoesNotExistException;
-import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
+import io.streamnative.oxia.client.api.exceptions.KeyAlreadyExistsException;
+import io.streamnative.oxia.client.api.exceptions.SessionDoesNotExistException;
+import io.streamnative.oxia.client.api.exceptions.UnexpectedVersionIdException;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
