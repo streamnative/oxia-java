@@ -23,7 +23,9 @@ import io.streamnative.oxia.client.api.PutOption;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.SyncOxiaClient;
 import io.streamnative.oxia.client.api.exceptions.UnexpectedVersionIdException;
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import lombok.AccessLevel;
@@ -35,10 +37,15 @@ import lombok.SneakyThrows;
 class SyncOxiaClientImpl implements SyncOxiaClient {
     private final AsyncOxiaClient asyncClient;
 
+    @Override
+    public PutResult put(@NonNull String key, byte @NonNull [] value) {
+        return put(key, value, Collections.emptySet());
+    }
+
     @SneakyThrows
     @Override
     public @NonNull PutResult put(
-            @NonNull String key, byte @NonNull [] value, @NonNull PutOption... options) {
+            @NonNull String key, byte @NonNull [] value, @NonNull Set<PutOption> options) {
         try {
             return asyncClient.put(key, value, options).get();
         } catch (InterruptedException e) {
@@ -51,7 +58,13 @@ class SyncOxiaClientImpl implements SyncOxiaClient {
 
     @SneakyThrows
     @Override
-    public boolean delete(@NonNull String key, @NonNull DeleteOption... options)
+    public boolean delete(@NonNull String key) {
+        return delete(key, Collections.emptySet());
+    }
+
+    @SneakyThrows
+    @Override
+    public boolean delete(@NonNull String key, @NonNull Set<DeleteOption> options)
             throws UnexpectedVersionIdException {
         try {
             return asyncClient.delete(key, options).get();

@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.streamnative.oxia.client.DeleteOptionsUtil;
+import java.util.Collections;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -32,66 +33,39 @@ class DeleteOptionTest {
     class IfVersionIdEqualsTests {
         @Test
         void ifVersionIdEquals() {
-            assertThat(DeleteOption.ifVersionIdEquals(1L))
+            assertThat(DeleteOption.IfVersionIdEquals(1L))
                     .satisfies(
                             o -> {
-                                assertThat(o)
-                                        .isInstanceOf(DeleteOption.VersionIdDeleteOption.IfVersionIdEquals.class);
-                                assertThat(o.toVersionId()).isEqualTo(1L);
-                                assertThat(o.cannotCoExistWith(DeleteOption.Unconditionally)).isTrue();
+                                assertThat(o).isInstanceOf(OptionVersionId.OptionVersionIdEqual.class);
+
+                                if (o instanceof OptionVersionId.OptionVersionIdEqual e) {
+                                    assertThat(e.versionId()).isEqualTo(1L);
+                                }
                             });
         }
 
         @Test
         void versionIdLessThanZero() {
-            assertThatNoException().isThrownBy(() -> DeleteOption.ifVersionIdEquals(0L));
-            assertThatThrownBy(() -> DeleteOption.ifVersionIdEquals(-1L))
+            assertThatNoException().isThrownBy(() -> DeleteOption.IfVersionIdEquals(0L));
+            assertThatThrownBy(() -> DeleteOption.IfVersionIdEquals(-1L))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
 
-    @Nested
-    @DisplayName("Unconditionally tests")
-    class UnconditionallyTests {
-        @Test
-        void unconditionally() {
-            assertThat(DeleteOption.Unconditionally)
-                    .satisfies(
-                            o -> {
-                                assertThat(o)
-                                        .isInstanceOf(DeleteOption.VersionIdDeleteOption.Unconditionally.class);
-                                assertThat(o.toVersionId()).isNull();
-                                assertThat(o.cannotCoExistWith(DeleteOption.ifVersionIdEquals(1L))).isTrue();
-                            });
-        }
-    }
-
-    @Test
-    void validate() {
-        assertThat(
-                        DeleteOptionsUtil.validate(
-                                DeleteOption.ifVersionIdEquals(1L), DeleteOption.ifVersionIdEquals(1L)))
-                .containsOnly(DeleteOption.ifVersionIdEquals(1L));
-    }
-
-    @Test
-    void validateEmpty() {
-        assertThat(DeleteOptionsUtil.validate()).containsOnly(DeleteOption.Unconditionally);
-    }
-
-    @Test
-    void validateFail() {
-        assertThatThrownBy(
-                        () ->
-                                DeleteOptionsUtil.validate(
-                                        DeleteOption.Unconditionally, DeleteOption.ifVersionIdEquals(1L)))
-                .isInstanceOf(IllegalArgumentException.class);
-    }
-
     @Test
     void toVersionId() {
-        assertThat(DeleteOptionsUtil.toVersionId(Set.of(DeleteOption.Unconditionally))).isEmpty();
-        assertThat(DeleteOptionsUtil.toVersionId(Set.of(DeleteOption.ifVersionIdEquals(1L))))
+        assertThat(DeleteOptionsUtil.getVersionId(Collections.emptySet())).isEmpty();
+        assertThat(DeleteOptionsUtil.getVersionId(Set.of(DeleteOption.IfVersionIdEquals(1L))))
                 .hasValue(1L);
+        assertThatThrownBy(
+                        () ->
+                                DeleteOptionsUtil.getVersionId(
+                                        Set.of(DeleteOption.IfVersionIdEquals(1L), DeleteOption.IfVersionIdEquals(1L))))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(
+                        () ->
+                                DeleteOptionsUtil.getVersionId(
+                                        Set.of(DeleteOption.IfVersionIdEquals(1L), DeleteOption.IfVersionIdEquals(2L))))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }

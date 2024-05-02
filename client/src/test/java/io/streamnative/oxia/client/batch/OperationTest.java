@@ -43,6 +43,7 @@ import io.streamnative.oxia.proto.PutResponse;
 import io.streamnative.oxia.proto.Version;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.DisplayName;
@@ -145,7 +146,7 @@ class OperationTest {
     class PutOperationTests {
         CompletableFuture<PutResult> callback = new CompletableFuture<>();
         byte[] payload = "hello".getBytes(UTF_8);
-        PutOperation op = new PutOperation(callback, "key", payload, Optional.of(10L), false);
+        PutOperation op = new PutOperation(callback, "key", payload, OptionalLong.of(10), false);
         long sessionId = 0L;
         String clientId = "client-id";
         SessionInfo sessionInfo = new SessionInfo(sessionId, clientId);
@@ -154,16 +155,18 @@ class OperationTest {
         void constructInvalidExpectedVersionId() {
             assertThatNoException()
                     .isThrownBy(
-                            () -> new PutOperation(callback, "key", payload, Optional.of(KeyNotExists), false));
+                            () ->
+                                    new PutOperation(callback, "key", payload, OptionalLong.of(KeyNotExists), false));
             assertThatNoException()
-                    .isThrownBy(() -> new PutOperation(callback, "key", payload, Optional.of(0L), false));
-            assertThatThrownBy(() -> new PutOperation(callback, "key", payload, Optional.of(-2L), false))
+                    .isThrownBy(() -> new PutOperation(callback, "key", payload, OptionalLong.of(0L), false));
+            assertThatThrownBy(
+                            () -> new PutOperation(callback, "key", payload, OptionalLong.of(-2L), false))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
         void toProtoNoExpectedVersion() {
-            var op = new PutOperation(callback, "key", payload, Optional.empty(), false);
+            var op = new PutOperation(callback, "key", payload, OptionalLong.empty(), false);
             var request = op.toProto(Optional.empty());
             assertThat(request)
                     .satisfies(
@@ -178,7 +181,7 @@ class OperationTest {
 
         @Test
         void toProtoExpectedVersion() {
-            var op = new PutOperation(callback, "key", payload, Optional.of(1L), false);
+            var op = new PutOperation(callback, "key", payload, OptionalLong.of(1L), false);
             var request = op.toProto(Optional.empty());
             assertThat(request)
                     .satisfies(
@@ -193,7 +196,7 @@ class OperationTest {
 
         @Test
         void toProtoNoExistingVersion() {
-            var op = new PutOperation(callback, "key", payload, Optional.of(KeyNotExists), false);
+            var op = new PutOperation(callback, "key", payload, OptionalLong.of(KeyNotExists), false);
             var request = op.toProto(Optional.empty());
             assertThat(request)
                     .satisfies(
@@ -208,7 +211,7 @@ class OperationTest {
 
         @Test
         void toProtoEphemeral() {
-            var op = new PutOperation(callback, "key", payload, Optional.empty(), true);
+            var op = new PutOperation(callback, "key", payload, OptionalLong.empty(), true);
             var request = op.toProto(Optional.of(sessionInfo));
             assertThat(request)
                     .satisfies(
@@ -238,7 +241,7 @@ class OperationTest {
 
         @Test
         void completeKeyAlreadyExists() {
-            var op = new PutOperation(callback, "key", payload, Optional.of(KeyNotExists), false);
+            var op = new PutOperation(callback, "key", payload, OptionalLong.of(KeyNotExists), false);
             var response = PutResponse.newBuilder().setStatus(UNEXPECTED_VERSION_ID).build();
             op.complete(response);
             assertThat(callback).isCompletedExceptionally();
@@ -254,7 +257,7 @@ class OperationTest {
 
         @Test
         void completeSessionDoesNotExist() {
-            var op = new PutOperation(callback, "key", payload, Optional.empty(), true);
+            var op = new PutOperation(callback, "key", payload, OptionalLong.empty(), true);
             var response = PutResponse.newBuilder().setStatus(SESSION_DOES_NOT_EXIST).build();
             op.complete(response);
             assertThat(callback).isCompletedExceptionally();
@@ -332,15 +335,15 @@ class OperationTest {
     @DisplayName("Tests of delete operation")
     class DeleteOperationTests {
         CompletableFuture<Boolean> callback = new CompletableFuture<>();
-        DeleteOperation op = new DeleteOperation(callback, "key", Optional.of(10L));
+        DeleteOperation op = new DeleteOperation(callback, "key", OptionalLong.of(10L));
 
         @Test
         void constructInvalidExpectedVersionId() {
             assertThatNoException()
-                    .isThrownBy(() -> new DeleteOperation(callback, "key", Optional.of(0L)));
-            assertThatThrownBy(() -> new DeleteOperation(callback, "key", Optional.of(KeyNotExists)))
+                    .isThrownBy(() -> new DeleteOperation(callback, "key", OptionalLong.of(0L)));
+            assertThatThrownBy(() -> new DeleteOperation(callback, "key", OptionalLong.of(KeyNotExists)))
                     .isInstanceOf(IllegalArgumentException.class);
-            assertThatThrownBy(() -> new DeleteOperation(callback, "key", Optional.of(-2L)))
+            assertThatThrownBy(() -> new DeleteOperation(callback, "key", OptionalLong.of(-2L)))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 

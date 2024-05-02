@@ -17,45 +17,28 @@
 package io.streamnative.oxia.client;
 
 import io.streamnative.oxia.client.api.DeleteOption;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Optional;
+import io.streamnative.oxia.client.api.OptionVersionId;
+import java.util.OptionalLong;
 import java.util.Set;
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public class DeleteOptionsUtil {
 
-    private static final Set<DeleteOption> DefaultDeleteOptions =
-            Collections.singleton(DeleteOption.Unconditionally);
-
-    public static Set<DeleteOption> validate(DeleteOption... args) {
-        if (args == null || args.length == 0) {
-            return DefaultDeleteOptions;
+    public static OptionalLong getVersionId(Set<DeleteOption> opts) {
+        if (opts == null || opts.isEmpty()) {
+            return OptionalLong.empty();
         }
 
-        Arrays.stream(args)
-                .forEach(
-                        a -> {
-                            if (Arrays.stream(args)
-                                    .filter(c -> !c.equals(a))
-                                    .anyMatch(c -> a.cannotCoExistWith(c))) {
-                                throw new IllegalArgumentException(
-                                        "Incompatible "
-                                                + DeleteOption.class.getSimpleName()
-                                                + "s: "
-                                                + Arrays.toString(args));
-                            }
-                        });
-        return new HashSet<>(Arrays.asList(args));
-    }
+        if (opts.size() > 1) {
+            throw new IllegalArgumentException("Conflicting delete options");
+        }
 
-    public static Optional<Long> toVersionId(Collection<DeleteOption> options) {
-        return options.stream()
-                .filter(o -> o instanceof DeleteOption.VersionIdDeleteOption)
-                .findAny()
-                .map(o -> ((DeleteOption.VersionIdDeleteOption) o).toVersionId());
+        DeleteOption delOpt = opts.iterator().next();
+        if (delOpt instanceof OptionVersionId o) {
+            return OptionalLong.of(o.versionId());
+        } else {
+            return OptionalLong.empty();
+        }
     }
 }

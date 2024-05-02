@@ -25,10 +25,13 @@ import io.streamnative.oxia.client.api.Version;
 import io.streamnative.oxia.client.api.exceptions.KeyAlreadyExistsException;
 import io.streamnative.oxia.client.api.exceptions.UnexpectedVersionIdException;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -154,12 +157,13 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
                                 return CompletableFuture.failedFuture(
                                         new MetadataStoreException("Key '" + path + "' has children"));
                             } else {
-                                var delOption =
+                                Set<DeleteOption> deleteOptions =
                                         expectedVersion
-                                                .map(DeleteOption::ifVersionIdEquals)
-                                                .orElse(DeleteOption.Unconditionally);
-                                CompletableFuture<Boolean> result = client.delete(path, delOption);
-                                return result
+                                                .map(v -> Collections.singleton(DeleteOption.IfVersionIdEquals(v)))
+                                                .orElse(Collections.emptySet());
+
+                                return client
+                                        .delete(path, deleteOptions)
                                         .thenCompose(
                                                 exists -> {
                                                     if (!exists) {
@@ -202,20 +206,20 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
                     } else {
                         actualPath = CompletableFuture.completedFuture(path);
                     }
-                    var versionCondition =
-                            expectedVersion
-                                    .map(
-                                            ver -> {
-                                                if (ver == -1) {
-                                                    return PutOption.IfRecordDoesNotExist;
-                                                }
-                                                return PutOption.ifVersionIdEquals(ver);
-                                            })
-                                    .orElse(PutOption.Unconditionally);
-                    var putOptions =
-                            options.contains(CreateOption.Ephemeral)
-                                    ? new PutOption[] {PutOption.AsEphemeralRecord, versionCondition}
-                                    : new PutOption[] {versionCondition};
+                    Set<PutOption> putOptions = new HashSet<>();
+                    expectedVersion
+                            .map(
+                                    ver -> {
+                                        if (ver == -1) {
+                                            return PutOption.IfRecordDoesNotExist;
+                                        }
+                                        return PutOption.IfVersionIdEquals(ver);
+                                    })
+                            .ifPresent(putOptions::add);
+
+                    if (options.contains(CreateOption.Ephemeral)) {
+                        putOptions.add(PutOption.AsEphemeralRecord);
+                    }
                     return actualPath
                             .thenCompose(
                                     aPath ->
@@ -247,7 +251,10 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
                                 return CompletableFuture.completedFuture(null);
                             } else {
                                 return client
-                                        .put(parent, new byte[] {}, PutOption.IfRecordDoesNotExist)
+                                        .put(
+                                                parent,
+                                                new byte[] {},
+                                                Collections.singleton(PutOption.IfRecordDoesNotExist))
                                         .thenCompose(__ -> createParents(parent));
                             }
                         })

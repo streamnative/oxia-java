@@ -15,12 +15,4 @@
  */
 package io.streamnative.oxia.client.api;
 
-public sealed interface PutOption permits OptionEphemeral, OptionVersionId {
-
-    PutOption IfRecordDoesNotExist = new OptionVersionId.OptionRecordDoesNotExist();
-    PutOption AsEphemeralRecord = new OptionEphemeral();
-
-    static PutOption IfVersionIdEquals(long versionId) {
-        return new OptionVersionId.OptionVersionIdEqual(versionId);
-    }
-}
+public record OptionEphemeral() implements PutOption {}
