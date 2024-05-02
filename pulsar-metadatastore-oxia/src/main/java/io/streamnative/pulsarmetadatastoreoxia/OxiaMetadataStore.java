@@ -19,6 +19,7 @@ import io.streamnative.oxia.client.OxiaClientBuilder;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.DeleteOption;
 import io.streamnative.oxia.client.api.Notification;
+import io.streamnative.oxia.client.api.OxiaClientBuilder;
 import io.streamnative.oxia.client.api.PutOption;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.Version;
@@ -66,7 +67,7 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
         this.synchronizer = Optional.ofNullable(metadataStoreConfig.getSynchronizer());
         identity = UUID.randomUUID().toString();
         client =
-                new OxiaClientBuilder(serviceAddress)
+                OxiaClientBuilder.create(serviceAddress)
                         .clientIdentifier(identity)
                         .namespace(namespace)
                         .sessionTimeout(Duration.ofMillis(metadataStoreConfig.getSessionTimeoutMillis()))
