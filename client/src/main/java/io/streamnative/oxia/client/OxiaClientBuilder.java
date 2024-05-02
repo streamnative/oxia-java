@@ -37,7 +37,7 @@ public class OxiaClientBuilder {
     public static final int DefaultMaxBatchSize = 128 * 1024;
     public static final Duration DefaultRequestTimeout = Duration.ofSeconds(30);
     public static final Duration DefaultSessionTimeout = Duration.ofSeconds(15);
-    public static final int DefaultRecordCacheCapacity = 10_000;
+    public static final int DefaultRecordCacheCapacity = 0;
     public static final String DefaultNamespace = "default";
 
     @NonNull private final String serviceAddress;

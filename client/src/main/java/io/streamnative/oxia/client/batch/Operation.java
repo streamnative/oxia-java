@@ -16,7 +16,6 @@
 package io.streamnative.oxia.client.batch;
 
 import static io.streamnative.oxia.client.api.Version.KeyNotExists;
-import static io.streamnative.oxia.client.batch.Operation.CloseOperation;
 import static io.streamnative.oxia.client.batch.Operation.ReadOperation;
 import static io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import static io.streamnative.oxia.client.batch.Operation.WriteOperation;
@@ -40,25 +39,21 @@ import io.streamnative.oxia.proto.PutRequest;
 import io.streamnative.oxia.proto.PutResponse;
 import io.streamnative.oxia.proto.Status;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import lombok.NonNull;
 
-public sealed interface Operation<R> permits CloseOperation, ReadOperation, WriteOperation {
+public sealed interface Operation<R> permits ReadOperation, WriteOperation {
 
     CompletableFuture<R> callback();
-
-    long sequence();
 
     default void fail(Throwable t) {
         callback().completeExceptionally(t);
     }
 
     sealed interface ReadOperation<R> extends Operation<R> permits GetOperation {
-        record GetOperation(
-                long sequence, @NonNull CompletableFuture<GetResult> callback, @NonNull String key)
+        record GetOperation(@NonNull CompletableFuture<GetResult> callback, @NonNull String key)
                 implements ReadOperation<GetResult> {
             GetRequest toProto() {
                 return GetRequest.newBuilder().setKey(key).setIncludeValue(true).build();
@@ -77,7 +72,6 @@ public sealed interface Operation<R> permits CloseOperation, ReadOperation, Writ
     sealed interface WriteOperation<R> extends Operation<R>
             permits PutOperation, DeleteOperation, DeleteRangeOperation {
         record PutOperation(
-                long sequence,
                 @NonNull CompletableFuture<PutResult> callback,
                 @NonNull String key,
                 byte @NonNull [] value,
@@ -147,7 +141,6 @@ public sealed interface Operation<R> permits CloseOperation, ReadOperation, Writ
         }
 
         record DeleteOperation(
-                long sequence,
                 @NonNull CompletableFuture<Boolean> callback,
                 @NonNull String key,
                 @NonNull Optional<Long> expectedVersionId)
@@ -176,14 +169,12 @@ public sealed interface Operation<R> permits CloseOperation, ReadOperation, Writ
                 }
             }
 
-            public DeleteOperation(
-                    long sequence, @NonNull CompletableFuture<Boolean> callback, @NonNull String key) {
-                this(sequence, callback, key, Optional.empty());
+            public DeleteOperation(@NonNull CompletableFuture<Boolean> callback, @NonNull String key) {
+                this(callback, key, Optional.empty());
             }
         }
 
         record DeleteRangeOperation(
-                long sequence,
                 @NonNull CompletableFuture<Void> callback,
                 @NonNull String startKeyInclusive,
                 @NonNull String endKeyExclusive)
@@ -204,29 +195,4 @@ public sealed interface Operation<R> permits CloseOperation, ReadOperation, Writ
             }
         }
     }
-
-    enum CloseOperation implements Operation<Void> {
-        INSTANCE {
-            @Override
-            public long sequence() {
-                return Long.MIN_VALUE;
-            }
-        };
-
-        @Override
-        public CompletableFuture<Void> callback() {
-            return null;
-        }
-    }
-
-    Comparator<Operation> PriorityComparator =
-            (o1, o2) -> {
-                if (o1 == CloseOperation.INSTANCE) {
-                    return -1;
-                } else if (o2 == CloseOperation.INSTANCE) {
-                    return +1;
-                } else {
-                    return Long.compare(o1.sequence(), o2.sequence());
-                }
-            };
 }

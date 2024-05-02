@@ -31,7 +31,6 @@ import io.streamnative.oxia.client.api.KeyAlreadyExistsException;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.SessionDoesNotExistException;
 import io.streamnative.oxia.client.api.UnexpectedVersionIdException;
-import io.streamnative.oxia.client.batch.Operation.CloseOperation;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
@@ -46,7 +45,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.PriorityBlockingQueue;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -61,7 +59,7 @@ class OperationTest {
     class GetOperationTests {
 
         CompletableFuture<GetResult> callback = new CompletableFuture<>();
-        GetOperation op = new GetOperation(1L, callback, "key");
+        GetOperation op = new GetOperation(callback, "key");
 
         @Test
         void toProto() {
@@ -147,7 +145,7 @@ class OperationTest {
     class PutOperationTests {
         CompletableFuture<PutResult> callback = new CompletableFuture<>();
         byte[] payload = "hello".getBytes(UTF_8);
-        PutOperation op = new PutOperation(1L, callback, "key", payload, Optional.of(10L), false);
+        PutOperation op = new PutOperation(callback, "key", payload, Optional.of(10L), false);
         long sessionId = 0L;
         String clientId = "client-id";
         SessionInfo sessionInfo = new SessionInfo(sessionId, clientId);
@@ -156,18 +154,16 @@ class OperationTest {
         void constructInvalidExpectedVersionId() {
             assertThatNoException()
                     .isThrownBy(
-                            () ->
-                                    new PutOperation(1L, callback, "key", payload, Optional.of(KeyNotExists), false));
+                            () -> new PutOperation(callback, "key", payload, Optional.of(KeyNotExists), false));
             assertThatNoException()
-                    .isThrownBy(() -> new PutOperation(1L, callback, "key", payload, Optional.of(0L), false));
-            assertThatThrownBy(
-                            () -> new PutOperation(1L, callback, "key", payload, Optional.of(-2L), false))
+                    .isThrownBy(() -> new PutOperation(callback, "key", payload, Optional.of(0L), false));
+            assertThatThrownBy(() -> new PutOperation(callback, "key", payload, Optional.of(-2L), false))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
         void toProtoNoExpectedVersion() {
-            var op = new PutOperation(1L, callback, "key", payload, Optional.empty(), false);
+            var op = new PutOperation(callback, "key", payload, Optional.empty(), false);
             var request = op.toProto(Optional.empty());
             assertThat(request)
                     .satisfies(
@@ -182,7 +178,7 @@ class OperationTest {
 
         @Test
         void toProtoExpectedVersion() {
-            var op = new PutOperation(1L, callback, "key", payload, Optional.of(1L), false);
+            var op = new PutOperation(callback, "key", payload, Optional.of(1L), false);
             var request = op.toProto(Optional.empty());
             assertThat(request)
                     .satisfies(
@@ -197,7 +193,7 @@ class OperationTest {
 
         @Test
         void toProtoNoExistingVersion() {
-            var op = new PutOperation(1L, callback, "key", payload, Optional.of(KeyNotExists), false);
+            var op = new PutOperation(callback, "key", payload, Optional.of(KeyNotExists), false);
             var request = op.toProto(Optional.empty());
             assertThat(request)
                     .satisfies(
@@ -212,7 +208,7 @@ class OperationTest {
 
         @Test
         void toProtoEphemeral() {
-            var op = new PutOperation(1L, callback, "key", payload, Optional.empty(), true);
+            var op = new PutOperation(callback, "key", payload, Optional.empty(), true);
             var request = op.toProto(Optional.of(sessionInfo));
             assertThat(request)
                     .satisfies(
@@ -242,7 +238,7 @@ class OperationTest {
 
         @Test
         void completeKeyAlreadyExists() {
-            var op = new PutOperation(1L, callback, "key", payload, Optional.of(KeyNotExists), false);
+            var op = new PutOperation(callback, "key", payload, Optional.of(KeyNotExists), false);
             var response = PutResponse.newBuilder().setStatus(UNEXPECTED_VERSION_ID).build();
             op.complete(response);
             assertThat(callback).isCompletedExceptionally();
@@ -258,7 +254,7 @@ class OperationTest {
 
         @Test
         void completeSessionDoesNotExist() {
-            var op = new PutOperation(1L, callback, "key", payload, Optional.empty(), true);
+            var op = new PutOperation(callback, "key", payload, Optional.empty(), true);
             var response = PutResponse.newBuilder().setStatus(SESSION_DOES_NOT_EXIST).build();
             op.complete(response);
             assertThat(callback).isCompletedExceptionally();
@@ -336,21 +332,21 @@ class OperationTest {
     @DisplayName("Tests of delete operation")
     class DeleteOperationTests {
         CompletableFuture<Boolean> callback = new CompletableFuture<>();
-        DeleteOperation op = new DeleteOperation(1L, callback, "key", Optional.of(10L));
+        DeleteOperation op = new DeleteOperation(callback, "key", Optional.of(10L));
 
         @Test
         void constructInvalidExpectedVersionId() {
             assertThatNoException()
-                    .isThrownBy(() -> new DeleteOperation(1L, callback, "key", Optional.of(0L)));
-            assertThatThrownBy(() -> new DeleteOperation(1L, callback, "key", Optional.of(KeyNotExists)))
+                    .isThrownBy(() -> new DeleteOperation(callback, "key", Optional.of(0L)));
+            assertThatThrownBy(() -> new DeleteOperation(callback, "key", Optional.of(KeyNotExists)))
                     .isInstanceOf(IllegalArgumentException.class);
-            assertThatThrownBy(() -> new DeleteOperation(1L, callback, "key", Optional.of(-2L)))
+            assertThatThrownBy(() -> new DeleteOperation(callback, "key", Optional.of(-2L)))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
         void toProtoNoExpectedVersion() {
-            var op = new DeleteOperation(1L, callback, "key");
+            var op = new DeleteOperation(callback, "key");
             var request = op.toProto();
             assertThat(request)
                     .satisfies(
@@ -420,7 +416,7 @@ class OperationTest {
     @DisplayName("Tests of delete range operation")
     class DeleteRangeOperationTests {
         CompletableFuture<Void> callback = new CompletableFuture<>();
-        DeleteRangeOperation op = new DeleteRangeOperation(1L, callback, "a", "b");
+        DeleteRangeOperation op = new DeleteRangeOperation(callback, "a", "b");
 
         @Test
         void toProto() {
@@ -449,28 +445,6 @@ class OperationTest {
                                         .isInstanceOf(IllegalStateException.class)
                                         .hasMessage("GRPC.Status: UNRECOGNIZED");
                             });
-        }
-    }
-
-    @Nested
-    @DisplayName("Tests of the comparator")
-    class OperationComparatorTests {
-        @Test
-        void closeHasHighestPriority() throws InterruptedException {
-            var callback = new CompletableFuture<GetResult>();
-            var op1 = new GetOperation(1L, callback, "a");
-            var op2 = new GetOperation(2L, callback, "b");
-            var op3 = new GetOperation(3L, callback, "c");
-            var queue = new PriorityBlockingQueue<Operation<?>>(11, Operation.PriorityComparator);
-            queue.put(op2);
-            queue.put(op1);
-            queue.put(CloseOperation.INSTANCE);
-            queue.put(op3);
-
-            assertThat(queue.take()).isEqualTo(CloseOperation.INSTANCE);
-            assertThat(queue.take()).isEqualTo(op1);
-            assertThat(queue.take()).isEqualTo(op2);
-            assertThat(queue.take()).isEqualTo(op3);
         }
     }
 }

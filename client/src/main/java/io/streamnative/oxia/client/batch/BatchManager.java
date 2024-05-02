@@ -15,10 +15,8 @@
  */
 package io.streamnative.oxia.client.batch;
 
-import static java.util.concurrent.TimeUnit.SECONDS;
 import static lombok.AccessLevel.PACKAGE;
 
-import io.grpc.netty.shaded.io.netty.util.concurrent.DefaultThreadFactory;
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.metrics.InstrumentProvider;
@@ -26,8 +24,6 @@ import io.streamnative.oxia.client.session.SessionManager;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Function;
 import lombok.Getter;
 import lombok.NonNull;
@@ -36,8 +32,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class BatchManager implements AutoCloseable {
 
-    private final ExecutorService executor =
-            Executors.newCachedThreadPool(new DefaultThreadFactory("batch-manager"));
     private final ConcurrentMap<Long, Batcher> batchersByShardId = new ConcurrentHashMap<>();
     private final @NonNull Function<Long, Batcher> batcherFactory;
     private volatile boolean closed;
@@ -50,9 +44,7 @@ public class BatchManager implements AutoCloseable {
     }
 
     private Batcher createAndStartBatcher(long shardId) {
-        Batcher batcher = batcherFactory.apply(shardId);
-        executor.execute(batcher);
-        return batcher;
+        return batcherFactory.apply(shardId);
     }
 
     @Override
@@ -62,18 +54,6 @@ public class BatchManager implements AutoCloseable {
         }
         closed = true;
         batchersByShardId.values().forEach(Batcher::close);
-        shutdownExecutor();
-    }
-
-    private void shutdownExecutor() {
-        executor.shutdown();
-        try {
-            if (!executor.awaitTermination(1, SECONDS)) {
-                executor.shutdownNow();
-            }
-        } catch (InterruptedException e) {
-            executor.shutdownNow();
-        }
     }
 
     @RequiredArgsConstructor(access = PACKAGE)
