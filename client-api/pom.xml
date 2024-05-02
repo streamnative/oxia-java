@@ -27,7 +27,7 @@
     </parent>
 
     <artifactId>oxia-client-api</artifactId>
-    <name>Oxia Client</name>
+    <name>Oxia Client API</name>
 
     <dependencies>
         <dependency>
