@@ -19,9 +19,12 @@ import static lombok.AccessLevel.PACKAGE;
 import static lombok.AccessLevel.PUBLIC;
 
 import com.google.common.annotations.VisibleForTesting;
+import io.opentelemetry.api.common.Attributes;
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.grpc.OxiaStub;
-import io.streamnative.oxia.client.metrics.SessionMetrics;
+import io.streamnative.oxia.client.metrics.Counter;
+import io.streamnative.oxia.client.metrics.InstrumentProvider;
+import io.streamnative.oxia.client.metrics.Unit;
 import io.streamnative.oxia.proto.CloseSessionRequest;
 import io.streamnative.oxia.proto.SessionHeartbeat;
 import java.time.Duration;
@@ -55,19 +58,22 @@ public class Session implements AutoCloseable {
     private final String clientIdentifier;
 
     private final @NonNull SessionHeartbeat heartbeat;
-    private final @NonNull SessionMetrics metrics;
 
     private final @NonNull SessionNotificationListener listener;
 
     private Scheduler scheduler;
     private Disposable keepAliveSubscription;
 
+    private Counter sessionsOpened;
+    private Counter sessionsExpired;
+    private Counter sessionsClosed;
+
     Session(
             @NonNull Function<Long, OxiaStub> stubByShardId,
             @NonNull ClientConfig config,
             long shardId,
             long sessionId,
-            SessionMetrics metrics,
+            InstrumentProvider instrumentProvider,
             SessionNotificationListener listener) {
         this(
                 stubByShardId,
@@ -78,7 +84,6 @@ public class Session implements AutoCloseable {
                 sessionId,
                 config.clientIdentifier(),
                 SessionHeartbeat.newBuilder().setShardId(shardId).setSessionId(sessionId).build(),
-                metrics,
                 listener);
         log.info(
                 "Session created shard={} sessionId={} clientIdentity={}",
@@ -87,6 +92,27 @@ public class Session implements AutoCloseable {
                 config.clientIdentifier());
         var threadName = String.format("session-[id=%s,shard=%s]-keep-alive", sessionId, shardId);
         scheduler = Schedulers.newSingle(threadName);
+
+        this.sessionsOpened =
+                instrumentProvider.newCounter(
+                        "oxia.client.sessions.opened",
+                        Unit.Sessions,
+                        "The total number of sessions opened by this client",
+                        Attributes.builder().put("oxia.shard", shardId).build());
+        this.sessionsExpired =
+                instrumentProvider.newCounter(
+                        "oxia.client.sessions.expired",
+                        Unit.Sessions,
+                        "The total number of sessions expired int this client",
+                        Attributes.builder().put("oxia.shard", shardId).build());
+        this.sessionsClosed =
+                instrumentProvider.newCounter(
+                        "oxia.client.sessions.closed",
+                        Unit.Sessions,
+                        "The total number of sessions closed by this client",
+                        Attributes.builder().put("oxia.shard", shardId).build());
+
+        sessionsOpened.increment();
     }
 
     void start() {
@@ -107,12 +133,12 @@ public class Session implements AutoCloseable {
                         .retryWhen(retrySpec)
                         .timeout(sessionTimeout)
                         .publishOn(scheduler)
-                        .doOnEach(metrics::recordKeepAlive)
                         .doOnError(this::handleSessionExpired)
                         .subscribe();
     }
 
     private void handleSessionExpired(Throwable t) {
+        sessionsExpired.increment();
         log.warn(
                 "Session expired shard={} sessionId={} clientIdentity={}: {}",
                 shardId,
@@ -124,6 +150,7 @@ public class Session implements AutoCloseable {
 
     @Override
     public void close() {
+        sessionsClosed.increment();
         keepAliveSubscription.dispose();
         var stub = stubByShardId.apply(shardId);
         var request =

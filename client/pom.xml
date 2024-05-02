@@ -67,14 +67,13 @@
             <artifactId>grpc-stub</artifactId>
         </dependency>
         <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-api</artifactId>
+        </dependency>
+        <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-core</artifactId>
             <version>${reactor.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.streamnative.oxia</groupId>
-            <artifactId>oxia-client-metrics-api</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>javax.annotation</groupId>

@@ -21,8 +21,6 @@ import static io.streamnative.oxia.proto.NotificationType.KEY_MODIFIED;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -40,8 +38,7 @@ import io.streamnative.oxia.client.api.Notification.KeyDeleted;
 import io.streamnative.oxia.client.api.Notification.KeyModified;
 import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.grpc.OxiaStubManager;
-import io.streamnative.oxia.client.metrics.NotificationMetrics;
-import io.streamnative.oxia.client.metrics.api.Metrics;
+import io.streamnative.oxia.client.metrics.InstrumentProvider;
 import io.streamnative.oxia.client.shard.ShardManager;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChange.Added;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChange.Reassigned;
@@ -81,19 +78,19 @@ class NotificationManagerTest {
         @Mock ShardNotificationReceiver receiver1;
         @Mock ShardNotificationReceiver receiver2;
         @Mock ShardNotificationReceiver receiver3;
-        @Mock NotificationMetrics metrics;
         NotificationManager manager;
         CompositeConsumer<Notification> callback = new CompositeConsumer<>();
 
         @BeforeEach
         void setup() {
-            manager = new NotificationManager(receiverFactory, shardManager, callback, metrics);
+            when(receiverFactory.getCallback()).thenReturn(callback);
+            manager = new NotificationManager(receiverFactory, shardManager, InstrumentProvider.NOOP);
         }
 
         @Test
         void startOnRegisterCallback() {
-            when(receiverFactory.newReceiver(1L, "leader1", metrics)).thenReturn(receiver1);
-            when(receiverFactory.newReceiver(2L, "leader2", metrics)).thenReturn(receiver2);
+            when(receiverFactory.newReceiver(1L, "leader1", manager)).thenReturn(receiver1);
+            when(receiverFactory.newReceiver(2L, "leader2", manager)).thenReturn(receiver2);
             when(shardManager.getAll()).thenReturn(List.of(1L, 2L));
             when(shardManager.leader(1L)).thenReturn("leader1");
             when(shardManager.leader(2L)).thenReturn("leader2");
@@ -113,13 +110,13 @@ class NotificationManagerTest {
                             Set.of(new Added(1L, "leader1"), new Added(2L, "leader2")), Set.of(), Set.of());
             manager.accept(changes);
 
-            verifyNoInteractions(receiverFactory, receiver1, receiver2, receiver3);
+            verifyNoInteractions(receiver1, receiver2, receiver3);
         }
 
         @Test
         void acceptRemoveShard() {
-            when(receiverFactory.newReceiver(1L, "leader1", metrics)).thenReturn(receiver1);
-            when(receiverFactory.newReceiver(2L, "leader2", metrics)).thenReturn(receiver2);
+            when(receiverFactory.newReceiver(1L, "leader1", manager)).thenReturn(receiver1);
+            when(receiverFactory.newReceiver(2L, "leader2", manager)).thenReturn(receiver2);
             when(shardManager.getAll()).thenReturn(List.of(1L, 2L));
             when(shardManager.leader(1L)).thenReturn("leader1");
             when(shardManager.leader(2L)).thenReturn("leader2");
@@ -137,8 +134,8 @@ class NotificationManagerTest {
 
         @Test
         void acceptAddShard() {
-            when(receiverFactory.newReceiver(1L, "leader1", metrics)).thenReturn(receiver1);
-            when(receiverFactory.newReceiver(2L, "leader2", metrics)).thenReturn(receiver2);
+            when(receiverFactory.newReceiver(1L, "leader1", manager)).thenReturn(receiver1);
+            when(receiverFactory.newReceiver(2L, "leader2", manager)).thenReturn(receiver2);
             when(shardManager.getAll()).thenReturn(List.of(1L, 2L));
             when(shardManager.leader(1L)).thenReturn("leader1");
             when(shardManager.leader(2L)).thenReturn("leader2");
@@ -147,7 +144,7 @@ class NotificationManagerTest {
 
             manager.registerCallback(n -> {});
 
-            when(receiverFactory.newReceiver(3L, "leader3", metrics)).thenReturn(receiver3);
+            when(receiverFactory.newReceiver(3L, "leader3", manager)).thenReturn(receiver3);
             when(receiver3.start()).thenReturn(CompletableFuture.completedFuture(null));
 
             var changes =
@@ -159,8 +156,8 @@ class NotificationManagerTest {
 
         @Test
         void acceptReassignShard() {
-            when(receiverFactory.newReceiver(1L, "leader1", metrics)).thenReturn(receiver1);
-            when(receiverFactory.newReceiver(2L, "leader2", metrics)).thenReturn(receiver2);
+            when(receiverFactory.newReceiver(1L, "leader1", manager)).thenReturn(receiver1);
+            when(receiverFactory.newReceiver(2L, "leader2", manager)).thenReturn(receiver2);
             when(shardManager.getAll()).thenReturn(List.of(1L, 2L));
             when(shardManager.leader(1L)).thenReturn("leader1");
             when(shardManager.leader(2L)).thenReturn("leader2");
@@ -169,7 +166,7 @@ class NotificationManagerTest {
 
             manager.registerCallback(n -> {});
 
-            when(receiverFactory.newReceiver(2L, "leader3", metrics)).thenReturn(receiver3);
+            when(receiverFactory.newReceiver(2L, "leader3", manager)).thenReturn(receiver3);
             var shard2offset = 1000L;
             when(receiver2.getOffset()).thenReturn(shard2offset);
 
@@ -189,8 +186,8 @@ class NotificationManagerTest {
 
         @Test
         void close() throws Exception {
-            when(receiverFactory.newReceiver(1L, "leader1", metrics)).thenReturn(receiver1);
-            when(receiverFactory.newReceiver(2L, "leader2", metrics)).thenReturn(receiver2);
+            when(receiverFactory.newReceiver(1L, "leader1", manager)).thenReturn(receiver1);
+            when(receiverFactory.newReceiver(2L, "leader2", manager)).thenReturn(receiver2);
             when(shardManager.getAll()).thenReturn(List.of(1L, 2L));
             when(shardManager.leader(1L)).thenReturn("leader1");
             when(shardManager.leader(2L)).thenReturn("leader2");
@@ -260,8 +257,6 @@ class NotificationManagerTest {
         @Mock ShardManager shardManager;
         @Mock ShardManager.Assignments assignments;
         @Mock Consumer<Notification> notificationCallback;
-        @Mock Metrics metrics;
-        @Mock Metrics.Histogram histogram;
 
         @BeforeEach
         void beforeEach() throws Exception {
@@ -285,7 +280,6 @@ class NotificationManagerTest {
             var stub2 = new OxiaStub(channel2);
             when(stubManager.getStub("leader1")).thenReturn(stub1);
             when(stubManager.getStub("leader2")).thenReturn(stub2);
-            when(metrics.histogram(anyString(), any(Metrics.Unit.class))).thenReturn(histogram);
         }
 
         @Test
@@ -302,7 +296,8 @@ class NotificationManagerTest {
             responses1.offer(Flux.just(notifications1).concatWith(Flux.never()));
             responses2.offer(Flux.just(notifications2).concatWith(Flux.never()));
 
-            try (var manager = new NotificationManager(stubManager, shardManager, metrics)) {
+            try (var manager =
+                    new NotificationManager(stubManager, shardManager, InstrumentProvider.NOOP)) {
                 manager.registerCallback(notificationCallback);
                 var changes =
                         new ShardAssignmentChanges(

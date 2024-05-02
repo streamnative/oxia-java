@@ -22,8 +22,6 @@ import static java.util.Collections.singletonList;
 import static java.util.Map.entry;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -31,8 +29,7 @@ import static org.mockito.Mockito.when;
 
 import io.streamnative.oxia.client.CompositeConsumer;
 import io.streamnative.oxia.client.grpc.OxiaStub;
-import io.streamnative.oxia.client.metrics.ShardAssignmentMetrics;
-import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChange.Added;
+import io.streamnative.oxia.client.metrics.InstrumentProvider;
 import io.streamnative.oxia.proto.NamespaceShardsAssignment;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
 import io.streamnative.oxia.proto.ShardAssignment;
@@ -41,7 +38,6 @@ import io.streamnative.oxia.proto.ShardAssignmentsRequest;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import org.junit.jupiter.api.BeforeEach;
@@ -178,7 +174,6 @@ public class ShardManagerTest {
 
         @Mock ReactorOxiaClientGrpc.ReactorOxiaClientStub reactor;
         @Mock OxiaStub stub;
-        @Mock ShardAssignmentMetrics metrics;
         ShardManager manager;
 
         @BeforeEach
@@ -186,7 +181,8 @@ public class ShardManagerTest {
             stub = mock(OxiaStub.class);
             reactor = mock(ReactorOxiaClientGrpc.ReactorOxiaClientStub.class);
 
-            manager = new ShardManager(stub, assignments, new CompositeConsumer<>(), metrics);
+            manager =
+                    new ShardManager(stub, assignments, new CompositeConsumer<>(), InstrumentProvider.NOOP);
         }
 
         @Test
@@ -204,12 +200,6 @@ public class ShardManagerTest {
             assertThat(future).succeedsWithin(Duration.ofMillis(100));
 
             assertThat(manager.leader(0)).isEqualTo("leader0");
-
-            verify(metrics, atLeast(1)).recordAssignments(any());
-            verify(metrics, atLeast(1))
-                    .recordChanges(
-                            new ShardManager.ShardAssignmentChanges(
-                                    Set.of(new Added(0, "leader0")), Set.of(), Set.of()));
         }
 
         @Test

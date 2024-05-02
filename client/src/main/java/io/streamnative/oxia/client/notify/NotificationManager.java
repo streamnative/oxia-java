@@ -15,14 +15,14 @@
  */
 package io.streamnative.oxia.client.notify;
 
-import static lombok.AccessLevel.PACKAGE;
-
+import io.opentelemetry.api.common.Attributes;
 import io.streamnative.oxia.client.CompositeConsumer;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.grpc.GrpcResponseStream;
 import io.streamnative.oxia.client.grpc.OxiaStubManager;
-import io.streamnative.oxia.client.metrics.NotificationMetrics;
-import io.streamnative.oxia.client.metrics.api.Metrics;
+import io.streamnative.oxia.client.metrics.Counter;
+import io.streamnative.oxia.client.metrics.InstrumentProvider;
+import io.streamnative.oxia.client.metrics.Unit;
 import io.streamnative.oxia.client.shard.ShardManager;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChange.Added;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChanges;
@@ -32,30 +32,50 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import lombok.Getter;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-@RequiredArgsConstructor(access = PACKAGE)
 @Slf4j
 public class NotificationManager implements AutoCloseable, Consumer<ShardAssignmentChanges> {
     private final ConcurrentMap<Long, ShardNotificationReceiver> shardReceivers =
             new ConcurrentHashMap<>();
-    private final @NonNull ShardNotificationReceiver.Factory recieverFactory;
+    private final @NonNull ShardNotificationReceiver.Factory receiverFactory;
     private final @NonNull ShardManager shardManager;
-    private final @NonNull CompositeConsumer<Notification> compositeCallback;
-    private final @NonNull NotificationMetrics metrics;
+    private final CompositeConsumer<Notification> compositeCallback; //  = new CompositeConsumer<>();
     private volatile boolean started = false;
     private volatile boolean closed = false;
+
+    @Getter private final Counter counterNotificationsReceived;
+    @Getter private final Counter counterNotificationsBatchesReceived;
 
     public NotificationManager(
             @NonNull OxiaStubManager stubManager,
             @NonNull ShardManager shardManager,
-            @NonNull Metrics metrics) {
-        this.compositeCallback = new CompositeConsumer<>();
-        this.recieverFactory = new ShardNotificationReceiver.Factory(stubManager, compositeCallback);
+            @NonNull InstrumentProvider instrumentProvider) {
+        this(new ShardNotificationReceiver.Factory(stubManager), shardManager, instrumentProvider);
+    }
+
+    public NotificationManager(
+            @NonNull ShardNotificationReceiver.Factory receiverFactory,
+            @NonNull ShardManager shardManager,
+            @NonNull InstrumentProvider instrumentProvider) {
+        this.receiverFactory = receiverFactory;
+        this.compositeCallback = receiverFactory.getCallback();
         this.shardManager = shardManager;
-        this.metrics = NotificationMetrics.create(metrics);
+
+        this.counterNotificationsReceived =
+                instrumentProvider.newCounter(
+                        "oxia.client.notifications.received",
+                        Unit.Events,
+                        "The total number of notification events",
+                        Attributes.empty());
+        this.counterNotificationsBatchesReceived =
+                instrumentProvider.newCounter(
+                        "oxia.client.notifications.batches.received",
+                        Unit.Events,
+                        "The total number of notification batches received",
+                        Attributes.empty());
     }
 
     @Override
@@ -99,7 +119,7 @@ public class NotificationManager implements AutoCloseable, Consumer<ShardAssignm
                         s ->
                                 shardReceivers
                                         .computeIfAbsent(
-                                                s.shardId(), id -> recieverFactory.newReceiver(id, s.leader(), metrics))
+                                                s.shardId(), id -> receiverFactory.newReceiver(id, s.leader(), this))
                                         .start());
         changes
                 .reassigned()
@@ -109,7 +129,7 @@ public class NotificationManager implements AutoCloseable, Consumer<ShardAssignm
                             receiver.ifPresent(GrpcResponseStream::close);
                             shardReceivers
                                     .computeIfAbsent(
-                                            s.shardId(), id -> recieverFactory.newReceiver(id, s.toLeader(), metrics))
+                                            s.shardId(), id -> receiverFactory.newReceiver(id, s.toLeader(), this))
                                     .start(receiver.map(ShardNotificationReceiver::getOffset));
                         });
     }

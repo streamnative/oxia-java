@@ -15,19 +15,23 @@
  */
 package io.streamnative.oxia.client.batch;
 
+import io.streamnative.oxia.client.grpc.OxiaStub;
+import java.util.function.Function;
+import lombok.Getter;
 import lombok.NonNull;
 
-public interface Batch {
+abstract class BatchBase {
+    private final @NonNull Function<Long, OxiaStub> stubByShardId;
+    @Getter private final long shardId;
 
-    void add(@NonNull Operation<?> operation);
+    @Getter private final long startTimeNanos = System.nanoTime();
 
-    boolean canAdd(@NonNull Operation<?> operation);
+    BatchBase(Function<Long, OxiaStub> stubByShardId, long shardId) {
+        this.stubByShardId = stubByShardId;
+        this.shardId = shardId;
+    }
 
-    int size();
-
-    long getShardId();
-
-    void send();
-
-    long getStartTimeNanos();
+    protected OxiaStub getStub() {
+        return stubByShardId.apply(shardId);
+    }
 }
