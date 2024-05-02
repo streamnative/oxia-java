@@ -21,7 +21,6 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.ParameterException;
 import com.google.common.util.concurrent.RateLimiter;
 import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
-import io.streamnative.oxia.client.OxiaClientBuilderImpl;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.OxiaClientBuilder;
 import java.time.Duration;

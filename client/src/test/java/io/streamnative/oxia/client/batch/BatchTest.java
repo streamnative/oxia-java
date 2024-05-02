@@ -64,6 +64,7 @@ import java.util.OptionalLong;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -277,7 +278,11 @@ class BatchTest {
 
             batch.send();
 
-            assertThat(putCallable).isCompletedExceptionally();
+            Awaitility.await()
+                    .untilAsserted(
+                            () -> {
+                                assertThat(putCallable).isCompletedExceptionally();
+                            });
             assertThatThrownBy(putCallable::get)
                     .satisfies(
                             e -> {
@@ -382,7 +387,11 @@ class BatchTest {
             batch.add(get);
             batch.send();
 
-            assertThat(getCallable).isCompletedExceptionally();
+            Awaitility.await()
+                    .untilAsserted(
+                            () -> {
+                                assertThat(getCallable).isCompletedExceptionally();
+                            });
             assertThatThrownBy(getCallable::get)
                     .satisfies(
                             e -> {
