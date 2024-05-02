@@ -17,7 +17,7 @@ package io.streamnative.oxia.client.perf;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
-import io.streamnative.oxia.client.OxiaClientBuilder;
+import io.streamnative.oxia.client.OxiaClientBuilderImpl;
 
 @Parameters(commandDescription = "Test Oxia Java client performance.")
 public class PerfArguments {
@@ -61,15 +61,15 @@ public class PerfArguments {
     @Parameter(
             names = {"--batch-linger-ms"},
             description = "Batch linger time")
-    long batchLingerMs = OxiaClientBuilder.DefaultBatchLinger.toMillis();
+    long batchLingerMs = OxiaClientBuilderImpl.DefaultBatchLinger.toMillis();
 
     @Parameter(
             names = {"--max-requests-per-batch"},
             description = "Maximum requests per batch")
-    int maxRequestsPerBatch = OxiaClientBuilder.DefaultMaxRequestsPerBatch;
+    int maxRequestsPerBatch = OxiaClientBuilderImpl.DefaultMaxRequestsPerBatch;
 
     @Parameter(
             names = {"--request-timeout-ms"},
             description = "Requests timeout")
-    long requestTimeoutMs = OxiaClientBuilder.DefaultRequestTimeout.toMillis();
+    long requestTimeoutMs = OxiaClientBuilderImpl.DefaultRequestTimeout.toMillis();
 }

@@ -21,7 +21,9 @@ import com.google.common.base.Strings;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
+import io.streamnative.oxia.client.api.OxiaClientBuilder;
 import io.streamnative.oxia.client.api.SyncOxiaClient;
+import io.streamnative.oxia.client.api.exceptions.OxiaException;
 import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -30,7 +32,7 @@ import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
-public class OxiaClientBuilder {
+public class OxiaClientBuilderImpl implements OxiaClientBuilder {
 
     public static final Duration DefaultBatchLinger = Duration.ofMillis(5);
     public static final int DefaultMaxRequestsPerBatch = 1000;
@@ -46,10 +48,14 @@ public class OxiaClientBuilder {
     private int maxRequestsPerBatch = DefaultMaxRequestsPerBatch;
     private int recordCacheCapacity = DefaultRecordCacheCapacity;
     @NonNull private Duration sessionTimeout = DefaultSessionTimeout;
-    @NonNull private Supplier<String> clientIdentifier = OxiaClientBuilder::randomClientIdentifier;
+
+    @NonNull
+    private Supplier<String> clientIdentifier = OxiaClientBuilderImpl::randomClientIdentifier;
+
     @NonNull private String namespace = DefaultNamespace;
     @NonNull private OpenTelemetry openTelemetry = GlobalOpenTelemetry.get();
 
+    @Override
     public @NonNull OxiaClientBuilder requestTimeout(@NonNull Duration requestTimeout) {
         if (requestTimeout.isNegative() || requestTimeout.equals(ZERO)) {
             throw new IllegalArgumentException(
@@ -59,6 +65,7 @@ public class OxiaClientBuilder {
         return this;
     }
 
+    @Override
     public @NonNull OxiaClientBuilder batchLinger(@NonNull Duration batchLinger) {
         if (batchLinger.isNegative() || batchLinger.equals(ZERO)) {
             throw new IllegalArgumentException("batchLinger must be greater than zero: " + batchLinger);
@@ -67,6 +74,7 @@ public class OxiaClientBuilder {
         return this;
     }
 
+    @Override
     public @NonNull OxiaClientBuilder maxRequestsPerBatch(int maxRequestsPerBatch) {
         if (maxRequestsPerBatch <= 0) {
             throw new IllegalArgumentException(
@@ -76,6 +84,7 @@ public class OxiaClientBuilder {
         return this;
     }
 
+    @Override
     public @NonNull OxiaClientBuilder recordCacheCapacity(int recordCacheCapacity) {
         if (recordCacheCapacity <= 0) {
             throw new IllegalArgumentException(
@@ -85,6 +94,7 @@ public class OxiaClientBuilder {
         return this;
     }
 
+    @Override
     public @NonNull OxiaClientBuilder namespace(@NonNull String namespace) {
         if (Strings.isNullOrEmpty(namespace)) {
             throw new IllegalArgumentException("namespace must not be null or empty.");
@@ -93,11 +103,13 @@ public class OxiaClientBuilder {
         return this;
     }
 
+    @Override
     public @NonNull OxiaClientBuilder disableRecordCache() {
         recordCacheCapacity = 0;
         return this;
     }
 
+    @Override
     public @NonNull OxiaClientBuilder sessionTimeout(@NonNull Duration sessionTimeout) {
         if (sessionTimeout.isNegative() || sessionTimeout.equals(ZERO)) {
             throw new IllegalArgumentException(
@@ -107,21 +119,25 @@ public class OxiaClientBuilder {
         return this;
     }
 
+    @Override
     public @NonNull OxiaClientBuilder clientIdentifier(@NonNull String clientIdentifier) {
         this.clientIdentifier = () -> clientIdentifier;
         return this;
     }
 
+    @Override
     public @NonNull OxiaClientBuilder clientIdentifier(@NonNull Supplier<String> clientIdentifier) {
         this.clientIdentifier = clientIdentifier;
         return this;
     }
 
+    @Override
     public @NonNull OxiaClientBuilder openTelemetry(@NonNull OpenTelemetry openTelemetry) {
         this.openTelemetry = openTelemetry;
         return this;
     }
 
+    @Override
     public @NonNull CompletableFuture<AsyncOxiaClient> asyncClient() {
         var config =
                 new ClientConfig(
@@ -143,7 +159,8 @@ public class OxiaClientBuilder {
         }
     }
 
-    public @NonNull SyncOxiaClient syncClient() {
+    @Override
+    public SyncOxiaClient syncClient() throws OxiaException {
         return new SyncOxiaClientImpl(asyncClient().join());
     }
 

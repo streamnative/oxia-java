@@ -33,13 +33,13 @@ import io.opentelemetry.sdk.metrics.data.MetricData;
 import io.opentelemetry.sdk.resources.Resource;
 import io.opentelemetry.sdk.testing.exporter.InMemoryMetricReader;
 import io.opentelemetry.semconv.resource.attributes.ResourceAttributes;
-import io.streamnative.oxia.client.OxiaClientBuilder;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.DeleteOption;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.Notification.KeyCreated;
 import io.streamnative.oxia.client.api.Notification.KeyDeleted;
 import io.streamnative.oxia.client.api.Notification.KeyModified;
+import io.streamnative.oxia.client.api.OxiaClientBuilder;
 import io.streamnative.oxia.client.api.PutOption;
 import io.streamnative.oxia.client.api.exceptions.KeyAlreadyExistsException;
 import io.streamnative.oxia.client.api.exceptions.UnexpectedVersionIdException;
@@ -86,7 +86,7 @@ public class OxiaClientIT {
                 OpenTelemetrySdk.builder().setMeterProvider(sdkMeterProvider).build();
 
         client =
-                new OxiaClientBuilder(oxia.getServiceAddress())
+                OxiaClientBuilder.create(oxia.getServiceAddress())
                         .openTelemetry(openTelemetry)
                         .asyncClient()
                         .join();
@@ -174,7 +174,7 @@ public class OxiaClientIT {
 
         var identity = getClass().getSimpleName();
         try (var otherClient =
-                new OxiaClientBuilder(oxia.getServiceAddress())
+                OxiaClientBuilder.create(oxia.getServiceAddress())
                         .clientIdentifier(identity)
                         .asyncClient()
                         .join()) {

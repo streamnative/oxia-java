@@ -15,7 +15,7 @@
  */
 package io.streamnative.oxia.client.it;
 
-import io.streamnative.oxia.client.OxiaClientBuilder;
+import io.streamnative.oxia.client.api.OxiaClientBuilder;
 import io.streamnative.oxia.client.shard.NamespaceNotFoundException;
 import io.streamnative.oxia.testcontainers.OxiaContainer;
 import java.util.concurrent.CompletionException;
@@ -39,7 +39,7 @@ public class OxiaClientFailFastIT {
     @Test
     public void testWrongNamespace() {
         try {
-            new OxiaClientBuilder(oxia.getServiceAddress())
+            OxiaClientBuilder.create(oxia.getServiceAddress())
                     .namespace("my-ns-does-not-exist")
                     .asyncClient()
                     .join();

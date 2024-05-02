@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client;
 
-import static io.streamnative.oxia.client.OxiaClientBuilder.DefaultNamespace;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.time.Duration.ZERO;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -121,7 +120,16 @@ class CachingAsyncOxiaClientTest {
     void get() throws Exception {
         var config =
                 new ClientConfig(
-                        "localhost:8080", ZERO, ZERO, 1, 1024 * 1024, 1, ZERO, "id", null, DefaultNamespace);
+                        "localhost:8080",
+                        ZERO,
+                        ZERO,
+                        1,
+                        1024 * 1024,
+                        1,
+                        ZERO,
+                        "id",
+                        null,
+                        OxiaClientBuilderImpl.DefaultNamespace);
         var cacheFactory = new CacheFactory(config, delegate);
 
         var value = "value".getBytes(UTF_8);

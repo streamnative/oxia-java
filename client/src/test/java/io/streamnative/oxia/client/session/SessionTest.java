@@ -15,7 +15,7 @@
  */
 package io.streamnative.oxia.client.session;
 
-import static io.streamnative.oxia.client.OxiaClientBuilder.DefaultNamespace;
+import static io.streamnative.oxia.client.OxiaClientBuilderImpl.DefaultNamespace;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.Mockito.mock;

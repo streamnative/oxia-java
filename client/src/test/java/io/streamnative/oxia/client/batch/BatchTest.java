@@ -15,7 +15,7 @@
  */
 package io.streamnative.oxia.client.batch;
 
-import static io.streamnative.oxia.client.OxiaClientBuilder.DefaultNamespace;
+import static io.streamnative.oxia.client.OxiaClientBuilderImpl.DefaultNamespace;
 import static io.streamnative.oxia.proto.OxiaClientGrpc.OxiaClientImplBase;
 import static io.streamnative.oxia.proto.Status.KEY_NOT_FOUND;
 import static io.streamnative.oxia.proto.Status.OK;
@@ -33,6 +33,7 @@ import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
 import io.grpc.stub.StreamObserver;
 import io.streamnative.oxia.client.ClientConfig;
+import io.streamnative.oxia.client.OxiaClientBuilderImpl;
 import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.exceptions.UnexpectedVersionIdException;
@@ -90,7 +91,7 @@ class BatchTest {
                     Duration.ofMillis(1000),
                     "client_id",
                     null,
-                    DefaultNamespace);
+                    OxiaClientBuilderImpl.DefaultNamespace);
 
     private final OxiaClientImplBase serviceImpl =
             mock(

@@ -15,7 +15,7 @@
  */
 package io.streamnative.oxia.client.shard;
 
-import static io.streamnative.oxia.client.OxiaClientBuilder.DefaultNamespace;
+import static io.streamnative.oxia.client.OxiaClientBuilderImpl.DefaultNamespace;
 
 import io.streamnative.oxia.proto.Int32HashRange;
 import io.streamnative.oxia.proto.NamespaceShardsAssignment;
