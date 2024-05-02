@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client.batch;
 
-import static io.streamnative.oxia.client.OxiaClientBuilder.DefaultNamespace;
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
@@ -30,6 +29,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.streamnative.oxia.client.ClientConfig;
+import io.streamnative.oxia.client.OxiaClientBuilderImpl;
 import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
@@ -63,7 +63,7 @@ class BatcherTest {
                     Duration.ofMillis(1000),
                     "client_id",
                     null,
-                    DefaultNamespace);
+                    OxiaClientBuilderImpl.DefaultNamespace);
 
     BlockingQueue<Operation<?>> queue;
     Batcher batcher;

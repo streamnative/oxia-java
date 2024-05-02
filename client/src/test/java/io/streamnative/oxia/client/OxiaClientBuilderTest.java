@@ -19,12 +19,13 @@ import static java.time.Duration.ZERO;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.streamnative.oxia.client.api.OxiaClientBuilder;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
 
 class OxiaClientBuilderTest {
 
-    OxiaClientBuilder builder = new OxiaClientBuilder("address:1234");
+    OxiaClientBuilder builder = OxiaClientBuilder.create("address:1234");
 
     @Test
     void requestTimeout() {

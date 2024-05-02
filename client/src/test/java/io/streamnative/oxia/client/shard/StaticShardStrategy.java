@@ -15,9 +15,9 @@
  */
 package io.streamnative.oxia.client.shard;
 
-import static io.streamnative.oxia.client.OxiaClientBuilder.DefaultNamespace;
 import static lombok.AccessLevel.PACKAGE;
 
+import io.streamnative.oxia.client.OxiaClientBuilderImpl;
 import io.streamnative.oxia.proto.ShardAssignment;
 import io.streamnative.oxia.proto.ShardAssignments;
 import java.util.HashMap;
@@ -46,9 +46,10 @@ class StaticShardStrategy implements ShardStrategy {
 
     public @NonNull StaticShardStrategy assign(
             @NonNull String key, @NonNull ShardAssignments response) {
-        var nsShardsAssignment = response.getNamespacesMap().get(DefaultNamespace);
+        var nsShardsAssignment =
+                response.getNamespacesMap().get(OxiaClientBuilderImpl.DefaultNamespace);
         if (nsShardsAssignment == null) {
-            throw new NamespaceNotFoundException(DefaultNamespace);
+            throw new NamespaceNotFoundException(OxiaClientBuilderImpl.DefaultNamespace);
         }
         if (nsShardsAssignment.getAssignmentsCount() != 1) {
             throw new IllegalArgumentException();

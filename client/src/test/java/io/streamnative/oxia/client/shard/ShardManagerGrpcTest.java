@@ -15,7 +15,7 @@
  */
 package io.streamnative.oxia.client.shard;
 
-import static io.streamnative.oxia.client.OxiaClientBuilder.DefaultNamespace;
+import static io.streamnative.oxia.client.OxiaClientBuilderImpl.DefaultNamespace;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

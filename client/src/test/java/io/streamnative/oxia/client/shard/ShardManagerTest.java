@@ -15,7 +15,7 @@
  */
 package io.streamnative.oxia.client.shard;
 
-import static io.streamnative.oxia.client.OxiaClientBuilder.DefaultNamespace;
+import static io.streamnative.oxia.client.OxiaClientBuilderImpl.DefaultNamespace;
 import static io.streamnative.oxia.client.shard.HashRangeShardStrategy.Xxh332HashRangeShardStrategy;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
