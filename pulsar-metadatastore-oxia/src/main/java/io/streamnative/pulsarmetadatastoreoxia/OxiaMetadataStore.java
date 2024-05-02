@@ -15,7 +15,6 @@
  */
 package io.streamnative.pulsarmetadatastoreoxia;
 
-import io.streamnative.oxia.client.OxiaClientBuilder;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.DeleteOption;
 import io.streamnative.oxia.client.api.Notification;
