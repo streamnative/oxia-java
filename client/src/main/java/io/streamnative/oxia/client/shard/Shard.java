@@ -22,7 +22,7 @@ import java.util.Collection;
 import java.util.Set;
 import lombok.NonNull;
 
-record Shard(long id, @NonNull String leader, @NonNull HashRange hashRange) {
+public record Shard(long id, @NonNull String leader, @NonNull HashRange hashRange) {
     public boolean overlaps(@NonNull Shard other) {
         return hashRange.overlaps(other.hashRange);
     }

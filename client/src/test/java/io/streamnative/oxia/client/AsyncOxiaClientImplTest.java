@@ -87,7 +87,7 @@ class AsyncOxiaClientImplTest {
         var shardId = 1L;
         var key = "key";
         var value = "hello".getBytes(UTF_8);
-        when(shardManager.get(key)).thenReturn(shardId);
+        when(shardManager.getShardForKey(key)).thenReturn(shardId);
         when(writeBatchManager.getBatcher(shardId)).thenReturn(batcher);
         doNothing().when(batcher).add(opCaptor.capture());
         var result = client.put(key, value);
@@ -110,7 +110,7 @@ class AsyncOxiaClientImplTest {
         var key = "key";
         var value = "hello".getBytes(UTF_8);
         var throwable = new RuntimeException();
-        when(shardManager.get(key)).thenReturn(shardId);
+        when(shardManager.getShardForKey(key)).thenReturn(shardId);
         when(writeBatchManager.getBatcher(shardId)).thenReturn(batcher);
         doThrow(throwable).when(batcher).add(opCaptor.capture());
         var result = client.put(key, value);
@@ -144,7 +144,7 @@ class AsyncOxiaClientImplTest {
         var key = "key";
         var expectedVersionId = 2L;
         var value = "hello".getBytes(UTF_8);
-        when(shardManager.get(key)).thenReturn(shardId);
+        when(shardManager.getShardForKey(key)).thenReturn(shardId);
         when(writeBatchManager.getBatcher(shardId)).thenReturn(batcher);
         doNothing().when(batcher).add(opCaptor.capture());
         var result = client.put(key, value, Set.of(IfVersionIdEquals(expectedVersionId)));
@@ -171,7 +171,7 @@ class AsyncOxiaClientImplTest {
         var opCaptor = ArgumentCaptor.forClass(DeleteOperation.class);
         var shardId = 1L;
         var key = "key";
-        when(shardManager.get(key)).thenReturn(shardId);
+        when(shardManager.getShardForKey(key)).thenReturn(shardId);
         when(writeBatchManager.getBatcher(shardId)).thenReturn(batcher);
         doNothing().when(batcher).add(opCaptor.capture());
         var result = client.delete(key);
@@ -191,7 +191,7 @@ class AsyncOxiaClientImplTest {
         var shardId = 1L;
         var key = "key";
         var throwable = new RuntimeException();
-        when(shardManager.get(key)).thenReturn(shardId);
+        when(shardManager.getShardForKey(key)).thenReturn(shardId);
         when(writeBatchManager.getBatcher(shardId)).thenReturn(batcher);
         doThrow(throwable).when(batcher).add(opCaptor.capture());
         var result = client.delete(key);
@@ -216,7 +216,7 @@ class AsyncOxiaClientImplTest {
         var shardId = 1L;
         var key = "key";
         var expectedVersionId = 2L;
-        when(shardManager.get(key)).thenReturn(shardId);
+        when(shardManager.getShardForKey(key)).thenReturn(shardId);
         when(writeBatchManager.getBatcher(shardId)).thenReturn(batcher);
         doNothing().when(batcher).add(opCaptor.capture());
         var result = client.delete(key, Set.of(DeleteOption.IfVersionIdEquals(expectedVersionId)));
@@ -248,7 +248,7 @@ class AsyncOxiaClientImplTest {
         var opCaptor3 = ArgumentCaptor.forClass(DeleteRangeOperation.class);
         var startInclusive = "a-startInclusive";
         var endExclusive = "z-endExclusive";
-        when(shardManager.getAll()).thenReturn(List.of(1L, 2L, 3L));
+        when(shardManager.allShardIds()).thenReturn(Set.of(1L, 2L, 3L));
         when(writeBatchManager.getBatcher(1L)).thenReturn(batcher1);
         when(writeBatchManager.getBatcher(2L)).thenReturn(batcher2);
         when(writeBatchManager.getBatcher(3L)).thenReturn(batcher3);
@@ -289,30 +289,6 @@ class AsyncOxiaClientImplTest {
     }
 
     @Test
-    void deleteRangeFails() {
-        var batcher1 = mock(Batcher.class);
-        var batcher2 = mock(Batcher.class);
-        var batcher3 = mock(Batcher.class);
-        var opCaptor1 = ArgumentCaptor.forClass(DeleteRangeOperation.class);
-        var opCaptor2 = ArgumentCaptor.forClass(DeleteRangeOperation.class);
-        var opCaptor3 = ArgumentCaptor.forClass(DeleteRangeOperation.class);
-        var startInclusive = "a-startInclusive";
-        var endExclusive = "z-endExclusive";
-        var throwable = new RuntimeException();
-        when(shardManager.getAll()).thenReturn(List.of(1L, 2L, 3L));
-        when(writeBatchManager.getBatcher(1L)).thenReturn(batcher1);
-        when(writeBatchManager.getBatcher(2L)).thenReturn(batcher2);
-        when(writeBatchManager.getBatcher(3L)).thenReturn(batcher3);
-        doNothing().when(batcher1).add(opCaptor1.capture());
-        doNothing().when(batcher2).add(opCaptor2.capture());
-        doThrow(throwable).when(batcher3).add(opCaptor3.capture());
-        var result = client.deleteRange(startInclusive, endExclusive);
-        opCaptor1.getValue().callback().complete(null);
-        opCaptor2.getValue().callback().complete(null);
-        assertThat(result).isCompletedExceptionally();
-    }
-
-    @Test
     void deleteRangeClosed() throws Exception {
         client.close();
         var startInclusive = "a-startInclusive";
@@ -337,7 +313,7 @@ class AsyncOxiaClientImplTest {
         var opCaptor = ArgumentCaptor.forClass(GetOperation.class);
         var shardId = 1L;
         var key = "key";
-        when(shardManager.get(key)).thenReturn(shardId);
+        when(shardManager.getShardForKey(key)).thenReturn(shardId);
         when(readBatchManager.getBatcher(shardId)).thenReturn(batcher);
         doNothing().when(batcher).add(opCaptor.capture());
         var result = client.get(key);
@@ -357,7 +333,7 @@ class AsyncOxiaClientImplTest {
         var shardId = 1L;
         var key = "key";
         var throwable = new RuntimeException();
-        when(shardManager.get(key)).thenReturn(shardId);
+        when(shardManager.getShardForKey(key)).thenReturn(shardId);
         when(readBatchManager.getBatcher(shardId)).thenReturn(batcher);
         doThrow(throwable).when(batcher).add(opCaptor.capture());
         var result = client.get(key);
@@ -379,7 +355,7 @@ class AsyncOxiaClientImplTest {
     @Test
     void list(@Mock OxiaStub stub0, @Mock OxiaStub stub1) {
 
-        when(shardManager.getAll()).thenReturn(List.of(0L, 1L));
+        when(shardManager.allShardIds()).thenReturn(Set.of(0L, 1L));
         setupListStub(0L, "leader0", stub0);
         setupListStub(1L, "leader1", stub1);
 

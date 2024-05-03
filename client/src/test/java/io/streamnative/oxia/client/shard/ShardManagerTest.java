@@ -17,12 +17,9 @@ package io.streamnative.oxia.client.shard;
 
 import static io.streamnative.oxia.client.OxiaClientBuilderImpl.DefaultNamespace;
 import static io.streamnative.oxia.client.shard.HashRangeShardStrategy.Xxh332HashRangeShardStrategy;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
 import static java.util.Map.entry;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -36,10 +33,8 @@ import io.streamnative.oxia.proto.ShardAssignment;
 import io.streamnative.oxia.proto.ShardAssignments;
 import io.streamnative.oxia.proto.ShardAssignmentsRequest;
 import java.time.Duration;
-import java.util.List;
 import java.util.Map;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -68,7 +63,7 @@ public class ShardManagerTest {
                             5L, new Shard(5L, "leader 3", new HashRange(11, 12)),
                             6L, new Shard(6L, "leader 4", new HashRange(13, 13)));
             var updates =
-                    List.of(
+                    Set.of(
                             new Shard(1L, "leader 4", new HashRange(1, 3)), // Leader change
                             new Shard(2L, "leader 4", new HashRange(7, 9)), //
                             new Shard(3L, "leader 2", new HashRange(4, 5)), // Split
@@ -90,77 +85,6 @@ public class ShardManagerTest {
                                 assertThat(a).isUnmodifiable();
                             });
         }
-
-        @Nested
-        @DisplayName("Tests of locking behaviour")
-        class LockingTests {
-
-            ShardManager.Assignments assignments;
-
-            @Mock ReadWriteLock lock;
-            @Mock Lock rLock;
-            @Mock Lock wLock;
-
-            @BeforeEach
-            void mocking() {
-                when(lock.readLock()).thenReturn(rLock);
-                when(lock.writeLock()).thenReturn(wLock);
-                assignments = new ShardManager.Assignments(lock, s -> k -> true, DefaultNamespace);
-                assignments.update(singletonList(new Shard(1, "leader 1", new HashRange(1, 1))));
-            }
-
-            @Test
-            void get() {
-                assignments.get("key");
-                var inorder = inOrder(rLock);
-                inorder.verify(rLock).lock();
-                inorder.verify(rLock).unlock();
-            }
-
-            @Test
-            void getFail() {
-                assignments = new ShardManager.Assignments(lock, s -> k -> false, DefaultNamespace);
-                assertThatThrownBy(() -> assignments.get("key"))
-                        .isInstanceOf(NoShardAvailableException.class);
-                var inorder = inOrder(rLock);
-                inorder.verify(rLock).lock();
-                inorder.verify(rLock).unlock();
-            }
-
-            @Test
-            void getAll() {
-                assertThat(assignments.getAll()).containsOnly(1L);
-                var inorder = inOrder(rLock);
-                inorder.verify(rLock).lock();
-                inorder.verify(rLock).unlock();
-            }
-
-            @Test
-            void leader() {
-                assertThat(assignments.leader(1L)).isEqualTo("leader 1");
-                var inorder = inOrder(rLock);
-                inorder.verify(rLock).lock();
-                inorder.verify(rLock).unlock();
-            }
-
-            @Test
-            void leaderFail() {
-                assignments = new ShardManager.Assignments(lock, s -> k -> false, DefaultNamespace);
-                assertThatThrownBy(() -> assignments.leader(1L))
-                        .isInstanceOf(NoShardAvailableException.class);
-                var inorder = inOrder(rLock);
-                inorder.verify(rLock).lock();
-                inorder.verify(rLock).unlock();
-            }
-
-            @Test
-            void update() {
-                assignments.update(emptyList());
-                var inorder = inOrder(wLock);
-                inorder.verify(wLock).lock();
-                inorder.verify(wLock).unlock();
-            }
-        }
     }
 
     @Nested
@@ -169,8 +93,8 @@ public class ShardManagerTest {
         private final String namespace = "default";
 
         @Spy
-        ShardManager.Assignments assignments =
-                new ShardManager.Assignments(Xxh332HashRangeShardStrategy, DefaultNamespace);
+        ShardAssignmentsContainer assignments =
+                new ShardAssignmentsContainer(Xxh332HashRangeShardStrategy, DefaultNamespace);
 
         @Mock ReactorOxiaClientGrpc.ReactorOxiaClientStub reactor;
         @Mock OxiaStub stub;
@@ -204,13 +128,14 @@ public class ShardManagerTest {
 
         @Test
         void get() {
-            assertThatThrownBy(() -> manager.get("a")).isInstanceOf(NoShardAvailableException.class);
+            assertThatThrownBy(() -> manager.getShardForKey("a"))
+                    .isInstanceOf(NoShardAvailableException.class);
         }
 
         @Test
         void getAll() {
-            manager.getAll();
-            verify(assignments).getAll();
+            manager.allShardIds();
+            verify(assignments).allShardIds();
         }
 
         @Test

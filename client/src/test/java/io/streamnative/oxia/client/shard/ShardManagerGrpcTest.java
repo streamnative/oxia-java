@@ -101,7 +101,7 @@ class ShardManagerGrpcTest {
         responses.offer(Flux.just(assignments).concatWith(Flux.never()));
         try (var shardManager = new ShardManager(stub, InstrumentProvider.NOOP, DefaultNamespace)) {
             assertThat(shardManager.start()).succeedsWithin(Duration.ofSeconds(1));
-            assertThat(shardManager.getAll()).containsExactlyInAnyOrder(0L);
+            assertThat(shardManager.allShardIds()).containsExactlyInAnyOrder(0L);
             assertThat(shardManager.leader(0)).isEqualTo("leader0");
         }
     }
@@ -112,7 +112,7 @@ class ShardManagerGrpcTest {
         try (var shardManager = new ShardManager(stub, InstrumentProvider.NOOP, DefaultNamespace)) {
             assertThatThrownBy(() -> shardManager.start().get(1, SECONDS))
                     .isInstanceOf(TimeoutException.class);
-            assertThat(shardManager.getAll()).isEmpty();
+            assertThat(shardManager.allShardIds()).isEmpty();
         }
     }
 
@@ -139,7 +139,7 @@ class ShardManagerGrpcTest {
             await()
                     .untilAsserted(
                             () -> {
-                                assertThat(shardManager.getAll()).containsExactlyInAnyOrder(1L, 2L);
+                                assertThat(shardManager.allShardIds()).containsExactlyInAnyOrder(1L, 2L);
                                 assertThat(shardManager.leader(1)).isEqualTo("leader1");
                                 assertThat(shardManager.leader(2)).isEqualTo("leader2");
                             });
@@ -158,7 +158,7 @@ class ShardManagerGrpcTest {
         responses.offer(Flux.just(assignments).concatWith(Flux.never()));
         try (var shardManager = new ShardManager(stub, InstrumentProvider.NOOP, DefaultNamespace)) {
             assertThat(shardManager.start()).succeedsWithin(Duration.ofSeconds(1));
-            assertThat(shardManager.getAll()).containsExactlyInAnyOrder(0L);
+            assertThat(shardManager.allShardIds()).containsExactlyInAnyOrder(0L);
             assertThat(shardManager.leader(0)).isEqualTo("leader0");
         }
         assertThat(requests).hasValue(2);
@@ -176,7 +176,7 @@ class ShardManagerGrpcTest {
         responses.offer(Flux.just(assignments).concatWith(Flux.never()));
         try (var shardManager = new ShardManager(stub, InstrumentProvider.NOOP, DefaultNamespace)) {
             assertThat(shardManager.start()).succeedsWithin(Duration.ofSeconds(1));
-            assertThat(shardManager.getAll()).containsExactlyInAnyOrder(0L);
+            assertThat(shardManager.allShardIds()).containsExactlyInAnyOrder(0L);
             assertThat(shardManager.leader(0)).isEqualTo("leader0");
         }
         assertThat(requests).hasValue(2);

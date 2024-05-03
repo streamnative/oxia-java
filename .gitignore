@@ -3,6 +3,7 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 dependency-reduced-pom.xml
+.run
 
 ### IntelliJ IDEA ###
 .idea/*

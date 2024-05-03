@@ -291,6 +291,7 @@
                             <excludes>
                                 <exclude>NOTICE</exclude>
                                 <exclude>.ci/**/*</exclude>
+                                <exclude>.run/**</exclude>
                             </excludes>
                         </licenseSet>
                     </licenseSets>
