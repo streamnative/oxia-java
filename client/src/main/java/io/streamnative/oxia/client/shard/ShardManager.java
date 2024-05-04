@@ -16,18 +16,13 @@
 package io.streamnative.oxia.client.shard;
 
 import static io.streamnative.oxia.client.shard.HashRangeShardStrategy.Xxh332HashRangeShardStrategy;
-import static io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChange.Added;
-import static io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChange.Reassigned;
-import static io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChange.Removed;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 import static java.util.function.Function.identity;
-import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static java.util.stream.Collectors.toSet;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Strings;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.opentelemetry.api.common.Attributes;
@@ -38,19 +33,13 @@ import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.metrics.Counter;
 import io.streamnative.oxia.client.metrics.InstrumentProvider;
 import io.streamnative.oxia.client.metrics.Unit;
-import io.streamnative.oxia.proto.ShardAssignments;
 import io.streamnative.oxia.proto.ShardAssignmentsRequest;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.util.Collection;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import lombok.NonNull;
@@ -65,7 +54,7 @@ import reactor.util.retry.RetryBackoffSpec;
 
 @Slf4j
 public class ShardManager extends GrpcResponseStream implements AutoCloseable {
-    private final @NonNull Assignments assignments;
+    private final @NonNull ShardAssignmentsContainer assignments;
     private final @NonNull CompositeConsumer<ShardAssignmentChanges> callbacks;
 
     private final Counter shardAssignmentsEvents;
@@ -75,7 +64,7 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
     @VisibleForTesting
     ShardManager(
             @NonNull OxiaStub stub,
-            @NonNull Assignments assignments,
+            @NonNull ShardAssignmentsContainer assignments,
             @NonNull CompositeConsumer<ShardAssignmentChanges> callbacks,
             @NonNull InstrumentProvider instrumentProvider) {
         super(stub);
@@ -97,7 +86,7 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
             @NonNull String namespace) {
         this(
                 stub,
-                new Assignments(Xxh332HashRangeShardStrategy, namespace),
+                new ShardAssignmentsContainer(Xxh332HashRangeShardStrategy, namespace),
                 new CompositeConsumer<>(),
                 instrumentProvider);
     }
@@ -120,7 +109,7 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
                                         stub.reactor()
                                                 .getShardAssignments(
                                                         ShardAssignmentsRequest.newBuilder()
-                                                                .setNamespace(assignments.namespace)
+                                                                .setNamespace(assignments.getNamespace())
                                                                 .build()))
                         .doOnError(this::processError)
                         .retryWhen(retrySpec)
@@ -151,7 +140,7 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
                 if (description != null) {
                     var customStatusCode = CustomStatusCode.fromDescription(description);
                     if (customStatusCode == CustomStatusCode.ErrorNamespaceNotFound) {
-                        final var ex = new NamespaceNotFoundException(assignments.namespace);
+                        final var ex = new NamespaceNotFoundException(assignments.getNamespace());
                         log.error("Failed receiving shard assignments", ex);
                         throw ex;
                     }
@@ -161,8 +150,8 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
         log.warn("Failed receiving shard assignments", error);
     }
 
-    private void updateAssignments(ShardAssignments shardAssignments) {
-        var nsSharedAssignments = shardAssignments.getNamespacesMap().get(assignments.namespace);
+    private void updateAssignments(io.streamnative.oxia.proto.ShardAssignments shardAssignments) {
+        var nsSharedAssignments = shardAssignments.getNamespacesMap().get(assignments.getNamespace());
         if (nsSharedAssignments == null) {
             /*
             It shouldn't happen, but we have to do some defensive programming to avoid server nodes
@@ -170,19 +159,19 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
 
             Retries are available so that the client does not panic until the namespace is recreated.
             */
-            throw new NamespaceNotFoundException(assignments.namespace, true);
+            throw new NamespaceNotFoundException(assignments.getNamespace(), true);
         }
         var updates =
-                nsSharedAssignments.getAssignmentsList().stream().map(Shard::fromProto).collect(toList());
-        var updatedMap = recomputeShardHashBoundaries(assignments.shards, updates);
-        var changes = computeShardLeaderChanges(assignments.shards, updatedMap);
-        assignments.update(updates);
+                nsSharedAssignments.getAssignmentsList().stream().map(Shard::fromProto).collect(toSet());
+        var updatedMap = recomputeShardHashBoundaries(assignments.allShards(), updates);
+        var changes = computeShardLeaderChanges(assignments.allShards(), updatedMap);
+        assignments.update(changes);
         callbacks.accept(changes);
     }
 
     @VisibleForTesting
     static Map<Long, Shard> recomputeShardHashBoundaries(
-            Map<Long, Shard> assignments, List<Shard> updates) {
+            Map<Long, Shard> assignments, Set<Shard> updates) {
         var toDelete = new ArrayList<>();
         updates.forEach(
                 update ->
@@ -206,50 +195,36 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
     @VisibleForTesting
     static ShardAssignmentChanges computeShardLeaderChanges(
             Map<Long, Shard> oldAssignments, Map<Long, Shard> newAssignments) {
-        Set<Removed> removed =
-                oldAssignments.entrySet().stream()
-                        .filter(e -> !newAssignments.containsKey(e.getKey()))
-                        .map(e -> new Removed(e.getKey(), e.getValue().leader()))
+        Set<Shard> removed =
+                oldAssignments.values().stream()
+                        .filter(shard -> !newAssignments.containsKey(shard.id()))
                         .collect(toSet());
-        Set<Added> added =
-                newAssignments.entrySet().stream()
-                        .filter(e -> !oldAssignments.containsKey(e.getKey()))
-                        .map(e -> new Added(e.getKey(), e.getValue().leader()))
+        Set<Shard> added =
+                newAssignments.values().stream()
+                        .filter(shard -> !oldAssignments.containsKey(shard.id()))
                         .collect(toSet());
-        Set<Reassigned> changed =
-                oldAssignments.entrySet().stream()
-                        .filter(e -> newAssignments.containsKey(e.getKey()))
-                        .filter(e -> !newAssignments.get(e.getKey()).leader().equals(e.getValue().leader()))
-                        .map(
-                                e -> {
-                                    var shardId = e.getKey();
-                                    var oldLeader = e.getValue().leader();
-                                    var newLeader = newAssignments.get(e.getKey()).leader();
-                                    return new Reassigned(shardId, oldLeader, newLeader);
-                                })
+        Set<Shard> changed =
+                oldAssignments.values().stream()
+                        .filter(s -> newAssignments.containsKey(s.id()))
+                        .filter(s -> !newAssignments.get(s.id()).leader().equals(s.leader()))
                         .collect(toSet());
         return new ShardAssignmentChanges(
                 unmodifiableSet(added), unmodifiableSet(removed), unmodifiableSet(changed));
     }
 
     public record ShardAssignmentChanges(
-            Set<Added> added, Set<Removed> removed, Set<Reassigned> reassigned) {}
+            Set<Shard> added, Set<Shard> removed, Set<Shard> reassigned) {}
 
-    public sealed interface ShardAssignmentChange permits Added, Removed, Reassigned {
-        record Added(long shardId, @NonNull String leader) implements ShardAssignmentChange {}
-
-        record Removed(long shardId, @NonNull String leader) implements ShardAssignmentChange {}
-
-        record Reassigned(long shardId, @NonNull String fromLeader, @NonNull String toLeader)
-                implements ShardAssignmentChange {}
+    public long getShardForKey(String key) {
+        return assignments.getShardForKey(key);
     }
 
-    public long get(String key) {
-        return assignments.get(key);
+    public Collection<Shard> allShards() {
+        return assignments.allShards().values();
     }
 
-    public List<Long> getAll() {
-        return assignments.getAll();
+    public Set<Long> allShardIds() {
+        return assignments.allShardIds();
     }
 
     public String leader(long shardId) {
@@ -258,68 +233,6 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
 
     public void addCallback(@NonNull Consumer<ShardAssignmentChanges> callback) {
         callbacks.add(callback);
-    }
-
-    public static class Assignments {
-        private final Lock rLock;
-        private final Lock wLock;
-        private Map<Long, Shard> shards = new HashMap<>();
-        private final ShardStrategy shardStrategy;
-        private final String namespace;
-
-        Assignments(ShardStrategy shardStrategy, String namespace) {
-            this(new ReentrantReadWriteLock(), shardStrategy, namespace);
-        }
-
-        Assignments(ReadWriteLock lock, ShardStrategy shardStrategy, String namespace) {
-            if (Strings.isNullOrEmpty(namespace)) {
-                throw new IllegalArgumentException("namespace must not be null or empty");
-            }
-            this.shardStrategy = shardStrategy;
-            this.namespace = namespace;
-            rLock = lock.readLock();
-            wLock = lock.writeLock();
-        }
-
-        public long get(String key) {
-            try {
-                rLock.lock();
-                var test = shardStrategy.acceptsKeyPredicate(key);
-                var shard = shards.values().stream().filter(test).findAny();
-                return shard.map(Shard::id).orElseThrow(() -> new NoShardAvailableException(key));
-            } finally {
-                rLock.unlock();
-            }
-        }
-
-        public List<Long> getAll() {
-            try {
-                rLock.lock();
-                return shards.keySet().stream().toList();
-            } finally {
-                rLock.unlock();
-            }
-        }
-
-        public String leader(long shardId) {
-            try {
-                rLock.lock();
-                return Optional.ofNullable(shards.get(shardId))
-                        .map(Shard::leader)
-                        .orElseThrow(() -> new NoShardAvailableException(shardId));
-            } finally {
-                rLock.unlock();
-            }
-        }
-
-        void update(List<Shard> updates) {
-            try {
-                wLock.lock();
-                shards = recomputeShardHashBoundaries(shards, updates);
-            } finally {
-                wLock.unlock();
-            }
-        }
     }
 
     private boolean isErrorRetryable(@NonNull Throwable ex) {

@@ -25,8 +25,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChange.Reassigned;
-import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChange.Removed;
+import io.streamnative.oxia.client.shard.HashRange;
+import io.streamnative.oxia.client.shard.Shard;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChanges;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
@@ -109,8 +109,8 @@ class SessionManagerTest {
         manager.accept(
                 new ShardAssignmentChanges(
                         Set.of(),
-                        Set.of(new Removed(shardId1, "leader1")),
-                        Set.of(new Reassigned(shardId2, "leader2", "leader3"))));
+                        Set.of(new Shard(shardId1, "leader1", new HashRange(1, 2))),
+                        Set.of(new Shard(shardId2, "leader3", new HashRange(3, 4)))));
 
         assertThat(manager.sessions()).doesNotContainKey(shardId1);
         // Session here shouldn't have changed after the reassignment

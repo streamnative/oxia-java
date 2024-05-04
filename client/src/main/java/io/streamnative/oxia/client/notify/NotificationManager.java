@@ -24,14 +24,12 @@ import io.streamnative.oxia.client.metrics.Counter;
 import io.streamnative.oxia.client.metrics.InstrumentProvider;
 import io.streamnative.oxia.client.metrics.Unit;
 import io.streamnative.oxia.client.shard.ShardManager;
-import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChange.Added;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChanges;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -103,33 +101,28 @@ public class NotificationManager implements AutoCloseable, Consumer<ShardAssignm
 
     private void bootstrap() {
         connectNotificationReceivers(
-                new ShardAssignmentChanges(
-                        shardManager.getAll().stream()
-                                .map(s -> new Added(s, shardManager.leader(s)))
-                                .collect(Collectors.toSet()),
-                        Set.of(),
-                        Set.of()));
+                new ShardAssignmentChanges(Set.copyOf(shardManager.allShards()), Set.of(), Set.of()));
     }
 
     private void connectNotificationReceivers(@NonNull ShardAssignmentChanges changes) {
-        changes.removed().forEach(s -> shardReceivers.remove(s.shardId()).close());
+        changes.removed().forEach(shard -> shardReceivers.remove(shard.id()).close());
         changes
                 .added()
                 .forEach(
                         s ->
                                 shardReceivers
                                         .computeIfAbsent(
-                                                s.shardId(), id -> receiverFactory.newReceiver(id, s.leader(), this))
+                                                s.id(), id -> receiverFactory.newReceiver(s.id(), s.leader(), this))
                                         .start());
         changes
                 .reassigned()
                 .forEach(
                         s -> {
-                            var receiver = Optional.ofNullable(shardReceivers.remove(s.shardId()));
+                            var receiver = Optional.ofNullable(shardReceivers.remove(s.id()));
                             receiver.ifPresent(GrpcResponseStream::close);
                             shardReceivers
                                     .computeIfAbsent(
-                                            s.shardId(), id -> receiverFactory.newReceiver(id, s.toLeader(), this))
+                                            s.id(), id -> receiverFactory.newReceiver(s.id(), s.leader(), this))
                                     .start(receiver.map(ShardNotificationReceiver::getOffset));
                         });
     }

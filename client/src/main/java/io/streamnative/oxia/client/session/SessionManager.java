@@ -92,7 +92,7 @@ public class SessionManager
     public void accept(@NonNull ShardAssignmentChanges changes) {
         if (!closed) {
             // Removed shards do not have any sessions to keep alive
-            changes.removed().forEach(s -> closeQuietly(sessionsByShardId.remove(s.shardId())));
+            changes.removed().forEach(s -> closeQuietly(sessionsByShardId.remove(s.id())));
         }
     }
 

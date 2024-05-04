@@ -20,8 +20,8 @@ import static io.streamnative.oxia.client.ProtoUtil.uint32ToLong;
 import io.streamnative.oxia.proto.Int32HashRange;
 import lombok.NonNull;
 
-record HashRange(long minInclusive, long maxInclusive) {
-    HashRange {
+public record HashRange(long minInclusive, long maxInclusive) {
+    public HashRange {
         checkHash(minInclusive);
         checkHash(maxInclusive);
         if (maxInclusive < minInclusive) {
