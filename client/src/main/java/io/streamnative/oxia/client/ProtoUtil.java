@@ -20,7 +20,6 @@ import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.Version;
 import io.streamnative.oxia.proto.GetResponse;
 import io.streamnative.oxia.proto.PutResponse;
-import java.nio.ByteBuffer;
 import java.util.Optional;
 import lombok.NonNull;
 import lombok.experimental.UtilityClass;
@@ -28,12 +27,13 @@ import lombok.experimental.UtilityClass;
 @UtilityClass
 public class ProtoUtil {
 
-    public static int longToUint32(long value) {
-        return ByteBuffer.allocate(8).putLong(value).position(4).getInt();
-    }
-
-    public static long uint32ToLong(int unit32AsInt) {
-        return ByteBuffer.allocate(8).putInt(0).putInt(unit32AsInt).flip().getLong();
+    public static long uint32ToLong(int n) {
+        if (n >= 0) {
+            return n;
+        } else {
+            // The sign bit is converted into the leading bit
+            return (1L << 31) + (n & 0x7FFFFFFF);
+        }
     }
 
     public static @NonNull PutResult getPutResultFromProto(@NonNull PutResponse response) {
