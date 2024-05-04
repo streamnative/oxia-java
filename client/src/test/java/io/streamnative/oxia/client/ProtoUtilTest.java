@@ -30,5 +30,4 @@ class ProtoUtilTest {
         assertThat(ProtoUtil.uint32ToLong(-1)).isEqualTo(4294967295L);
         assertThat(ProtoUtil.uint32ToLong(0)).isEqualTo(0L);
     }
-
 }
