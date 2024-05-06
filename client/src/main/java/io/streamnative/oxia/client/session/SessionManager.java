@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import lombok.NonNull;
@@ -41,32 +42,23 @@ public class SessionManager
     private volatile boolean closed = false;
 
     public SessionManager(
+            @NonNull ScheduledExecutorService executor,
             @NonNull ClientConfig config,
             @NonNull Function<Long, OxiaStub> stubByShardId,
             @NonNull InstrumentProvider instrumentProvider) {
-        this.factory = new SessionFactory(config, this, stubByShardId, instrumentProvider);
+        this.factory = new SessionFactory(executor, config, this, stubByShardId, instrumentProvider);
     }
 
-    public SessionManager(SessionFactory factory) {
+    SessionManager(SessionFactory factory) {
         this.factory = factory;
     }
 
     @NonNull
     public Session getSession(long shardId) {
-        try {
-            if (closed) {
-                throw new IllegalStateException("session manager has been closed");
-            }
-            return sessionsByShardId.computeIfAbsent(
-                    shardId,
-                    s -> {
-                        var session = factory.create(shardId);
-                        session.start();
-                        return session;
-                    });
-        } catch (Exception e) {
-            throw e;
+        if (closed) {
+            throw new IllegalStateException("session manager has been closed");
         }
+        return sessionsByShardId.computeIfAbsent(shardId, s -> factory.create(shardId));
     }
 
     @Override
@@ -99,11 +91,7 @@ public class SessionManager
     @VisibleForTesting
     Optional<Session> closeQuietly(Session session) {
         if (session != null) {
-            try {
-                session.close();
-            } catch (Exception e) {
-                log.warn("Error closing session {}", session.getSessionId(), e);
-            }
+            session.close();
         }
         return Optional.ofNullable(session);
     }

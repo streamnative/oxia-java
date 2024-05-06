@@ -72,7 +72,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         shardManager.addCallback(notificationManager);
         var readBatchManager =
                 BatchManager.newReadBatchManager(config, stubByShardId, instrumentProvider);
-        var sessionManager = new SessionManager(config, stubByShardId, instrumentProvider);
+        var sessionManager = new SessionManager(executor, config, stubByShardId, instrumentProvider);
         shardManager.addCallback(sessionManager);
         var writeBatchManager =
                 BatchManager.newWriteBatchManager(

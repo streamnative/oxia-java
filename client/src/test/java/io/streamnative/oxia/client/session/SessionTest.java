@@ -23,18 +23,21 @@ import static org.mockito.Mockito.mock;
 import io.grpc.Server;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
+import io.grpc.stub.StreamObserver;
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.metrics.InstrumentProvider;
 import io.streamnative.oxia.proto.CloseSessionRequest;
 import io.streamnative.oxia.proto.CloseSessionResponse;
 import io.streamnative.oxia.proto.KeepAliveResponse;
-import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
+import io.streamnative.oxia.proto.OxiaClientGrpc;
 import io.streamnative.oxia.proto.SessionHeartbeat;
 import java.io.IOException;
 import java.time.Duration;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import org.junit.jupiter.api.AfterEach;
@@ -42,8 +45,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
-import reactor.core.publisher.Mono;
-import reactor.test.StepVerifier;
 
 @ExtendWith(MockitoExtension.class)
 class SessionTest {
@@ -58,10 +59,11 @@ class SessionTest {
     private Server server;
     private OxiaStub stub;
     private TestService service;
+    private ScheduledExecutorService executor;
 
     @BeforeEach
     void setup() throws IOException {
-        StepVerifier.setDefaultTimeout(Duration.ofSeconds(3));
+        executor = Executors.newSingleThreadScheduledExecutor();
 
         config =
                 new ClientConfig(
@@ -92,17 +94,18 @@ class SessionTest {
     @AfterEach
     public void stopServer() throws Exception {
         server.shutdown();
-        server.awaitTermination();
         stub.close();
 
         server = null;
         stub = null;
+        executor.shutdownNow();
     }
 
     @Test
     void sessionId() {
         var session =
                 new Session(
+                        executor,
                         stubByShardId,
                         config,
                         shardId,
@@ -117,13 +120,13 @@ class SessionTest {
     void start() throws Exception {
         var session =
                 new Session(
+                        executor,
                         stubByShardId,
                         config,
                         shardId,
                         sessionId,
                         InstrumentProvider.NOOP,
                         mock(SessionNotificationListener.class));
-        session.start();
 
         await()
                 .untilAsserted(
@@ -136,33 +139,33 @@ class SessionTest {
                                                     .setShardId(shardId)
                                                     .build());
                         });
-        session.close();
+        session.close().join();
         assertThat(service.closed).isTrue();
         assertThat(service.signalsAfterClosed).isEmpty();
     }
 
-    static class TestService extends ReactorOxiaClientGrpc.OxiaClientImplBase {
-        List<SessionHeartbeat> signals = new LinkedList<>();
-        List<SessionHeartbeat> signalsAfterClosed = new LinkedList<>();
+    static class TestService extends OxiaClientGrpc.OxiaClientImplBase {
+        BlockingQueue<SessionHeartbeat> signals = new LinkedBlockingQueue<>();
+        BlockingQueue<SessionHeartbeat> signalsAfterClosed = new LinkedBlockingQueue<>();
         AtomicBoolean closed = new AtomicBoolean(false);
 
         @Override
-        public Mono<KeepAliveResponse> keepAlive(Mono<SessionHeartbeat> request) {
-            return request.map(
-                    heartbeat -> {
-                        if (!closed.get()) {
-                            signals.add(heartbeat);
-                        } else {
-                            signalsAfterClosed.add(heartbeat);
-                        }
-                        return KeepAliveResponse.getDefaultInstance();
-                    });
+        public void keepAlive(
+                SessionHeartbeat heartbeat, StreamObserver<KeepAliveResponse> responseObserver) {
+            if (!closed.get()) {
+                signals.add(heartbeat);
+            } else {
+                signalsAfterClosed.add(heartbeat);
+            }
+
+            responseObserver.onNext(KeepAliveResponse.getDefaultInstance());
         }
 
         @Override
-        public Mono<CloseSessionResponse> closeSession(Mono<CloseSessionRequest> request) {
+        public void closeSession(
+                CloseSessionRequest request, StreamObserver<CloseSessionResponse> responseObserver) {
             closed.compareAndSet(false, true);
-            return Mono.just(CloseSessionResponse.getDefaultInstance());
+            responseObserver.onNext(CloseSessionResponse.getDefaultInstance());
         }
     }
 }
