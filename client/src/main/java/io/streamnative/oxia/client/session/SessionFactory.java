@@ -22,12 +22,14 @@ import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.metrics.InstrumentProvider;
 import io.streamnative.oxia.proto.CreateSessionRequest;
 import io.streamnative.oxia.proto.CreateSessionResponse;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Function;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor(access = PACKAGE)
 public class SessionFactory {
+    @NonNull private final ScheduledExecutorService executor;
     @NonNull final ClientConfig config;
 
     @NonNull final SessionNotificationListener listener;
@@ -47,6 +49,12 @@ public class SessionFactory {
                         .build();
         CreateSessionResponse response = stub.blocking().createSession(request);
         return new Session(
-                stubByShardId, config, shardId, response.getSessionId(), instrumentProvider, listener);
+                executor,
+                stubByShardId,
+                config,
+                shardId,
+                response.getSessionId(),
+                instrumentProvider,
+                listener);
     }
 }

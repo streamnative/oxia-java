@@ -29,6 +29,9 @@ import io.streamnative.oxia.client.shard.HashRange;
 import io.streamnative.oxia.client.shard.Shard;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChanges;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,10 +44,17 @@ class SessionManagerTest {
     @Mock SessionFactory factory;
     @Mock Session session;
     SessionManager manager;
+    ScheduledExecutorService executor;
 
     @BeforeEach
     void setup() {
+        executor = Executors.newSingleThreadScheduledExecutor();
         manager = new SessionManager(factory);
+    }
+
+    @AfterEach
+    void cleanup() {
+        executor.shutdownNow();
     }
 
     @Test
@@ -53,7 +63,6 @@ class SessionManagerTest {
         when(factory.create(shardId)).thenReturn(session);
         assertThat(manager.getSession(shardId)).isSameAs(session);
         verify(factory).create(shardId);
-        verify(session).start();
     }
 
     @Test
@@ -62,7 +71,6 @@ class SessionManagerTest {
         when(factory.create(shardId)).thenReturn(session);
         var session1 = manager.getSession(shardId);
         verify(factory, times(1)).create(shardId);
-        verify(session, times(1)).start();
 
         var session2 = manager.getSession(shardId);
         assertThat(session2).isSameAs(session1);
