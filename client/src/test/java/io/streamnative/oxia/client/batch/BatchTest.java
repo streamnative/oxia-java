@@ -24,6 +24,8 @@ import static java.time.Duration.ZERO;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.AdditionalAnswers.delegatesTo;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -43,6 +45,7 @@ import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOpe
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation.SessionInfo;
 import io.streamnative.oxia.client.grpc.OxiaStub;
+import io.streamnative.oxia.client.grpc.OxiaStubProvider;
 import io.streamnative.oxia.client.metrics.InstrumentProvider;
 import io.streamnative.oxia.client.session.Session;
 import io.streamnative.oxia.client.session.SessionManager;
@@ -63,7 +66,6 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -76,7 +78,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class BatchTest {
-    Function<Long, OxiaStub> clientByShardId;
+    OxiaStubProvider clientByShardId;
     @Mock SessionManager sessionManager;
     @Mock Session session;
     long shardId = 1L;
@@ -129,7 +131,8 @@ class BatchTest {
                         .build()
                         .start();
         stub = new OxiaStub(InProcessChannelBuilder.forName(serverName).directExecutor().build());
-        clientByShardId = s -> stub;
+        clientByShardId = mock(OxiaStubProvider.class);
+        lenient().when(clientByShardId.getStubForShard(anyLong())).thenReturn(stub);
     }
 
     @AfterEach
@@ -161,7 +164,10 @@ class BatchTest {
 
             var factory =
                     new WriteBatchFactory(
-                            x -> null, mock(SessionManager.class), config, InstrumentProvider.NOOP);
+                            mock(OxiaStubProvider.class),
+                            mock(SessionManager.class),
+                            config,
+                            InstrumentProvider.NOOP);
             batch =
                     new WriteBatch(
                             factory, clientByShardId, sessionManager, clientIdentifier, shardId, 1024 * 1024);
@@ -261,13 +267,17 @@ class BatchTest {
 
         @Test
         public void sendFailNoClient() {
+            var stubProvider = mock(OxiaStubProvider.class);
+            when(stubProvider.getStubForShard(anyLong())).thenThrow(new NoShardAvailableException(1));
+
             batch =
                     new WriteBatch(
                             new WriteBatchFactory(
-                                    x -> null, mock(SessionManager.class), config, InstrumentProvider.NOOP),
-                            s -> {
-                                throw new NoShardAvailableException(s);
-                            },
+                                    mock(OxiaStubProvider.class),
+                                    mock(SessionManager.class),
+                                    config,
+                                    InstrumentProvider.NOOP),
+                            stubProvider,
                             sessionManager,
                             clientIdentifier,
                             shardId,
@@ -323,7 +333,8 @@ class BatchTest {
 
         @BeforeEach
         void setup() {
-            var factory = new ReadBatchFactory(l -> null, config, InstrumentProvider.NOOP);
+            var factory =
+                    new ReadBatchFactory(mock(OxiaStubProvider.class), config, InstrumentProvider.NOOP);
             batch = new ReadBatch(factory, clientByShardId, shardId);
         }
 
@@ -376,12 +387,12 @@ class BatchTest {
 
         @Test
         public void sendFailNoClient() {
+            var stubProvider = mock(OxiaStubProvider.class);
+            when(stubProvider.getStubForShard(anyLong())).thenThrow(new NoShardAvailableException(1));
             batch =
                     new ReadBatch(
-                            new ReadBatchFactory(l -> null, config, InstrumentProvider.NOOP),
-                            s -> {
-                                throw new NoShardAvailableException(s);
-                            },
+                            new ReadBatchFactory(mock(OxiaStubProvider.class), config, InstrumentProvider.NOOP),
+                            stubProvider,
                             shardId);
 
             batch.add(get);

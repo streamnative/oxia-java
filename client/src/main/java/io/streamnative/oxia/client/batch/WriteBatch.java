@@ -21,14 +21,13 @@ import static java.util.stream.Collectors.toList;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.grpc.stub.StreamObserver;
-import io.streamnative.oxia.client.grpc.OxiaStub;
+import io.streamnative.oxia.client.grpc.OxiaStubProvider;
 import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.proto.WriteRequest;
 import io.streamnative.oxia.proto.WriteResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Function;
 import lombok.NonNull;
 
 final class WriteBatch extends BatchBase implements Batch, StreamObserver<WriteResponse> {
@@ -53,12 +52,12 @@ final class WriteBatch extends BatchBase implements Batch, StreamObserver<WriteR
 
     WriteBatch(
             @NonNull WriteBatchFactory factory,
-            @NonNull Function<Long, OxiaStub> stubByShardId,
+            @NonNull OxiaStubProvider stubProvider,
             @NonNull SessionManager sessionManager,
             @NonNull String clientIdentifier,
             long shardId,
             int maxBatchSize) {
-        super(stubByShardId, shardId);
+        super(stubProvider, shardId);
         this.factory = factory;
         this.sessionManager = sessionManager;
         this.clientIdentifier = clientIdentifier;

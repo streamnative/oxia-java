@@ -18,12 +18,11 @@ package io.streamnative.oxia.client.session;
 import static lombok.AccessLevel.PACKAGE;
 
 import io.streamnative.oxia.client.ClientConfig;
-import io.streamnative.oxia.client.grpc.OxiaStub;
+import io.streamnative.oxia.client.grpc.OxiaStubProvider;
 import io.streamnative.oxia.client.metrics.InstrumentProvider;
 import io.streamnative.oxia.proto.CreateSessionRequest;
 import io.streamnative.oxia.proto.CreateSessionResponse;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.function.Function;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
@@ -34,13 +33,13 @@ public class SessionFactory {
 
     @NonNull final SessionNotificationListener listener;
 
-    @NonNull final Function<Long, OxiaStub> stubByShardId;
+    @NonNull final OxiaStubProvider stubProvider;
 
     @NonNull final InstrumentProvider instrumentProvider;
 
     @NonNull
     Session create(long shardId) {
-        var stub = stubByShardId.apply(shardId);
+        var stub = stubProvider.getStubForShard(shardId);
         var request =
                 CreateSessionRequest.newBuilder()
                         .setSessionTimeoutMs((int) config.sessionTimeout().toMillis())
@@ -50,7 +49,7 @@ public class SessionFactory {
         CreateSessionResponse response = stub.blocking().createSession(request);
         return new Session(
                 executor,
-                stubByShardId,
+                stubProvider,
                 config,
                 shardId,
                 response.getSessionId(),

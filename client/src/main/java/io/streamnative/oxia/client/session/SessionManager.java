@@ -19,7 +19,7 @@ import static java.util.Collections.unmodifiableMap;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.streamnative.oxia.client.ClientConfig;
-import io.streamnative.oxia.client.grpc.OxiaStub;
+import io.streamnative.oxia.client.grpc.OxiaStubProvider;
 import io.streamnative.oxia.client.metrics.InstrumentProvider;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChanges;
 import java.util.HashMap;
@@ -29,7 +29,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 
@@ -44,9 +43,9 @@ public class SessionManager
     public SessionManager(
             @NonNull ScheduledExecutorService executor,
             @NonNull ClientConfig config,
-            @NonNull Function<Long, OxiaStub> stubByShardId,
+            @NonNull OxiaStubProvider stubProvider,
             @NonNull InstrumentProvider instrumentProvider) {
-        this.factory = new SessionFactory(executor, config, this, stubByShardId, instrumentProvider);
+        this.factory = new SessionFactory(executor, config, this, stubProvider, instrumentProvider);
     }
 
     SessionManager(SessionFactory factory) {

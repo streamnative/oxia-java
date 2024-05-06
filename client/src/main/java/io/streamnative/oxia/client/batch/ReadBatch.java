@@ -19,13 +19,12 @@ import static java.util.stream.Collectors.toList;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.grpc.stub.StreamObserver;
-import io.streamnative.oxia.client.grpc.OxiaStub;
+import io.streamnative.oxia.client.grpc.OxiaStubProvider;
 import io.streamnative.oxia.proto.GetResponse;
 import io.streamnative.oxia.proto.ReadRequest;
 import io.streamnative.oxia.proto.ReadResponse;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 import lombok.NonNull;
 
 final class ReadBatch extends BatchBase implements Batch, StreamObserver<ReadResponse> {
@@ -37,8 +36,8 @@ final class ReadBatch extends BatchBase implements Batch, StreamObserver<ReadRes
     private int responseIndex = 0;
     long startSendTimeNanos;
 
-    ReadBatch(ReadBatchFactory factory, Function<Long, OxiaStub> stubByShardId, long shardId) {
-        super(stubByShardId, shardId);
+    ReadBatch(ReadBatchFactory factory, OxiaStubProvider stubProvider, long shardId) {
+        super(stubProvider, shardId);
         this.factory = factory;
     }
 
