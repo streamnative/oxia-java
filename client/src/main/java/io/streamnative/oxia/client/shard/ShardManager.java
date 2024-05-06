@@ -25,52 +25,54 @@ import static java.util.stream.Collectors.toSet;
 import com.google.common.annotations.VisibleForTesting;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+import io.grpc.stub.StreamObserver;
 import io.opentelemetry.api.common.Attributes;
 import io.streamnative.oxia.client.CompositeConsumer;
 import io.streamnative.oxia.client.grpc.CustomStatusCode;
-import io.streamnative.oxia.client.grpc.GrpcResponseStream;
 import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.metrics.Counter;
 import io.streamnative.oxia.client.metrics.InstrumentProvider;
 import io.streamnative.oxia.client.metrics.Unit;
+import io.streamnative.oxia.client.util.Backoff;
+import io.streamnative.oxia.proto.ShardAssignments;
 import io.streamnative.oxia.proto.ShardAssignmentsRequest;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-import reactor.core.Disposable;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Scheduler;
-import reactor.core.scheduler.Schedulers;
-import reactor.util.retry.Retry;
-import reactor.util.retry.RetryBackoffSpec;
 
 @Slf4j
-public class ShardManager extends GrpcResponseStream implements AutoCloseable {
+public class ShardManager implements AutoCloseable, StreamObserver<ShardAssignments> {
+    private final ScheduledExecutorService executor;
+    private final OxiaStub stub;
     private final @NonNull ShardAssignmentsContainer assignments;
     private final @NonNull CompositeConsumer<ShardAssignmentChanges> callbacks;
 
     private final Counter shardAssignmentsEvents;
 
-    private final Scheduler scheduler;
+    private final Backoff backoff = new Backoff();
+    private volatile boolean closed;
+
+    private final CompletableFuture<Void> initialAssignmentsFuture = new CompletableFuture<>();
 
     @VisibleForTesting
     ShardManager(
+            @NonNull ScheduledExecutorService executor,
             @NonNull OxiaStub stub,
             @NonNull ShardAssignmentsContainer assignments,
             @NonNull CompositeConsumer<ShardAssignmentChanges> callbacks,
             @NonNull InstrumentProvider instrumentProvider) {
-        super(stub);
+        this.stub = stub;
+        this.executor = executor;
         this.assignments = assignments;
         this.callbacks = callbacks;
-        this.scheduler = Schedulers.newSingle("shard-assignments");
 
         this.shardAssignmentsEvents =
                 instrumentProvider.newCounter(
@@ -81,10 +83,12 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
     }
 
     public ShardManager(
+            ScheduledExecutorService executor,
             @NonNull OxiaStub stub,
             @NonNull InstrumentProvider instrumentProvider,
             @NonNull String namespace) {
         this(
+                executor,
                 stub,
                 new ShardAssignmentsContainer(Xxh332HashRangeShardStrategy, namespace),
                 new CompositeConsumer<>(),
@@ -93,45 +97,32 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
 
     @Override
     public void close() {
-        super.close();
-        scheduler.dispose();
+        closed = true;
+    }
+
+    public CompletableFuture<Void> start() {
+        var req = ShardAssignmentsRequest.newBuilder().setNamespace(assignments.getNamespace()).build();
+
+        stub.async().getShardAssignments(req, this);
+        return initialAssignmentsFuture;
     }
 
     @Override
-    protected CompletableFuture<Void> start(OxiaStub stub, Consumer<Disposable> consumer) {
-        RetryBackoffSpec retrySpec =
-                Retry.backoff(Long.MAX_VALUE, Duration.ofMillis(100))
-                        .filter(this::isErrorRetryable)
-                        .doBeforeRetry(signal -> log.warn("Retrying receiving shard assignments: {}", signal));
-        var assignmentsFlux =
-                Flux.defer(
-                                () ->
-                                        stub.reactor()
-                                                .getShardAssignments(
-                                                        ShardAssignmentsRequest.newBuilder()
-                                                                .setNamespace(assignments.getNamespace())
-                                                                .build()))
-                        .doOnError(this::processError)
-                        .retryWhen(retrySpec)
-                        .repeat()
-                        .publishOn(scheduler)
-                        .doOnNext(this::updateAssignments)
-                        .doOnEach(x -> shardAssignmentsEvents.increment())
-                        .publish();
-        // Complete after the first response has been processed
-        var future = Mono.from(assignmentsFlux).then().toFuture();
-        var disposable = assignmentsFlux.connect();
-        consumer.accept(disposable);
-        return future;
+    public void onNext(ShardAssignments assignments) {
+        shardAssignmentsEvents.increment();
+        updateAssignments(assignments);
+        backoff.reset();
+        if (!initialAssignmentsFuture.isDone()) {
+            initialAssignmentsFuture.complete(null);
+        }
     }
 
-    /**
-     * Process errors of repeated flux, it will auto suppress unknown status #{@link
-     * StatusRuntimeException}.
-     *
-     * @param error Error from flux
-     */
-    private void processError(@NonNull Throwable error) {
+    @Override
+    public void onError(Throwable error) {
+        if (closed) {
+            return;
+        }
+
         if (error instanceof StatusRuntimeException statusError) {
             var status = statusError.getStatus();
             if (status.getCode() == Status.Code.UNKNOWN) {
@@ -140,14 +131,49 @@ public class ShardManager extends GrpcResponseStream implements AutoCloseable {
                 if (description != null) {
                     var customStatusCode = CustomStatusCode.fromDescription(description);
                     if (customStatusCode == CustomStatusCode.ErrorNamespaceNotFound) {
-                        final var ex = new NamespaceNotFoundException(assignments.getNamespace());
-                        log.error("Failed receiving shard assignments", ex);
-                        throw ex;
+                        log.error("Namespace not found: {}", assignments.getNamespace());
+                        if (!initialAssignmentsFuture.isDone()) {
+                            if (initialAssignmentsFuture.completeExceptionally(
+                                    new NamespaceNotFoundException(assignments.getNamespace()))) {
+                                close();
+                            }
+                        }
                     }
                 }
             }
         }
-        log.warn("Failed receiving shard assignments", error);
+        log.warn("Failed receiving shard assignments: {}", error.getMessage());
+        executor.schedule(
+                () -> {
+                    if (!closed) {
+                        log.info(
+                                "Retry creating stream for shard assignments namespace={}",
+                                assignments.getNamespace());
+                        start();
+                    }
+                },
+                backoff.nextDelayMillis(),
+                TimeUnit.MILLISECONDS);
+    }
+
+    @Override
+    public void onCompleted() {
+        if (closed) {
+            return;
+        }
+
+        log.warn("Stream closed while receiving shard assignments");
+        executor.schedule(
+                () -> {
+                    if (!closed) {
+                        log.info(
+                                "Retry creating stream for shard assignments after stream closed namespace={}",
+                                assignments.getNamespace());
+                        start();
+                    }
+                },
+                backoff.nextDelayMillis(),
+                TimeUnit.MILLISECONDS);
     }
 
     private void updateAssignments(io.streamnative.oxia.proto.ShardAssignments shardAssignments) {

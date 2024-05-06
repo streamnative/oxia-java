@@ -36,6 +36,8 @@ import io.streamnative.oxia.proto.ShardAssignmentsRequest;
 import java.time.Duration;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
@@ -70,8 +72,11 @@ class ShardManagerGrpcTest {
 
     @Mock OxiaStub stub;
 
+    ScheduledExecutorService executor;
+
     @BeforeEach
     void beforeEach() throws Exception {
+        executor = Executors.newSingleThreadScheduledExecutor();
         requests.set(0);
         responses.clear();
         server =
@@ -88,6 +93,7 @@ class ShardManagerGrpcTest {
     void afterEach() throws Exception {
         stub.close();
         server.shutdownNow();
+        executor.shutdownNow();
     }
 
     @Test
@@ -99,7 +105,8 @@ class ShardManagerGrpcTest {
                                 NamespaceShardsAssignment.newBuilder().addAssignments(assignment(0, 0, 3)).build())
                         .build();
         responses.offer(Flux.just(assignments).concatWith(Flux.never()));
-        try (var shardManager = new ShardManager(stub, InstrumentProvider.NOOP, DefaultNamespace)) {
+        try (var shardManager =
+                new ShardManager(executor, stub, InstrumentProvider.NOOP, DefaultNamespace)) {
             assertThat(shardManager.start()).succeedsWithin(Duration.ofSeconds(1));
             assertThat(shardManager.allShardIds()).containsExactlyInAnyOrder(0L);
             assertThat(shardManager.leader(0)).isEqualTo("leader0");
@@ -109,7 +116,8 @@ class ShardManagerGrpcTest {
     @Test
     void neverStarts() {
         responses.offer(Flux.never());
-        try (var shardManager = new ShardManager(stub, InstrumentProvider.NOOP, DefaultNamespace)) {
+        try (var shardManager =
+                new ShardManager(executor, stub, InstrumentProvider.NOOP, DefaultNamespace)) {
             assertThatThrownBy(() -> shardManager.start().get(1, SECONDS))
                     .isInstanceOf(TimeoutException.class);
             assertThat(shardManager.allShardIds()).isEmpty();
@@ -134,7 +142,8 @@ class ShardManagerGrpcTest {
                                         .build())
                         .build();
         responses.offer(Flux.just(assignments0, assignments1).concatWith(Flux.never()));
-        try (var shardManager = new ShardManager(stub, InstrumentProvider.NOOP, DefaultNamespace)) {
+        try (var shardManager =
+                new ShardManager(executor, stub, InstrumentProvider.NOOP, DefaultNamespace)) {
             shardManager.start().join();
             await()
                     .untilAsserted(
@@ -156,7 +165,8 @@ class ShardManagerGrpcTest {
                                 NamespaceShardsAssignment.newBuilder().addAssignments(assignment(0, 0, 3)).build())
                         .build();
         responses.offer(Flux.just(assignments).concatWith(Flux.never()));
-        try (var shardManager = new ShardManager(stub, InstrumentProvider.NOOP, DefaultNamespace)) {
+        try (var shardManager =
+                new ShardManager(executor, stub, InstrumentProvider.NOOP, DefaultNamespace)) {
             assertThat(shardManager.start()).succeedsWithin(Duration.ofSeconds(1));
             assertThat(shardManager.allShardIds()).containsExactlyInAnyOrder(0L);
             assertThat(shardManager.leader(0)).isEqualTo("leader0");
@@ -174,7 +184,8 @@ class ShardManagerGrpcTest {
                                 NamespaceShardsAssignment.newBuilder().addAssignments(assignment(0, 0, 3)).build())
                         .build();
         responses.offer(Flux.just(assignments).concatWith(Flux.never()));
-        try (var shardManager = new ShardManager(stub, InstrumentProvider.NOOP, DefaultNamespace)) {
+        try (var shardManager =
+                new ShardManager(executor, stub, InstrumentProvider.NOOP, DefaultNamespace)) {
             assertThat(shardManager.start()).succeedsWithin(Duration.ofSeconds(1));
             assertThat(shardManager.allShardIds()).containsExactlyInAnyOrder(0L);
             assertThat(shardManager.leader(0)).isEqualTo("leader0");

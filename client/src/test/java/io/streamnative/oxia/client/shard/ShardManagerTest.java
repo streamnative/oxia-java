@@ -20,6 +20,7 @@ import static io.streamnative.oxia.client.shard.HashRangeShardStrategy.Xxh332Has
 import static java.util.Map.entry;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -28,13 +29,16 @@ import io.streamnative.oxia.client.CompositeConsumer;
 import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.metrics.InstrumentProvider;
 import io.streamnative.oxia.proto.NamespaceShardsAssignment;
-import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
+import io.streamnative.oxia.proto.OxiaClientGrpc;
 import io.streamnative.oxia.proto.ShardAssignment;
 import io.streamnative.oxia.proto.ShardAssignments;
 import io.streamnative.oxia.proto.ShardAssignmentsRequest;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -43,7 +47,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import reactor.core.publisher.Flux;
 
 @ExtendWith(MockitoExtension.class)
 public class ShardManagerTest {
@@ -96,32 +99,46 @@ public class ShardManagerTest {
         ShardAssignmentsContainer assignments =
                 new ShardAssignmentsContainer(Xxh332HashRangeShardStrategy, DefaultNamespace);
 
-        @Mock ReactorOxiaClientGrpc.ReactorOxiaClientStub reactor;
+        @Mock OxiaClientGrpc.OxiaClientStub async;
+
         @Mock OxiaStub stub;
         ShardManager manager;
+        ScheduledExecutorService executor;
 
         @BeforeEach
         void mocking() {
+            executor = Executors.newSingleThreadScheduledExecutor();
             stub = mock(OxiaStub.class);
-            reactor = mock(ReactorOxiaClientGrpc.ReactorOxiaClientStub.class);
+            async = mock(OxiaClientGrpc.OxiaClientStub.class);
 
             manager =
-                    new ShardManager(stub, assignments, new CompositeConsumer<>(), InstrumentProvider.NOOP);
+                    new ShardManager(
+                            executor, stub, assignments, new CompositeConsumer<>(), InstrumentProvider.NOOP);
+        }
+
+        @AfterEach
+        void cleanup() {
+            executor.shutdownNow();
         }
 
         @Test
         void start() {
             var assignment = ShardAssignment.newBuilder().setShardId(0).setLeader("leader0").build();
             var nsAssignment = NamespaceShardsAssignment.newBuilder().addAssignments(assignment).build();
+            when(stub.async()).thenReturn(async);
 
-            when(stub.reactor()).thenReturn(reactor);
-            when(reactor.getShardAssignments(
-                            ShardAssignmentsRequest.newBuilder().setNamespace(namespace).build()))
-                    .thenReturn(
-                            Flux.just(
-                                    ShardAssignments.newBuilder().putNamespaces(namespace, nsAssignment).build()));
+            doAnswer(
+                            invocation -> {
+                                manager.onNext(
+                                        ShardAssignments.newBuilder().putNamespaces(namespace, nsAssignment).build());
+                                return null;
+                            })
+                    .when(async)
+                    .getShardAssignments(
+                            ShardAssignmentsRequest.newBuilder().setNamespace(namespace).build(), manager);
+
             var future = manager.start();
-            assertThat(future).succeedsWithin(Duration.ofMillis(100));
+            assertThat(future).succeedsWithin(Duration.ofSeconds(1));
 
             assertThat(manager.leader(0)).isEqualTo("leader0");
         }

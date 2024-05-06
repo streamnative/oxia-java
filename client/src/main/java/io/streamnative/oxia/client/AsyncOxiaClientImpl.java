@@ -62,7 +62,8 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
         var instrumentProvider = new InstrumentProvider(config.openTelemetry(), config.namespace());
         var serviceAddrStub = stubManager.getStub(config.serviceAddress());
-        var shardManager = new ShardManager(serviceAddrStub, instrumentProvider, config.namespace());
+        var shardManager =
+                new ShardManager(executor, serviceAddrStub, instrumentProvider, config.namespace());
         var notificationManager =
                 new NotificationManager(executor, stubManager, shardManager, instrumentProvider);
 
