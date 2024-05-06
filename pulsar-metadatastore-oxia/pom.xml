@@ -265,10 +265,6 @@
                                     <shadedPattern>${shade.relocation.package}.com.google</shadedPattern>
                                 </relocation>
                                 <relocation>
-                                    <pattern>com.salesforce</pattern>
-                                    <shadedPattern>${shade.relocation.package}.com.salesforce</shadedPattern>
-                                </relocation>
-                                <relocation>
                                     <pattern>google</pattern>
                                     <shadedPattern>${shade.relocation.package}.google</shadedPattern>
                                 </relocation>
@@ -299,14 +295,6 @@
                                 <relocation>
                                     <pattern>org.checkerframework</pattern>
                                     <shadedPattern>${shade.relocation.package}.org.checkerframework</shadedPattern>
-                                </relocation>
-                                <relocation>
-                                    <pattern>org.reactivestreams</pattern>
-                                    <shadedPattern>${shade.relocation.package}.org.reactivestreams</shadedPattern>
-                                </relocation>
-                                <relocation>
-                                    <pattern>reactor</pattern>
-                                    <shadedPattern>${shade.relocation.package}.reactor</shadedPattern>
                                 </relocation>
                             </relocations>
                             <filters>

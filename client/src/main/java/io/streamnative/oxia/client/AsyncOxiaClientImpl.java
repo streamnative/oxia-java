@@ -16,6 +16,7 @@
 package io.streamnative.oxia.client;
 
 import io.grpc.netty.shaded.io.netty.util.concurrent.DefaultThreadFactory;
+import io.grpc.stub.StreamObserver;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
@@ -40,6 +41,7 @@ import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.client.shard.ShardManager;
 import io.streamnative.oxia.proto.ListRequest;
 import io.streamnative.oxia.proto.ListResponse;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -51,7 +53,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import lombok.NonNull;
-import reactor.core.publisher.Flux;
 
 class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
@@ -376,11 +377,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
             checkIfClosed();
             Objects.requireNonNull(startKeyInclusive);
             Objects.requireNonNull(endKeyExclusive);
-            callback =
-                    Flux.fromIterable(shardManager.allShardIds())
-                            .flatMap(shardId -> list(shardId, startKeyInclusive, endKeyExclusive))
-                            .collectList()
-                            .toFuture();
+            callback = internalList(startKeyInclusive, endKeyExclusive);
         } catch (Exception e) {
             callback = CompletableFuture.failedFuture(e);
         }
@@ -402,8 +399,36 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         notificationManager.registerCallback(notificationCallback);
     }
 
-    private @NonNull Flux<String> list(
-            long shardId, @NonNull String startKeyInclusive, @NonNull String endKeyExclusive) {
+    private CompletableFuture<List<String>> internalList(
+            String startKeyInclusive, String endKeyExclusive) {
+        List<CompletableFuture<List<String>>> futures = new ArrayList<>();
+        for (long shardId : shardManager.allShardIds()) {
+            futures.add(internalShardlist(shardId, startKeyInclusive, endKeyExclusive));
+        }
+
+        CompletableFuture<List<String>> result = new CompletableFuture<>();
+        List<String> list = new ArrayList<>();
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                .thenRun(
+                        () -> {
+                            for (var future : futures) {
+                                list.addAll(future.join());
+                            }
+
+                            list.sort(CompareWithSlash.INSTANCE);
+                            result.complete(list);
+                        })
+                .exceptionally(
+                        ex -> {
+                            result.completeExceptionally(ex);
+                            return null;
+                        });
+
+        return result;
+    }
+
+    private CompletableFuture<List<String>> internalShardlist(
+            long shardId, String startKeyInclusive, String endKeyExclusive) {
         var leader = shardManager.leader(shardId);
         var stub = stubManager.getStub(leader);
         var request =
@@ -412,7 +437,31 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                         .setStartInclusive(startKeyInclusive)
                         .setEndExclusive(endKeyExclusive)
                         .build();
-        return stub.reactor().list(request).flatMapIterable(ListResponse::getKeysList);
+
+        CompletableFuture<List<String>> future = new CompletableFuture<>();
+        List<String> result = new ArrayList<>();
+        stub.async()
+                .list(
+                        request,
+                        new StreamObserver<ListResponse>() {
+                            @Override
+                            public void onNext(ListResponse response) {
+                                for (int i = 0; i < response.getKeysCount(); i++) {
+                                    result.add(response.getKeys(i));
+                                }
+                            }
+
+                            @Override
+                            public void onError(Throwable t) {
+                                future.completeExceptionally(t);
+                            }
+
+                            @Override
+                            public void onCompleted() {
+                                future.complete(result);
+                            }
+                        });
+        return future;
     }
 
     @Override

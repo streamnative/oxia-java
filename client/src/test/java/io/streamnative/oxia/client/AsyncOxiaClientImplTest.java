@@ -20,12 +20,14 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Optional.empty;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.grpc.stub.StreamObserver;
 import io.streamnative.oxia.client.api.DeleteOption;
 import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.PutResult;
@@ -44,8 +46,7 @@ import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.client.shard.ShardManager;
 import io.streamnative.oxia.proto.ListRequest;
 import io.streamnative.oxia.proto.ListResponse;
-import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
-import java.time.Duration;
+import io.streamnative.oxia.proto.OxiaClientGrpc;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executors;
@@ -56,7 +57,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import reactor.core.publisher.Flux;
 
 @ExtendWith(MockitoExtension.class)
 class AsyncOxiaClientImplTest {
@@ -398,12 +398,19 @@ class AsyncOxiaClientImplTest {
         when(shardManager.leader(shardId)).thenReturn(leader);
         when(stubManager.getStub(leader)).thenReturn(stub);
 
-        var reactor = mock(ReactorOxiaClientStub.class);
-        when(stub.reactor()).thenReturn(reactor);
-        when(reactor.list(any(ListRequest.class)))
-                .thenReturn(
-                        Flux.just(listResponse(shardId, "a", "b"), listResponse(shardId, "c", "d"))
-                                .delayElements(Duration.ofMillis(1)));
+        var async = mock(OxiaClientGrpc.OxiaClientStub.class);
+        when(stub.async()).thenReturn(async);
+
+        doAnswer(
+                        i -> {
+                            var so = (StreamObserver<ListResponse>) i.getArgument(1);
+                            so.onNext(listResponse(shardId, "a", "b"));
+                            so.onNext(listResponse(shardId, "c", "d"));
+                            so.onCompleted();
+                            return null;
+                        })
+                .when(async)
+                .list(any(ListRequest.class), any(StreamObserver.class));
     }
 
     private ListResponse listResponse(long shardId, String first, String second) {

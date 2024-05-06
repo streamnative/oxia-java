@@ -21,13 +21,10 @@ import io.grpc.Grpc;
 import io.grpc.InsecureChannelCredentials;
 import io.grpc.ManagedChannel;
 import io.streamnative.oxia.proto.OxiaClientGrpc;
-import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
 import lombok.NonNull;
 
 public class OxiaStub implements AutoCloseable {
     private final ManagedChannel channel;
-
-    private final @NonNull ReactorOxiaClientGrpc.ReactorOxiaClientStub reactorStub;
 
     private final @NonNull OxiaClientGrpc.OxiaClientBlockingStub blockingStub;
 
@@ -39,13 +36,8 @@ public class OxiaStub implements AutoCloseable {
 
     public OxiaStub(ManagedChannel channel) {
         this.channel = channel;
-        this.reactorStub = ReactorOxiaClientGrpc.newReactorStub(channel);
         this.blockingStub = OxiaClientGrpc.newBlockingStub(channel);
         this.asyncStub = OxiaClientGrpc.newStub(channel);
-    }
-
-    public ReactorOxiaClientGrpc.ReactorOxiaClientStub reactor() {
-        return reactorStub;
     }
 
     public OxiaClientGrpc.OxiaClientBlockingStub blocking() {
