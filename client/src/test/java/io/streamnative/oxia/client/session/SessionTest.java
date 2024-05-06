@@ -18,6 +18,8 @@ package io.streamnative.oxia.client.session;
 import static io.streamnative.oxia.client.OxiaClientBuilderImpl.DefaultNamespace;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 
 import io.grpc.Server;
@@ -26,6 +28,7 @@ import io.grpc.inprocess.InProcessServerBuilder;
 import io.grpc.stub.StreamObserver;
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.grpc.OxiaStub;
+import io.streamnative.oxia.client.grpc.OxiaStubProvider;
 import io.streamnative.oxia.client.metrics.InstrumentProvider;
 import io.streamnative.oxia.proto.CloseSessionRequest;
 import io.streamnative.oxia.proto.CloseSessionResponse;
@@ -39,7 +42,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Function;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,7 +51,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class SessionTest {
 
-    Function<Long, OxiaStub> stubByShardId;
+    OxiaStubProvider stubProvider;
     ClientConfig config;
     long shardId = 1L;
     long sessionId = 2L;
@@ -88,7 +90,8 @@ class SessionTest {
                         .start();
         stub = new OxiaStub(InProcessChannelBuilder.forName(serverName).directExecutor().build());
 
-        stubByShardId = s -> stub;
+        stubProvider = mock(OxiaStubProvider.class);
+        lenient().when(stubProvider.getStubForShard(anyLong())).thenReturn(stub);
     }
 
     @AfterEach
@@ -106,7 +109,7 @@ class SessionTest {
         var session =
                 new Session(
                         executor,
-                        stubByShardId,
+                        stubProvider,
                         config,
                         shardId,
                         sessionId,
@@ -121,7 +124,7 @@ class SessionTest {
         var session =
                 new Session(
                         executor,
-                        stubByShardId,
+                        stubProvider,
                         config,
                         shardId,
                         sessionId,

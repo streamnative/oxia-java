@@ -17,11 +17,10 @@ package io.streamnative.oxia.client.batch;
 
 import io.opentelemetry.api.common.Attributes;
 import io.streamnative.oxia.client.ClientConfig;
-import io.streamnative.oxia.client.grpc.OxiaStub;
+import io.streamnative.oxia.client.grpc.OxiaStubProvider;
 import io.streamnative.oxia.client.metrics.InstrumentProvider;
 import io.streamnative.oxia.client.metrics.LatencyHistogram;
 import io.streamnative.oxia.client.session.SessionManager;
-import java.util.function.Function;
 import lombok.NonNull;
 
 class WriteBatchFactory extends BatchFactory {
@@ -30,11 +29,11 @@ class WriteBatchFactory extends BatchFactory {
     final LatencyHistogram writeRequestLatencyHistogram;
 
     public WriteBatchFactory(
-            @NonNull Function<Long, OxiaStub> stubByShardId,
+            @NonNull OxiaStubProvider stubProvider,
             @NonNull SessionManager sessionManager,
             @NonNull ClientConfig config,
             @NonNull InstrumentProvider instrumentProvider) {
-        super(stubByShardId, config);
+        super(stubProvider, config);
         this.sessionManager = sessionManager;
 
         writeRequestLatencyHistogram =
@@ -48,7 +47,7 @@ class WriteBatchFactory extends BatchFactory {
     public Batch getBatch(long shardId) {
         return new WriteBatch(
                 this,
-                stubByShardId,
+                stubProvider,
                 sessionManager,
                 getConfig().clientIdentifier(),
                 shardId,

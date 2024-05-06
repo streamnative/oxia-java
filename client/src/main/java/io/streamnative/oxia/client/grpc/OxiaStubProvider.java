@@ -13,25 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.streamnative.oxia.client.batch;
+package io.streamnative.oxia.client.grpc;
 
-import io.streamnative.oxia.client.grpc.OxiaStub;
-import io.streamnative.oxia.client.grpc.OxiaStubProvider;
-import lombok.Getter;
-import lombok.NonNull;
+import io.streamnative.oxia.client.shard.ShardManager;
 
-abstract class BatchBase {
-    private final @NonNull OxiaStubProvider stubProvider;
-    @Getter private final long shardId;
+public class OxiaStubProvider {
 
-    @Getter private final long startTimeNanos = System.nanoTime();
+    private final OxiaStubManager stubManager;
+    private final ShardManager shardManager;
 
-    BatchBase(OxiaStubProvider stubProvider, long shardId) {
-        this.stubProvider = stubProvider;
-        this.shardId = shardId;
+    public OxiaStubProvider(OxiaStubManager stubManager, ShardManager shardManager) {
+        this.stubManager = stubManager;
+        this.shardManager = shardManager;
     }
 
-    protected OxiaStub getStub() {
-        return stubProvider.getStubForShard(shardId);
+    public OxiaStub getStubForShard(long shardId) {
+        String leader = shardManager.leader(shardId);
+        return stubManager.getStub(leader);
     }
 }

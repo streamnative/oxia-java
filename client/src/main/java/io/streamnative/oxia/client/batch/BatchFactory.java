@@ -18,15 +18,14 @@ package io.streamnative.oxia.client.batch;
 import static lombok.AccessLevel.PACKAGE;
 
 import io.streamnative.oxia.client.ClientConfig;
-import io.streamnative.oxia.client.grpc.OxiaStub;
-import java.util.function.Function;
+import io.streamnative.oxia.client.grpc.OxiaStubProvider;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor(access = PACKAGE)
 abstract class BatchFactory {
-    final @NonNull Function<Long, OxiaStub> stubByShardId;
+    final @NonNull OxiaStubProvider stubProvider;
 
     @Getter(PACKAGE)
     private final @NonNull ClientConfig config;

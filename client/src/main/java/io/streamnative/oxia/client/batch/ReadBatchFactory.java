@@ -17,10 +17,9 @@ package io.streamnative.oxia.client.batch;
 
 import io.opentelemetry.api.common.Attributes;
 import io.streamnative.oxia.client.ClientConfig;
-import io.streamnative.oxia.client.grpc.OxiaStub;
+import io.streamnative.oxia.client.grpc.OxiaStubProvider;
 import io.streamnative.oxia.client.metrics.InstrumentProvider;
 import io.streamnative.oxia.client.metrics.LatencyHistogram;
-import java.util.function.Function;
 import lombok.Getter;
 import lombok.NonNull;
 
@@ -29,10 +28,10 @@ class ReadBatchFactory extends BatchFactory {
     @Getter private final LatencyHistogram readRequestLatencyHistogram;
 
     public ReadBatchFactory(
-            @NonNull Function<Long, OxiaStub> stubByShardId,
+            @NonNull OxiaStubProvider stubProvider,
             @NonNull ClientConfig config,
             @NonNull InstrumentProvider instrumentProvider) {
-        super(stubByShardId, config);
+        super(stubProvider, config);
 
         readRequestLatencyHistogram =
                 instrumentProvider.newLatencyHistogram(
@@ -43,6 +42,6 @@ class ReadBatchFactory extends BatchFactory {
 
     @Override
     public Batch getBatch(long shardId) {
-        return new ReadBatch(this, stubByShardId, shardId);
+        return new ReadBatch(this, stubProvider, shardId);
     }
 }

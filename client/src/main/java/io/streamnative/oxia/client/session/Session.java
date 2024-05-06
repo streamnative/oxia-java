@@ -22,11 +22,10 @@ import com.google.common.annotations.VisibleForTesting;
 import io.grpc.stub.StreamObserver;
 import io.opentelemetry.api.common.Attributes;
 import io.streamnative.oxia.client.ClientConfig;
-import io.streamnative.oxia.client.grpc.OxiaStub;
+import io.streamnative.oxia.client.grpc.OxiaStubProvider;
 import io.streamnative.oxia.client.metrics.Counter;
 import io.streamnative.oxia.client.metrics.InstrumentProvider;
 import io.streamnative.oxia.client.metrics.Unit;
-import io.streamnative.oxia.client.util.Backoff;
 import io.streamnative.oxia.proto.CloseSessionRequest;
 import io.streamnative.oxia.proto.CloseSessionResponse;
 import io.streamnative.oxia.proto.KeepAliveResponse;
@@ -37,7 +36,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
@@ -45,7 +43,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class Session implements StreamObserver<KeepAliveResponse> {
 
-    private final @NonNull Function<Long, OxiaStub> stubByShardId;
+    private final @NonNull OxiaStubProvider stubProvider;
     private final @NonNull Duration sessionTimeout;
     private final @NonNull Duration heartbeatInterval;
 
@@ -69,19 +67,18 @@ public class Session implements StreamObserver<KeepAliveResponse> {
     private Counter sessionsClosed;
 
     private final ScheduledFuture<?> heartbeatFuture;
-    private final Backoff backoff = new Backoff();
 
     private volatile Instant lastSuccessfullResponse;
 
     Session(
             @NonNull ScheduledExecutorService executor,
-            @NonNull Function<Long, OxiaStub> stubByShardId,
+            @NonNull OxiaStubProvider stubProvider,
             @NonNull ClientConfig config,
             long shardId,
             long sessionId,
             InstrumentProvider instrumentProvider,
             SessionNotificationListener listener) {
-        this.stubByShardId = stubByShardId;
+        this.stubProvider = stubProvider;
         this.sessionTimeout = config.sessionTimeout();
         this.heartbeatInterval =
                 Duration.ofMillis(
@@ -137,7 +134,7 @@ public class Session implements StreamObserver<KeepAliveResponse> {
             return;
         }
 
-        stubByShardId.apply(shardId).async().keepAlive(heartbeat, this);
+        stubProvider.getStubForShard(shardId).async().keepAlive(heartbeat, this);
     }
 
     @Override
@@ -180,7 +177,7 @@ public class Session implements StreamObserver<KeepAliveResponse> {
     public CompletableFuture<Void> close() {
         sessionsClosed.increment();
         heartbeatFuture.cancel(true);
-        var stub = stubByShardId.apply(shardId);
+        var stub = stubProvider.getStubForShard(shardId);
         var request =
                 CloseSessionRequest.newBuilder().setShardId(shardId).setSessionId(sessionId).build();
 

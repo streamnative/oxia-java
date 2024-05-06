@@ -31,6 +31,7 @@ import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperatio
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
 import io.streamnative.oxia.client.grpc.OxiaStubManager;
+import io.streamnative.oxia.client.grpc.OxiaStubProvider;
 import io.streamnative.oxia.client.metrics.Counter;
 import io.streamnative.oxia.client.metrics.InstrumentProvider;
 import io.streamnative.oxia.client.metrics.LatencyHistogram;
@@ -51,7 +52,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import lombok.NonNull;
 
 class AsyncOxiaClientImpl implements AsyncOxiaClient {
@@ -68,17 +68,15 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         var notificationManager =
                 new NotificationManager(executor, stubManager, shardManager, instrumentProvider);
 
-        Function<Long, String> leaderFn = shardManager::leader;
-        var stubByShardId = leaderFn.andThen(stubManager::getStub);
+        OxiaStubProvider stubProvider = new OxiaStubProvider(stubManager, shardManager);
 
         shardManager.addCallback(notificationManager);
         var readBatchManager =
-                BatchManager.newReadBatchManager(config, stubByShardId, instrumentProvider);
-        var sessionManager = new SessionManager(executor, config, stubByShardId, instrumentProvider);
+                BatchManager.newReadBatchManager(config, stubProvider, instrumentProvider);
+        var sessionManager = new SessionManager(executor, config, stubProvider, instrumentProvider);
         shardManager.addCallback(sessionManager);
         var writeBatchManager =
-                BatchManager.newWriteBatchManager(
-                        config, stubByShardId, sessionManager, instrumentProvider);
+                BatchManager.newWriteBatchManager(config, stubProvider, sessionManager, instrumentProvider);
 
         var client =
                 new AsyncOxiaClientImpl(
