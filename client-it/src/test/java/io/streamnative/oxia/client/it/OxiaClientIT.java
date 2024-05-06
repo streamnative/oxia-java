@@ -44,9 +44,9 @@ import io.streamnative.oxia.client.api.PutOption;
 import io.streamnative.oxia.client.api.exceptions.KeyAlreadyExistsException;
 import io.streamnative.oxia.client.api.exceptions.UnexpectedVersionIdException;
 import io.streamnative.oxia.testcontainers.OxiaContainer;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterAll;
@@ -67,7 +67,7 @@ public class OxiaClientIT {
 
     private static AsyncOxiaClient client;
 
-    private static List<Notification> notifications = new ArrayList<>();
+    private static Queue<Notification> notifications = new LinkedBlockingQueue<>();
 
     private static InMemoryMetricReader metricReader;
 

@@ -48,6 +48,8 @@ import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.ReactorOxiaClientStub;
 import java.time.Duration;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -72,6 +74,7 @@ class AsyncOxiaClientImplTest {
     void setUp() {
         client =
                 new AsyncOxiaClientImpl(
+                        Executors.newSingleThreadScheduledExecutor(),
                         InstrumentProvider.NOOP,
                         stubManager,
                         shardManager,
@@ -79,6 +82,13 @@ class AsyncOxiaClientImplTest {
                         readBatchManager,
                         writeBatchManager,
                         sessionManager);
+    }
+
+    @AfterEach
+    void cleanup() throws Exception {
+        if (client != null) {
+            client.close();
+        }
     }
 
     @Test
@@ -413,5 +423,6 @@ class AsyncOxiaClientImplTest {
         inOrder.verify(notificationManager).close();
         inOrder.verify(shardManager).close();
         inOrder.verify(stubManager).close();
+        client = null;
     }
 }

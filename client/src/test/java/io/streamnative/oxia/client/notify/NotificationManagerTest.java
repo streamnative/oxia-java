@@ -49,12 +49,14 @@ import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChanges;
 import io.streamnative.oxia.proto.NotificationBatch;
 import io.streamnative.oxia.proto.NotificationsRequest;
 import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
-import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Consumer;
+import lombok.Cleanup;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -83,17 +85,24 @@ class NotificationManagerTest {
         CompositeConsumer<Notification> callback = new CompositeConsumer<>();
         HashRange r = new HashRange(1L, 2L);
 
+        ScheduledExecutorService executor;
+
         @BeforeEach
         void setup() {
+            executor = Executors.newSingleThreadScheduledExecutor();
             receiverFactory = mock(ShardNotificationReceiver.Factory.class);
             when(receiverFactory.getCallback()).thenReturn(callback);
-            manager = new NotificationManager(receiverFactory, shardManager, InstrumentProvider.NOOP);
+            manager =
+                    new NotificationManager(executor, receiverFactory, shardManager, InstrumentProvider.NOOP);
+        }
+
+        @AfterEach
+        void teardown() throws Exception {
+            executor.shutdownNow();
         }
 
         @Test
         void startOnRegisterCallback() {
-            when(receiverFactory.newReceiver(1L, "leader1", manager)).thenReturn(receiver1);
-            when(receiverFactory.newReceiver(2L, "leader2", manager)).thenReturn(receiver2);
             when(shardManager.allShards())
                     .thenReturn(
                             Set.of(
@@ -101,13 +110,11 @@ class NotificationManagerTest {
                                     new Shard(2L, "leader2", new HashRange(2, 3))));
             lenient().when(shardManager.leader(1L)).thenReturn("leader1");
             lenient().when(shardManager.leader(2L)).thenReturn("leader2");
-            when(receiver1.start()).thenReturn(CompletableFuture.completedFuture(null));
-            when(receiver2.start()).thenReturn(CompletableFuture.completedFuture(null));
 
             manager.registerCallback(n -> {});
 
-            verify(receiver1).start();
-            verify(receiver2).start();
+            verify(receiverFactory).newReceiver(1L, "leader1", manager, OptionalLong.empty());
+            verify(receiverFactory).newReceiver(2L, "leader2", manager, OptionalLong.empty());
         }
 
         @Test
@@ -122,14 +129,14 @@ class NotificationManagerTest {
 
         @Test
         void acceptRemoveShard() {
-            when(receiverFactory.newReceiver(1L, "leader1", manager)).thenReturn(receiver1);
-            when(receiverFactory.newReceiver(2L, "leader2", manager)).thenReturn(receiver2);
+            when(receiverFactory.newReceiver(1L, "leader1", manager, OptionalLong.empty()))
+                    .thenReturn(receiver1);
+            when(receiverFactory.newReceiver(2L, "leader2", manager, OptionalLong.empty()))
+                    .thenReturn(receiver2);
             when(shardManager.allShards())
                     .thenReturn(Set.of(new Shard(1L, "leader1", r), new Shard(2L, "leader2", r)));
             lenient().when(shardManager.leader(1L)).thenReturn("leader1");
             lenient().when(shardManager.leader(2L)).thenReturn("leader2");
-            when(receiver1.start()).thenReturn(CompletableFuture.completedFuture(null));
-            when(receiver2.start()).thenReturn(CompletableFuture.completedFuture(null));
 
             manager.registerCallback(n -> {});
 
@@ -142,30 +149,31 @@ class NotificationManagerTest {
 
         @Test
         void acceptAddShard() {
-            lenient().when(receiverFactory.newReceiver(1L, "leader1", manager)).thenReturn(receiver1);
-            lenient().when(receiverFactory.newReceiver(2L, "leader2", manager)).thenReturn(receiver2);
+            lenient()
+                    .when(receiverFactory.newReceiver(1L, "leader1", manager, OptionalLong.empty()))
+                    .thenReturn(receiver1);
+            lenient()
+                    .when(receiverFactory.newReceiver(2L, "leader2", manager, OptionalLong.empty()))
+                    .thenReturn(receiver2);
             lenient().when(shardManager.allShardIds()).thenReturn(Set.of(1L, 2L));
             lenient().when(shardManager.leader(1L)).thenReturn("leader1");
             lenient().when(shardManager.leader(2L)).thenReturn("leader2");
-            lenient().when(receiver1.start()).thenReturn(CompletableFuture.completedFuture(null));
-            lenient().when(receiver2.start()).thenReturn(CompletableFuture.completedFuture(null));
 
             manager.registerCallback(n -> {});
 
-            when(receiverFactory.newReceiver(3L, "leader3", manager)).thenReturn(receiver3);
-            when(receiver3.start()).thenReturn(CompletableFuture.completedFuture(null));
+            when(receiverFactory.newReceiver(3L, "leader3", manager, OptionalLong.empty()))
+                    .thenReturn(receiver3);
 
             var changes =
                     new ShardAssignmentChanges(Set.of(new Shard(3L, "leader3", r)), Set.of(), Set.of());
             manager.accept(changes);
-
-            verify(receiver3).start();
         }
 
         @Test
         void acceptReassignShard() {
-            lenient().when(receiverFactory.newReceiver(1, "leader1", manager)).thenReturn(receiver1);
-            lenient().when(receiverFactory.newReceiver(2, "leader2", manager)).thenReturn(receiver2);
+            lenient()
+                    .when(receiverFactory.newReceiver(2, "leader2", manager, OptionalLong.empty()))
+                    .thenReturn(receiver2);
             when(shardManager.allShards())
                     .thenReturn(
                             Set.of(
@@ -173,21 +181,19 @@ class NotificationManagerTest {
                                     new Shard(2, "leader2", new HashRange(2, 3))));
             lenient().when(shardManager.leader(1L)).thenReturn("leader1");
             lenient().when(shardManager.leader(2L)).thenReturn("leader2");
-            when(receiver1.start()).thenReturn(CompletableFuture.completedFuture(null));
-            when(receiver2.start()).thenReturn(CompletableFuture.completedFuture(null));
 
             manager.registerCallback(n -> {});
 
-            when(receiverFactory.newReceiver(2L, "leader3", manager)).thenReturn(receiver3);
             var shard2offset = 1000L;
-            when(receiver2.getOffset()).thenReturn(shard2offset);
+            when(receiverFactory.newReceiver(2L, "leader3", manager, OptionalLong.of(shard2offset)))
+                    .thenReturn(receiver3);
+            when(receiver2.getOffset()).thenReturn(OptionalLong.of(shard2offset));
 
             var changes =
                     new ShardAssignmentChanges(Set.of(), Set.of(), Set.of(new Shard(2L, "leader3", r)));
             manager.accept(changes);
 
             verify(receiver2).close();
-            verify(receiver3).start(Optional.of(shard2offset));
         }
 
         @Test
@@ -197,8 +203,10 @@ class NotificationManagerTest {
 
         @Test
         void close() throws Exception {
-            when(receiverFactory.newReceiver(1L, "leader1", manager)).thenReturn(receiver1);
-            when(receiverFactory.newReceiver(2L, "leader2", manager)).thenReturn(receiver2);
+            when(receiverFactory.newReceiver(1L, "leader1", manager, OptionalLong.empty()))
+                    .thenReturn(receiver1);
+            when(receiverFactory.newReceiver(2L, "leader2", manager, OptionalLong.empty()))
+                    .thenReturn(receiver2);
             when(shardManager.allShards())
                     .thenReturn(
                             Set.of(
@@ -206,8 +214,6 @@ class NotificationManagerTest {
                                     new Shard(2, "leader2", new HashRange(2, 3))));
             lenient().when(shardManager.leader(1L)).thenReturn("leader1");
             lenient().when(shardManager.leader(2L)).thenReturn("leader2");
-            when(receiver1.start()).thenReturn(CompletableFuture.completedFuture(null));
-            when(receiver2.start()).thenReturn(CompletableFuture.completedFuture(null));
 
             manager.registerCallback(n -> {});
 
@@ -313,8 +319,10 @@ class NotificationManagerTest {
 
             HashRange r = new HashRange(1, 2);
 
+            @Cleanup("shutdownNow")
+            var executor = Executors.newSingleThreadScheduledExecutor();
             try (var manager =
-                    new NotificationManager(stubManager, shardManager, InstrumentProvider.NOOP)) {
+                    new NotificationManager(executor, stubManager, shardManager, InstrumentProvider.NOOP)) {
                 manager.registerCallback(notificationCallback);
                 var changes =
                         new ShardAssignmentChanges(
