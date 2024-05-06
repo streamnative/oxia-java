@@ -25,11 +25,12 @@ import io.grpc.Server;
 import io.grpc.Status;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
+import io.grpc.stub.StreamObserver;
 import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.metrics.InstrumentProvider;
 import io.streamnative.oxia.proto.Int32HashRange;
 import io.streamnative.oxia.proto.NamespaceShardsAssignment;
-import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.OxiaClientImplBase;
+import io.streamnative.oxia.proto.OxiaClientGrpc;
 import io.streamnative.oxia.proto.ShardAssignment;
 import io.streamnative.oxia.proto.ShardAssignments;
 import io.streamnative.oxia.proto.ShardAssignmentsRequest;
@@ -46,23 +47,40 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 @ExtendWith(MockitoExtension.class)
 class ShardManagerGrpcTest {
-    BlockingQueue<Flux<ShardAssignments>> responses = new ArrayBlockingQueue<>(10);
+    record AssignmentWrapper(ShardAssignments assignments, Throwable ex, boolean closed) {}
 
-    OxiaClientImplBase serviceImpl =
-            new OxiaClientImplBase() {
+    BlockingQueue<AssignmentWrapper> responses = new ArrayBlockingQueue<>(10);
+
+    OxiaClientGrpc.OxiaClientImplBase serviceImpl =
+            new OxiaClientGrpc.OxiaClientImplBase() {
                 @Override
-                public Flux<ShardAssignments> getShardAssignments(Mono<ShardAssignmentsRequest> request) {
+                public void getShardAssignments(
+                        ShardAssignmentsRequest request, StreamObserver<ShardAssignments> responseObserver) {
                     requests.incrementAndGet();
-                    Flux<ShardAssignments> assignments = responses.poll();
-                    if (assignments == null) {
-                        return Flux.error(Status.RESOURCE_EXHAUSTED.asException());
+
+                    while (true) {
+                        var aw = responses.poll();
+                        if (aw == null) {
+                            return;
+                        }
+
+                        if (aw.ex != null) {
+                            responseObserver.onError(aw.ex);
+                            return;
+                        } else {
+                            if (aw.assignments != null) {
+                                responseObserver.onNext(aw.assignments);
+                            }
+
+                            if (aw.closed) {
+                                responseObserver.onCompleted();
+                                return;
+                            }
+                        }
                     }
-                    return assignments;
                 }
             };
     AtomicInteger requests = new AtomicInteger();
@@ -104,7 +122,7 @@ class ShardManagerGrpcTest {
                                 DefaultNamespace,
                                 NamespaceShardsAssignment.newBuilder().addAssignments(assignment(0, 0, 3)).build())
                         .build();
-        responses.offer(Flux.just(assignments).concatWith(Flux.never()));
+        responses.offer(new AssignmentWrapper(assignments, null, false));
         try (var shardManager =
                 new ShardManager(executor, stub, InstrumentProvider.NOOP, DefaultNamespace)) {
             assertThat(shardManager.start()).succeedsWithin(Duration.ofSeconds(1));
@@ -115,7 +133,6 @@ class ShardManagerGrpcTest {
 
     @Test
     void neverStarts() {
-        responses.offer(Flux.never());
         try (var shardManager =
                 new ShardManager(executor, stub, InstrumentProvider.NOOP, DefaultNamespace)) {
             assertThatThrownBy(() -> shardManager.start().get(1, SECONDS))
@@ -141,7 +158,8 @@ class ShardManagerGrpcTest {
                                         .addAssignments(assignment(2, 2, 3))
                                         .build())
                         .build();
-        responses.offer(Flux.just(assignments0, assignments1).concatWith(Flux.never()));
+        responses.offer(new AssignmentWrapper(assignments0, null, false));
+        responses.offer(new AssignmentWrapper(assignments1, null, false));
         try (var shardManager =
                 new ShardManager(executor, stub, InstrumentProvider.NOOP, DefaultNamespace)) {
             shardManager.start().join();
@@ -157,14 +175,14 @@ class ShardManagerGrpcTest {
 
     @Test
     public void recoveryFromError() {
-        responses.offer(Flux.error(Status.UNAVAILABLE.asException()));
+        responses.offer(new AssignmentWrapper(null, Status.UNAVAILABLE.asException(), false));
         var assignments =
                 ShardAssignments.newBuilder()
                         .putNamespaces(
                                 DefaultNamespace,
                                 NamespaceShardsAssignment.newBuilder().addAssignments(assignment(0, 0, 3)).build())
                         .build();
-        responses.offer(Flux.just(assignments).concatWith(Flux.never()));
+        responses.offer(new AssignmentWrapper(assignments, null, false));
         try (var shardManager =
                 new ShardManager(executor, stub, InstrumentProvider.NOOP, DefaultNamespace)) {
             assertThat(shardManager.start()).succeedsWithin(Duration.ofSeconds(1));
@@ -176,14 +194,14 @@ class ShardManagerGrpcTest {
 
     @Test
     public void recoveryFromEndOfStream() {
-        responses.offer(Flux.empty());
+        responses.offer(new AssignmentWrapper(null, null, true));
         var assignments =
                 ShardAssignments.newBuilder()
                         .putNamespaces(
                                 DefaultNamespace,
                                 NamespaceShardsAssignment.newBuilder().addAssignments(assignment(0, 0, 3)).build())
                         .build();
-        responses.offer(Flux.just(assignments).concatWith(Flux.never()));
+        responses.offer(new AssignmentWrapper(assignments, null, false));
         try (var shardManager =
                 new ShardManager(executor, stub, InstrumentProvider.NOOP, DefaultNamespace)) {
             assertThat(shardManager.start()).succeedsWithin(Duration.ofSeconds(1));

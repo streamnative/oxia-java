@@ -30,9 +30,9 @@ import static org.mockito.Mockito.when;
 
 import io.grpc.ManagedChannel;
 import io.grpc.Server;
-import io.grpc.Status;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
+import io.grpc.stub.StreamObserver;
 import io.streamnative.oxia.client.CompositeConsumer;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.Notification.KeyCreated;
@@ -48,7 +48,7 @@ import io.streamnative.oxia.client.shard.ShardManager;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChanges;
 import io.streamnative.oxia.proto.NotificationBatch;
 import io.streamnative.oxia.proto.NotificationsRequest;
-import io.streamnative.oxia.proto.ReactorOxiaClientGrpc;
+import io.streamnative.oxia.proto.OxiaClientGrpc;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -65,8 +65,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 @ExtendWith(MockitoExtension.class)
 class NotificationManagerTest {
@@ -238,30 +236,30 @@ class NotificationManagerTest {
     @DisplayName("GRPC tests")
     class GrpcTest {
 
-        BlockingQueue<Flux<NotificationBatch>> responses1 = new ArrayBlockingQueue<>(10);
-        BlockingQueue<Flux<NotificationBatch>> responses2 = new ArrayBlockingQueue<>(10);
+        BlockingQueue<NotificationBatch> responses1 = new ArrayBlockingQueue<>(10);
+        BlockingQueue<NotificationBatch> responses2 = new ArrayBlockingQueue<>(10);
 
-        ReactorOxiaClientGrpc.OxiaClientImplBase serviceImpl1 =
-                new ReactorOxiaClientGrpc.OxiaClientImplBase() {
+        OxiaClientGrpc.OxiaClientImplBase serviceImpl1 =
+                new OxiaClientGrpc.OxiaClientImplBase() {
                     @Override
-                    public Flux<NotificationBatch> getNotifications(Mono<NotificationsRequest> request) {
-                        Flux<NotificationBatch> assignments = responses1.poll();
-                        if (assignments == null) {
-                            return Flux.error(Status.RESOURCE_EXHAUSTED.asException());
+                    public void getNotifications(
+                            NotificationsRequest request, StreamObserver<NotificationBatch> responseObserver) {
+                        NotificationBatch assignments = responses1.poll();
+                        if (assignments != null) {
+                            responseObserver.onNext(assignments);
                         }
-                        return assignments;
                     }
                 };
 
-        ReactorOxiaClientGrpc.OxiaClientImplBase serviceImpl2 =
-                new ReactorOxiaClientGrpc.OxiaClientImplBase() {
+        OxiaClientGrpc.OxiaClientImplBase serviceImpl2 =
+                new OxiaClientGrpc.OxiaClientImplBase() {
                     @Override
-                    public Flux<NotificationBatch> getNotifications(Mono<NotificationsRequest> request) {
-                        Flux<NotificationBatch> assignments = responses2.poll();
-                        if (assignments == null) {
-                            return Flux.error(Status.RESOURCE_EXHAUSTED.asException());
+                    public void getNotifications(
+                            NotificationsRequest request, StreamObserver<NotificationBatch> responseObserver) {
+                        NotificationBatch assignments = responses2.poll();
+                        if (assignments != null) {
+                            responseObserver.onNext(assignments);
                         }
-                        return assignments;
                     }
                 };
 
@@ -314,8 +312,8 @@ class NotificationManagerTest {
             var notifications2 =
                     NotificationBatch.newBuilder().putNotifications("key2", deleted()).build();
 
-            responses1.offer(Flux.just(notifications1).concatWith(Flux.never()));
-            responses2.offer(Flux.just(notifications2).concatWith(Flux.never()));
+            responses1.offer(notifications1);
+            responses2.offer(notifications2);
 
             HashRange r = new HashRange(1, 2);
 
