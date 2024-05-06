@@ -15,6 +15,7 @@
  */
 package io.streamnative.oxia.client;
 
+import io.grpc.netty.shaded.io.netty.util.concurrent.DefaultThreadFactory;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
@@ -45,6 +46,8 @@ import java.util.Objects;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import lombok.NonNull;
@@ -53,13 +56,15 @@ import reactor.core.publisher.Flux;
 class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
     static @NonNull CompletableFuture<AsyncOxiaClient> newInstance(@NonNull ClientConfig config) {
+        ScheduledExecutorService executor =
+                Executors.newSingleThreadScheduledExecutor(new DefaultThreadFactory("oxia-client"));
         var stubManager = new OxiaStubManager();
 
         var instrumentProvider = new InstrumentProvider(config.openTelemetry(), config.namespace());
         var serviceAddrStub = stubManager.getStub(config.serviceAddress());
         var shardManager = new ShardManager(serviceAddrStub, instrumentProvider, config.namespace());
         var notificationManager =
-                new NotificationManager(stubManager, shardManager, instrumentProvider);
+                new NotificationManager(executor, stubManager, shardManager, instrumentProvider);
 
         Function<Long, String> leaderFn = shardManager::leader;
         var stubByShardId = leaderFn.andThen(stubManager::getStub);
@@ -75,6 +80,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
         var client =
                 new AsyncOxiaClientImpl(
+                        executor,
                         instrumentProvider,
                         stubManager,
                         shardManager,
@@ -113,7 +119,10 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     private final LatencyHistogram histogramDeleteRangeLatency;
     private final LatencyHistogram histogramListLatency;
 
+    private final ScheduledExecutorService scheduledExecutor;
+
     AsyncOxiaClientImpl(
+            @NonNull ScheduledExecutorService scheduledExecutor,
             @NonNull InstrumentProvider instrumentProvider,
             @NonNull OxiaStubManager stubManager,
             @NonNull ShardManager shardManager,
@@ -128,6 +137,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         this.readBatchManager = readBatchManager;
         this.writeBatchManager = writeBatchManager;
         this.sessionManager = sessionManager;
+        this.scheduledExecutor = scheduledExecutor;
 
         counterPutBytes =
                 instrumentProvider.newCounter(
@@ -416,6 +426,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         notificationManager.close();
         shardManager.close();
         stubManager.close();
+        scheduledExecutor.shutdownNow();
     }
 
     private void checkIfClosed() {

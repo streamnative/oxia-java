@@ -30,6 +30,7 @@ import io.grpc.Server;
 import io.grpc.Status;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
+import io.grpc.stub.StreamObserver;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.Notification.KeyCreated;
 import io.streamnative.oxia.client.api.Notification.KeyDeleted;
@@ -38,34 +39,47 @@ import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.metrics.Counter;
 import io.streamnative.oxia.proto.NotificationBatch;
 import io.streamnative.oxia.proto.NotificationsRequest;
-import io.streamnative.oxia.proto.ReactorOxiaClientGrpc.OxiaClientImplBase;
+import io.streamnative.oxia.proto.OxiaClientGrpc;
+import java.util.OptionalLong;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import lombok.Cleanup;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 
 @ExtendWith(MockitoExtension.class)
 class ShardNotificationReceiverTest {
-    BlockingQueue<Flux<NotificationBatch>> responses = new ArrayBlockingQueue<>(10);
 
-    OxiaClientImplBase serviceImpl =
-            new OxiaClientImplBase() {
+    record NotificationWrapper(NotificationBatch notifications, Exception ex, boolean endOfStream) {}
+
+    BlockingQueue<NotificationWrapper> responses = new ArrayBlockingQueue<>(10);
+
+    OxiaClientGrpc.OxiaClientImplBase serviceImpl =
+            new OxiaClientGrpc.OxiaClientImplBase() {
                 @Override
-                public Flux<NotificationBatch> getNotifications(Mono<NotificationsRequest> request) {
+                public void getNotifications(
+                        NotificationsRequest request, StreamObserver<NotificationBatch> responseObserver) {
                     requests.incrementAndGet();
-                    Flux<NotificationBatch> assignments = responses.poll();
-                    if (assignments == null) {
-                        return Flux.error(Status.RESOURCE_EXHAUSTED.asException());
+                    NotificationWrapper nw = responses.poll();
+                    if (nw != null) {
+                        if (nw.ex != null) {
+                            responseObserver.onError(nw.ex);
+                        } else {
+                            responseObserver.onNext(nw.notifications);
+
+                            if (nw.endOfStream) {
+                                responseObserver.onCompleted();
+                            }
+                        }
                     }
-                    return assignments;
                 }
             };
     AtomicInteger requests = new AtomicInteger();
@@ -99,7 +113,7 @@ class ShardNotificationReceiverTest {
     }
 
     @Test
-    void start() {
+    void start() throws Exception {
         when(notificationManager.getCounterNotificationsReceived()).thenReturn(mock(Counter.class));
         when(notificationManager.getCounterNotificationsBatchesReceived())
                 .thenReturn(mock(Counter.class));
@@ -110,10 +124,10 @@ class ShardNotificationReceiverTest {
                         .putNotifications("key2", deleted(2L))
                         .putNotifications("key3", modified(3L))
                         .build();
-        responses.offer(Flux.just(notifications).concatWith(Flux.never()));
+        responses.put(new NotificationWrapper(notifications, null, false));
         try (var notificationReceiver =
-                new ShardNotificationReceiver(stub, shardId, notificationCallback, notificationManager)) {
-            assertThat(notificationReceiver.start()).isCompleted();
+                new ShardNotificationReceiver(
+                        stub, shardId, notificationCallback, notificationManager, OptionalLong.empty())) {
             await()
                     .untilAsserted(
                             () -> {
@@ -126,10 +140,10 @@ class ShardNotificationReceiverTest {
 
     @Test
     void neverStarts() {
-        responses.offer(Flux.never());
+        //        responses.offer(Flux.never());
         try (var notificationReceiver =
-                new ShardNotificationReceiver(stub, shardId, notificationCallback, notificationManager)) {
-            assertThat(notificationReceiver.start()).isCompleted();
+                new ShardNotificationReceiver(
+                        stub, shardId, notificationCallback, notificationManager, OptionalLong.empty())) {
             await()
                     .untilAsserted(
                             () -> {
@@ -140,17 +154,20 @@ class ShardNotificationReceiverTest {
 
     @Test
     public void recoveryFromError() {
+        @Cleanup("shutdownNow")
+        ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+        when(notificationManager.getExecutor()).thenReturn(executorService);
         when(notificationManager.getCounterNotificationsReceived()).thenReturn(mock(Counter.class));
         when(notificationManager.getCounterNotificationsBatchesReceived())
                 .thenReturn(mock(Counter.class));
 
-        responses.offer(Flux.error(Status.UNAVAILABLE.asException()));
+        responses.offer(new NotificationWrapper(null, Status.UNAVAILABLE.asException(), false));
         var notifications =
                 NotificationBatch.newBuilder().putNotifications("key1", created(1L)).build();
-        responses.offer(Flux.just(notifications).concatWith(Flux.never()));
+        responses.offer(new NotificationWrapper(notifications, null, false));
         try (var notificationReceiver =
-                new ShardNotificationReceiver(stub, shardId, notificationCallback, notificationManager)) {
-            assertThat(notificationReceiver.start()).isCompleted();
+                new ShardNotificationReceiver(
+                        stub, shardId, notificationCallback, notificationManager, OptionalLong.empty())) {
             await()
                     .untilAsserted(
                             () -> {
@@ -161,17 +178,16 @@ class ShardNotificationReceiverTest {
     }
 
     @Test
-    public void recoveryFromEndOfStream() {
+    public void recoveryFromEndOfStream() throws Exception {
         when(notificationManager.getCounterNotificationsReceived()).thenReturn(mock(Counter.class));
         when(notificationManager.getCounterNotificationsBatchesReceived())
                 .thenReturn(mock(Counter.class));
-        responses.offer(Flux.empty());
         var notifications =
                 NotificationBatch.newBuilder().putNotifications("key1", created(1L)).build();
-        responses.offer(Flux.just(notifications).concatWith(Flux.never()));
+        responses.put(new NotificationWrapper(notifications, null, true));
         try (var notificationReceiver =
-                new ShardNotificationReceiver(stub, shardId, notificationCallback, notificationManager)) {
-            assertThat(notificationReceiver.start()).isCompleted();
+                new ShardNotificationReceiver(
+                        stub, shardId, notificationCallback, notificationManager, OptionalLong.empty())) {
             await()
                     .untilAsserted(
                             () -> {

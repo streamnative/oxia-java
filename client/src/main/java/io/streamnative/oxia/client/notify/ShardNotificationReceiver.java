@@ -16,134 +16,129 @@
 package io.streamnative.oxia.client.notify;
 
 import static io.streamnative.oxia.client.api.Notification.KeyModified;
-import static java.util.concurrent.CompletableFuture.completedFuture;
 import static lombok.AccessLevel.PACKAGE;
 
+import io.grpc.stub.StreamObserver;
 import io.streamnative.oxia.client.CompositeConsumer;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.Notification.KeyCreated;
 import io.streamnative.oxia.client.api.Notification.KeyDeleted;
-import io.streamnative.oxia.client.grpc.GrpcResponseStream;
 import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.grpc.OxiaStubManager;
+import io.streamnative.oxia.client.util.Backoff;
 import io.streamnative.oxia.proto.NotificationBatch;
 import io.streamnative.oxia.proto.NotificationsRequest;
-import java.time.Duration;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
+import java.io.Closeable;
+import java.util.OptionalLong;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import reactor.core.Disposable;
-import reactor.core.publisher.Flux;
-import reactor.core.scheduler.Scheduler;
-import reactor.core.scheduler.Schedulers;
-import reactor.util.retry.Retry;
-import reactor.util.retry.RetryBackoffSpec;
 
 @Slf4j
-public class ShardNotificationReceiver extends GrpcResponseStream {
+public class ShardNotificationReceiver implements Closeable, StreamObserver<NotificationBatch> {
 
+    private final OxiaStub stub;
     private final NotificationManager notificationManager;
 
     @Getter(PACKAGE)
     private final long shardId;
 
     private final @NonNull Consumer<Notification> callback;
-    private @NonNull Optional<Long> startingOffset = Optional.empty();
 
-    private Scheduler scheduler;
-    private long offset;
+    @Getter private volatile @NonNull OptionalLong offset;
+
+    private volatile boolean closed = false;
+
+    private final Backoff backoff = new Backoff();
 
     ShardNotificationReceiver(
             @NonNull OxiaStub stub,
             long shardId,
             @NonNull Consumer<Notification> callback,
-            NotificationManager notificationManager) {
-        super(stub);
+            NotificationManager notificationManager,
+            @NonNull OptionalLong offset) {
+        this.stub = stub;
         this.notificationManager = notificationManager;
         this.shardId = shardId;
         this.callback = callback;
+        this.offset = offset;
+
+        start();
     }
 
-    public void start(@NonNull Optional<Long> offset) {
-        if (offset.isPresent() && offset.get() < 0) {
-            throw new IllegalArgumentException("Invalid offset: " + offset.get());
-        }
-        startingOffset = offset;
-        this.start();
-    }
-
-    @Override
-    public void close() {
-        super.close();
-
-        if (scheduler != null) {
-            scheduler.dispose();
-        }
-    }
-
-    @Override
-    protected @NonNull CompletableFuture<Void> start(
-            @NonNull OxiaStub stub, @NonNull Consumer<Disposable> consumer) {
+    void start() {
         var request = NotificationsRequest.newBuilder().setShardId(shardId);
-        startingOffset.ifPresent(o -> request.setStartOffsetExclusive(o));
-        // TODO filter non-retriables?
-        RetryBackoffSpec retrySpec =
-                Retry.backoff(Long.MAX_VALUE, Duration.ofMillis(100))
-                        .doBeforeRetry(
-                                signal ->
-                                        log.warn("Retrying receiving notifications for shard {}: {}", shardId, signal));
-        var threadName = String.format("shard-%s-notifications", shardId);
-        scheduler = Schedulers.newSingle(threadName);
-        var disposable =
-                Flux.defer(() -> stub.reactor().getNotifications(request.build()))
-                        .doOnError(
-                                t ->
-                                        log.warn(
-                                                "Error receiving notifications for shard {}: {}", shardId, t.getMessage()))
-                        .doOnEach(
-                                batch -> {
-                                    notificationManager.getCounterNotificationsBatchesReceived().increment();
-                                    notificationManager
-                                            .getCounterNotificationsReceived()
-                                            .add(batch.get().getNotificationsCount());
-                                })
-                        .retryWhen(retrySpec)
-                        .repeat()
-                        .publishOn(scheduler)
-                        .subscribe(this::notify);
-        consumer.accept(disposable);
-        return completedFuture(null);
+        offset.ifPresent(request::setStartOffsetExclusive);
+        stub.async().getNotifications(request.build(), this);
     }
 
-    private void notify(@NonNull NotificationBatch batch) {
-        offset = Math.max(batch.getOffset(), offset);
-        batch.getNotificationsMap().entrySet().stream()
-                .map(
-                        e -> {
+    @Override
+    public void onNext(NotificationBatch batch) {
+        if (offset.isPresent() && offset.getAsLong() >= batch.getOffset()) {
+            // Ignore repeated notifications
+            return;
+        }
+
+        offset = OptionalLong.of(batch.getOffset());
+
+        notificationManager.getCounterNotificationsBatchesReceived().increment();
+        notificationManager.getCounterNotificationsReceived().add(batch.getNotificationsCount());
+
+        batch
+                .getNotificationsMap()
+                .forEach(
+                        (key, notification) -> {
                             if (log.isDebugEnabled()) {
-                                log.debug("--- Got notification: {} - {}", e.getKey(), e.getValue().getType());
+                                log.debug("--- Got notification: {} - {}", key, notification.getType());
                             }
 
-                            var key = e.getKey();
-                            var notice = e.getValue();
-                            return switch (notice.getType()) {
-                                case KEY_CREATED -> new KeyCreated(key, notice.getVersionId());
-                                case KEY_MODIFIED -> new KeyModified(key, notice.getVersionId());
-                                case KEY_DELETED -> new KeyDeleted(key);
-                                default -> null;
-                            };
-                        })
-                .filter(Objects::nonNull)
-                .forEach(callback::accept);
+                            var n =
+                                    switch (notification.getType()) {
+                                        case KEY_CREATED -> new KeyCreated(key, notification.getVersionId());
+                                        case KEY_MODIFIED -> new KeyModified(key, notification.getVersionId());
+                                        case KEY_DELETED -> new KeyDeleted(key);
+                                        case UNRECOGNIZED -> null;
+                                    };
+
+                            if (n != null) {
+                                callback.accept(n);
+                            }
+                        });
     }
 
-    public long getOffset() {
-        return offset;
+    @Override
+    public void onError(Throwable t) {
+        if (closed) {
+            return;
+        }
+
+        long retryDelayMillis = backoff.nextDelayMillis();
+        log.warn(
+                "Error while receiving notifications for shard={}: {} - Retrying in {} seconds",
+                shardId,
+                t.getMessage(),
+                retryDelayMillis / 1000.0);
+        notificationManager
+                .getExecutor()
+                .schedule(
+                        () -> {
+                            if (!closed) {
+                                log.info("Retrying getting notifications for shard={}", shardId);
+                                start();
+                            }
+                        },
+                        retryDelayMillis,
+                        TimeUnit.MILLISECONDS);
+    }
+
+    @Override
+    public void onCompleted() {
+        if (!closed) {
+            start();
+        }
     }
 
     @RequiredArgsConstructor(access = PACKAGE)
@@ -155,9 +150,17 @@ public class ShardNotificationReceiver extends GrpcResponseStream {
 
         @NonNull
         ShardNotificationReceiver newReceiver(
-                long shardId, @NonNull String leader, @NonNull NotificationManager notificationManager) {
+                long shardId,
+                @NonNull String leader,
+                @NonNull NotificationManager notificationManager,
+                @NonNull OptionalLong offset) {
             return new ShardNotificationReceiver(
-                    stubManager.getStub(leader), shardId, callback, notificationManager);
+                    stubManager.getStub(leader), shardId, callback, notificationManager, offset);
         }
+    }
+
+    @Override
+    public void close() {
+        this.closed = true;
     }
 }
