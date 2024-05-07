@@ -46,6 +46,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -80,6 +81,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
         var client =
                 new AsyncOxiaClientImpl(
+                        config.clientIdentifier(),
                         executor,
                         instrumentProvider,
                         stubManager,
@@ -92,6 +94,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         return shardManager.start().thenApply(v -> client);
     }
 
+    private final @NonNull String clientIdentifier;
     private final @NonNull InstrumentProvider instrumentProvider;
     private final @NonNull OxiaStubManager stubManager;
     private final @NonNull ShardManager shardManager;
@@ -122,6 +125,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     private final ScheduledExecutorService scheduledExecutor;
 
     AsyncOxiaClientImpl(
+            @NonNull String clientIdentifier,
             @NonNull ScheduledExecutorService scheduledExecutor,
             @NonNull InstrumentProvider instrumentProvider,
             @NonNull OxiaStubManager stubManager,
@@ -130,6 +134,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
             @NonNull BatchManager readBatchManager,
             @NonNull BatchManager writeBatchManager,
             @NonNull SessionManager sessionManager) {
+        this.clientIdentifier = clientIdentifier;
         this.instrumentProvider = instrumentProvider;
         this.stubManager = stubManager;
         this.shardManager = shardManager;
@@ -236,23 +241,16 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     public @NonNull CompletableFuture<PutResult> put(
             String key, byte[] value, Set<PutOption> options) {
         long startTime = System.nanoTime();
-        var callback = new CompletableFuture<PutResult>();
+        CompletableFuture<PutResult> callback;
 
         try {
             checkIfClosed();
             Objects.requireNonNull(key);
             Objects.requireNonNull(value);
 
-            gaugePendingPutRequests.increment();
-            gaugePendingPutBytes.add(value.length);
-
-            var shardId = shardManager.getShardForKey(key);
-            var versionId = PutOptionsUtil.getVersionId(options);
-            var op =
-                    new PutOperation(callback, key, value, versionId, PutOptionsUtil.isEphemeral(options));
-            writeBatchManager.getBatcher(shardId).add(op);
+            callback = internalPut(key, value, options);
         } catch (RuntimeException e) {
-            callback.completeExceptionally(e);
+            callback = CompletableFuture.failedFuture(e);
         }
         return callback.whenComplete(
                 (putResult, throwable) -> {
@@ -266,6 +264,47 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                         histogramPutLatency.recordFailure(System.nanoTime() - startTime);
                     }
                 });
+    }
+
+    private CompletableFuture<PutResult> internalPut(
+            String key, byte[] value, Set<PutOption> options) {
+        gaugePendingPutRequests.increment();
+        gaugePendingPutBytes.add(value.length);
+
+        var shardId = shardManager.getShardForKey(key);
+        var versionId = PutOptionsUtil.getVersionId(options);
+
+        CompletableFuture<PutResult> future = new CompletableFuture<>();
+
+        if (!PutOptionsUtil.isEphemeral(options)) {
+            var op =
+                    new PutOperation(future, key, value, versionId, OptionalLong.empty(), Optional.empty());
+            writeBatchManager.getBatcher(shardId).add(op);
+        } else {
+            // The put operation is trying to write an ephemeral record. We need to have a valid session
+            // id for this
+            sessionManager
+                    .getSession(shardId)
+                    .thenAccept(
+                            session -> {
+                                var op =
+                                        new PutOperation(
+                                                future,
+                                                key,
+                                                value,
+                                                versionId,
+                                                OptionalLong.of(session.getSessionId()),
+                                                Optional.of(clientIdentifier));
+                                writeBatchManager.getBatcher(shardId).add(op);
+                            })
+                    .exceptionally(
+                            ex -> {
+                                future.completeExceptionally(ex);
+                                return null;
+                            });
+        }
+
+        return future;
     }
 
     @Override

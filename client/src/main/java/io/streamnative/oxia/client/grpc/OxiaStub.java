@@ -26,8 +26,6 @@ import lombok.NonNull;
 public class OxiaStub implements AutoCloseable {
     private final ManagedChannel channel;
 
-    private final @NonNull OxiaClientGrpc.OxiaClientBlockingStub blockingStub;
-
     private final @NonNull OxiaClientGrpc.OxiaClientStub asyncStub;
 
     public OxiaStub(String address) {
@@ -36,12 +34,7 @@ public class OxiaStub implements AutoCloseable {
 
     public OxiaStub(ManagedChannel channel) {
         this.channel = channel;
-        this.blockingStub = OxiaClientGrpc.newBlockingStub(channel);
         this.asyncStub = OxiaClientGrpc.newStub(channel);
-    }
-
-    public OxiaClientGrpc.OxiaClientBlockingStub blocking() {
-        return blockingStub;
     }
 
     public OxiaClientGrpc.OxiaClientStub async() {

@@ -27,7 +27,6 @@ import io.streamnative.oxia.proto.WriteRequest;
 import io.streamnative.oxia.proto.WriteResponse;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import lombok.NonNull;
 
 final class WriteBatch extends BatchBase implements Batch, StreamObserver<WriteResponse> {
@@ -43,9 +42,7 @@ final class WriteBatch extends BatchBase implements Batch, StreamObserver<WriteR
     final List<Operation.WriteOperation.DeleteRangeOperation> deleteRanges = new ArrayList<>();
 
     private final SessionManager sessionManager;
-    private final String clientIdentifier;
     private final int maxBatchSize;
-    private boolean containsEphemeral;
     private int byteSize;
     private long bytes;
     private long startSendTimeNanos;
@@ -54,13 +51,11 @@ final class WriteBatch extends BatchBase implements Batch, StreamObserver<WriteR
             @NonNull WriteBatchFactory factory,
             @NonNull OxiaStubProvider stubProvider,
             @NonNull SessionManager sessionManager,
-            @NonNull String clientIdentifier,
             long shardId,
             int maxBatchSize) {
         super(stubProvider, shardId);
         this.factory = factory;
         this.sessionManager = sessionManager;
-        this.clientIdentifier = clientIdentifier;
         this.byteSize = 0;
         this.maxBatchSize = maxBatchSize;
     }
@@ -81,7 +76,6 @@ final class WriteBatch extends BatchBase implements Batch, StreamObserver<WriteR
         if (operation instanceof Operation.WriteOperation.PutOperation p) {
             puts.add(p);
             bytes += p.value().length;
-            containsEphemeral |= p.ephemeral();
         } else if (operation instanceof Operation.WriteOperation.DeleteOperation d) {
             deletes.add(d);
         } else if (operation instanceof Operation.WriteOperation.DeleteRangeOperation r) {
@@ -141,18 +135,10 @@ final class WriteBatch extends BatchBase implements Batch, StreamObserver<WriteR
 
     @NonNull
     WriteRequest toProto() {
-        Optional<Operation.WriteOperation.PutOperation.SessionInfo> sessionInfo;
-        if (containsEphemeral) {
-            sessionInfo =
-                    Optional.of(
-                            new Operation.WriteOperation.PutOperation.SessionInfo(
-                                    sessionManager.getSession(getShardId()).getSessionId(), clientIdentifier));
-        } else {
-            sessionInfo = Optional.empty();
-        }
         return WriteRequest.newBuilder()
                 .setShardId(getShardId())
-                .addAllPuts(puts.stream().map(p -> p.toProto(sessionInfo)).collect(toList()))
+                .addAllPuts(
+                        puts.stream().map(Operation.WriteOperation.PutOperation::toProto).collect(toList()))
                 .addAllDeletes(
                         deletes.stream()
                                 .map(Operation.WriteOperation.DeleteOperation::toProto)

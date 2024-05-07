@@ -43,7 +43,6 @@ import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
-import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation.SessionInfo;
 import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.grpc.OxiaStubProvider;
 import io.streamnative.oxia.client.metrics.InstrumentProvider;
@@ -150,14 +149,24 @@ class BatchTest {
         CompletableFuture<Boolean> deleteCallable = new CompletableFuture<>();
         CompletableFuture<Void> deleteRangeCallable = new CompletableFuture<>();
 
-        PutOperation put = new PutOperation(putCallable, "", new byte[0], OptionalLong.of(1), false);
+        PutOperation put =
+                new PutOperation(
+                        putCallable,
+                        "",
+                        new byte[0],
+                        OptionalLong.of(1),
+                        OptionalLong.empty(),
+                        Optional.empty());
         PutOperation putEphemeral =
-                new PutOperation(putEphemeralCallable, "", new byte[0], OptionalLong.of(1), true);
+                new PutOperation(
+                        putEphemeralCallable,
+                        "",
+                        new byte[0],
+                        OptionalLong.of(1),
+                        OptionalLong.of(1),
+                        Optional.of("client-id"));
         DeleteOperation delete = new DeleteOperation(deleteCallable, "", OptionalLong.of(1));
         DeleteRangeOperation deleteRange = new DeleteRangeOperation(deleteRangeCallable, "a", "b");
-
-        String clientIdentifier = "client-id";
-        SessionInfo sessionInfo = new SessionInfo(sessionId, clientIdentifier);
 
         @BeforeEach
         void setup() {
@@ -168,9 +177,7 @@ class BatchTest {
                             mock(SessionManager.class),
                             config,
                             InstrumentProvider.NOOP);
-            batch =
-                    new WriteBatch(
-                            factory, clientByShardId, sessionManager, clientIdentifier, shardId, 1024 * 1024);
+            batch = new WriteBatch(factory, clientByShardId, sessionManager, shardId, 1024 * 1024);
         }
 
         @Test
@@ -202,7 +209,7 @@ class BatchTest {
             assertThat(request)
                     .satisfies(
                             r -> {
-                                assertThat(r.getPutsList()).containsOnly(put.toProto(Optional.of(sessionInfo)));
+                                assertThat(r.getPutsList()).containsOnly(put.toProto());
                                 assertThat(r.getDeletesList()).containsOnly(delete.toProto());
                                 assertThat(r.getDeleteRangesList()).containsOnly(deleteRange.toProto());
                             });
@@ -210,9 +217,6 @@ class BatchTest {
 
         @Test
         public void sendOk() {
-            when(session.getSessionId()).thenReturn(sessionId);
-            when(sessionManager.getSession(shardId)).thenReturn(session);
-
             writeResponses.add(
                     o ->
                             o.onNext(
@@ -241,9 +245,6 @@ class BatchTest {
 
         @Test
         public void sendFail() {
-            when(session.getSessionId()).thenReturn(sessionId);
-            when(sessionManager.getSession(shardId)).thenReturn(session);
-
             var batchError = new RuntimeException();
             writeResponses.add(o -> o.onError(batchError));
 
@@ -279,7 +280,6 @@ class BatchTest {
                                     InstrumentProvider.NOOP),
                             stubProvider,
                             sessionManager,
-                            clientIdentifier,
                             shardId,
                             1024 * 1024);
             batch.add(put);

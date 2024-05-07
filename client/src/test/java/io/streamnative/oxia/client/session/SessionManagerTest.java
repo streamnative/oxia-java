@@ -29,6 +29,8 @@ import io.streamnative.oxia.client.shard.HashRange;
 import io.streamnative.oxia.client.shard.Shard;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChanges;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import org.junit.jupiter.api.AfterEach;
@@ -60,15 +62,15 @@ class SessionManagerTest {
     @Test
     void newSession() {
         var shardId = 1L;
-        when(factory.create(shardId)).thenReturn(session);
-        assertThat(manager.getSession(shardId)).isSameAs(session);
+        when(factory.create(shardId)).thenReturn(CompletableFuture.completedFuture(session));
+        assertThat(manager.getSession(shardId).join()).isSameAs(session);
         verify(factory).create(shardId);
     }
 
     @Test
     void existingSession() {
         var shardId = 1L;
-        when(factory.create(shardId)).thenReturn(session);
+        when(factory.create(shardId)).thenReturn(CompletableFuture.completedFuture(session));
         var session1 = manager.getSession(shardId);
         verify(factory, times(1)).create(shardId);
 
@@ -81,11 +83,11 @@ class SessionManagerTest {
     void close() throws Exception {
         var shardId = 5L;
         when(session.getShardId()).thenReturn(shardId);
-        when(factory.create(shardId)).thenReturn(session);
+        when(factory.create(shardId)).thenReturn(CompletableFuture.completedFuture(session));
         doAnswer(
                         invocation -> {
                             manager.onSessionClosed(session);
-                            return null;
+                            return CompletableFuture.completedFuture(null);
                         })
                 .when(session)
                 .close();
@@ -99,7 +101,9 @@ class SessionManagerTest {
                             verify(session).close();
                             assertThat(manager.sessions()).doesNotContainKey(shardId);
                         });
-        assertThatThrownBy(() -> manager.getSession(shardId)).isInstanceOf(IllegalStateException.class);
+
+        assertThatThrownBy(() -> manager.getSession(shardId).join())
+                .isInstanceOf(CompletionException.class);
     }
 
     @Test
@@ -108,11 +112,14 @@ class SessionManagerTest {
         Session session22 = mock(Session.class);
         var shardId1 = 1L;
         var shardId2 = 2L;
-        when(factory.create(shardId1)).thenReturn(session);
-        when(factory.create(shardId2)).thenReturn(session21, session22);
+        when(factory.create(shardId1)).thenReturn(CompletableFuture.completedFuture(session));
+        when(factory.create(shardId2))
+                .thenReturn(
+                        CompletableFuture.completedFuture(session21),
+                        CompletableFuture.completedFuture(session22));
 
-        assertThat(manager.getSession(shardId1)).isSameAs(session);
-        assertThat(manager.getSession(shardId2)).isSameAs(session21);
+        assertThat(manager.getSession(shardId1).join()).isSameAs(session);
+        assertThat(manager.getSession(shardId2).join()).isSameAs(session21);
 
         manager.accept(
                 new ShardAssignmentChanges(
@@ -122,7 +129,7 @@ class SessionManagerTest {
 
         assertThat(manager.sessions()).doesNotContainKey(shardId1);
         // Session here shouldn't have changed after the reassignment
-        assertThat(manager.getSession(shardId2)).isSameAs(session21);
+        assertThat(manager.getSession(shardId2).join()).isSameAs(session21);
         verify(session).close();
     }
 
@@ -137,25 +144,12 @@ class SessionManagerTest {
                         })
                 .when(session)
                 .close();
-        when(factory.create(shardId)).thenReturn(session);
+        when(factory.create(shardId)).thenReturn(CompletableFuture.completedFuture(session));
         manager.getSession(shardId);
 
         assertThat(manager.sessions()).containsEntry(shardId, session);
 
         session.close();
         assertThat(manager.sessions()).doesNotContainKey(shardId);
-    }
-
-    @Test
-    void closeQuietly() throws Exception {
-        var value = manager.closeQuietly(session);
-        assertThat(value).containsSame(session);
-        verify(session).close();
-    }
-
-    @Test
-    void closeQuietlyNull() throws Exception {
-        var value = manager.closeQuietly(null);
-        assertThat(value).isEmpty();
     }
 }

@@ -45,12 +45,6 @@ class WriteBatchFactory extends BatchFactory {
 
     @Override
     public Batch getBatch(long shardId) {
-        return new WriteBatch(
-                this,
-                stubProvider,
-                sessionManager,
-                getConfig().clientIdentifier(),
-                shardId,
-                getConfig().maxBatchSize());
+        return new WriteBatch(this, stubProvider, sessionManager, shardId, getConfig().maxBatchSize());
     }
 }

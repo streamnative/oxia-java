@@ -35,7 +35,6 @@ import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
-import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation.SessionInfo;
 import io.streamnative.oxia.proto.DeleteRangeResponse;
 import io.streamnative.oxia.proto.DeleteResponse;
 import io.streamnative.oxia.proto.GetResponse;
@@ -146,28 +145,56 @@ class OperationTest {
     class PutOperationTests {
         CompletableFuture<PutResult> callback = new CompletableFuture<>();
         byte[] payload = "hello".getBytes(UTF_8);
-        PutOperation op = new PutOperation(callback, "key", payload, OptionalLong.of(10), false);
+        PutOperation op =
+                new PutOperation(
+                        callback, "key", payload, OptionalLong.of(10), OptionalLong.empty(), Optional.empty());
         long sessionId = 0L;
-        String clientId = "client-id";
-        SessionInfo sessionInfo = new SessionInfo(sessionId, clientId);
 
         @Test
         void constructInvalidExpectedVersionId() {
             assertThatNoException()
                     .isThrownBy(
                             () ->
-                                    new PutOperation(callback, "key", payload, OptionalLong.of(KeyNotExists), false));
+                                    new PutOperation(
+                                            callback,
+                                            "key",
+                                            payload,
+                                            OptionalLong.of(KeyNotExists),
+                                            OptionalLong.empty(),
+                                            Optional.empty()));
             assertThatNoException()
-                    .isThrownBy(() -> new PutOperation(callback, "key", payload, OptionalLong.of(0L), false));
+                    .isThrownBy(
+                            () ->
+                                    new PutOperation(
+                                            callback,
+                                            "key",
+                                            payload,
+                                            OptionalLong.of(0L),
+                                            OptionalLong.empty(),
+                                            Optional.empty()));
             assertThatThrownBy(
-                            () -> new PutOperation(callback, "key", payload, OptionalLong.of(-2L), false))
+                            () ->
+                                    new PutOperation(
+                                            callback,
+                                            "key",
+                                            payload,
+                                            OptionalLong.of(-2L),
+                                            OptionalLong.empty(),
+                                            Optional.empty()))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
         void toProtoNoExpectedVersion() {
-            var op = new PutOperation(callback, "key", payload, OptionalLong.empty(), false);
-            var request = op.toProto(Optional.empty());
+            var op =
+                    new PutOperation(
+                            callback,
+                            "key",
+                            payload,
+                            OptionalLong.empty(),
+                            OptionalLong.empty(),
+                            Optional.empty());
+            var request = op.toProto();
             assertThat(request)
                     .satisfies(
                             r -> {
@@ -181,8 +208,15 @@ class OperationTest {
 
         @Test
         void toProtoExpectedVersion() {
-            var op = new PutOperation(callback, "key", payload, OptionalLong.of(1L), false);
-            var request = op.toProto(Optional.empty());
+            var op =
+                    new PutOperation(
+                            callback,
+                            "key",
+                            payload,
+                            OptionalLong.of(1L),
+                            OptionalLong.empty(),
+                            Optional.empty());
+            var request = op.toProto();
             assertThat(request)
                     .satisfies(
                             r -> {
@@ -196,8 +230,15 @@ class OperationTest {
 
         @Test
         void toProtoNoExistingVersion() {
-            var op = new PutOperation(callback, "key", payload, OptionalLong.of(KeyNotExists), false);
-            var request = op.toProto(Optional.empty());
+            var op =
+                    new PutOperation(
+                            callback,
+                            "key",
+                            payload,
+                            OptionalLong.of(KeyNotExists),
+                            OptionalLong.empty(),
+                            Optional.empty());
+            var request = op.toProto();
             assertThat(request)
                     .satisfies(
                             r -> {
@@ -211,8 +252,15 @@ class OperationTest {
 
         @Test
         void toProtoEphemeral() {
-            var op = new PutOperation(callback, "key", payload, OptionalLong.empty(), true);
-            var request = op.toProto(Optional.of(sessionInfo));
+            var op =
+                    new PutOperation(
+                            callback,
+                            "key",
+                            payload,
+                            OptionalLong.empty(),
+                            OptionalLong.of(sessionId),
+                            Optional.of("client-id"));
+            var request = op.toProto();
             assertThat(request)
                     .satisfies(
                             r -> {
@@ -220,7 +268,7 @@ class OperationTest {
                                 assertThat(r.getValue().toByteArray()).isEqualTo(op.value());
                                 assertThat(r.hasExpectedVersionId()).isFalse();
                                 assertThat(r.getSessionId()).isEqualTo(sessionId);
-                                assertThat(r.getClientIdentity()).isEqualTo(clientId);
+                                assertThat(r.getClientIdentity()).isEqualTo("client-id");
                             });
         }
 
@@ -241,7 +289,14 @@ class OperationTest {
 
         @Test
         void completeKeyAlreadyExists() {
-            var op = new PutOperation(callback, "key", payload, OptionalLong.of(KeyNotExists), false);
+            var op =
+                    new PutOperation(
+                            callback,
+                            "key",
+                            payload,
+                            OptionalLong.of(KeyNotExists),
+                            OptionalLong.empty(),
+                            Optional.empty());
             var response = PutResponse.newBuilder().setStatus(UNEXPECTED_VERSION_ID).build();
             op.complete(response);
             assertThat(callback).isCompletedExceptionally();
@@ -257,7 +312,14 @@ class OperationTest {
 
         @Test
         void completeSessionDoesNotExist() {
-            var op = new PutOperation(callback, "key", payload, OptionalLong.empty(), true);
+            var op =
+                    new PutOperation(
+                            callback,
+                            "key",
+                            payload,
+                            OptionalLong.empty(),
+                            OptionalLong.of(5),
+                            Optional.of("client-id"));
             var response = PutResponse.newBuilder().setStatus(SESSION_DOES_NOT_EXIST).build();
             op.complete(response);
             assertThat(callback).isCompletedExceptionally();
@@ -304,7 +366,7 @@ class OperationTest {
                                             .setModifiedTimestamp(3L)
                                             .setModificationsCount(4L)
                                             .setSessionId(sessionId)
-                                            .setClientIdentity(clientId)
+                                            .setClientIdentity("client-id")
                                             .build())
                             .build();
             op.complete(response);
@@ -312,7 +374,7 @@ class OperationTest {
                     .isCompletedWithValue(
                             new PutResult(
                                     new io.streamnative.oxia.client.api.Version(
-                                            1L, 2L, 3L, 4L, Optional.of(sessionId), Optional.of(clientId))));
+                                            1L, 2L, 3L, 4L, Optional.of(sessionId), Optional.of("client-id"))));
         }
 
         @Test
