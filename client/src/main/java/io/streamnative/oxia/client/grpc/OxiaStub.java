@@ -29,7 +29,10 @@ public class OxiaStub implements AutoCloseable {
     private final @NonNull OxiaClientGrpc.OxiaClientStub asyncStub;
 
     public OxiaStub(String address) {
-        this(Grpc.newChannelBuilder(address, InsecureChannelCredentials.create()).build());
+        this(
+                Grpc.newChannelBuilder(address, InsecureChannelCredentials.create())
+                        .directExecutor()
+                        .build());
     }
 
     public OxiaStub(ManagedChannel channel) {
