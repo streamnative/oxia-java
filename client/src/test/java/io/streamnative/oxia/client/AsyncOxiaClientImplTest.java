@@ -74,6 +74,7 @@ class AsyncOxiaClientImplTest {
     void setUp() {
         client =
                 new AsyncOxiaClientImpl(
+                        "client-identity",
                         Executors.newSingleThreadScheduledExecutor(),
                         InstrumentProvider.NOOP,
                         stubManager,

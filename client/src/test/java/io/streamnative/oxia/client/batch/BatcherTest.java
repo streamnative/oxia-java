@@ -35,6 +35,7 @@ import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
@@ -107,7 +108,12 @@ class BatcherTest {
         var callback = new CompletableFuture<PutResult>();
         Operation<?> op =
                 new Operation.WriteOperation.PutOperation(
-                        callback, "key", "value".getBytes(StandardCharsets.UTF_8), OptionalLong.empty(), false);
+                        callback,
+                        "key",
+                        "value".getBytes(StandardCharsets.UTF_8),
+                        OptionalLong.empty(),
+                        OptionalLong.empty(),
+                        Optional.empty());
         when(batchFactory.getBatch(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(config.maxRequestsPerBatch(), 1);
         when(batch.canAdd(any())).thenReturn(false);

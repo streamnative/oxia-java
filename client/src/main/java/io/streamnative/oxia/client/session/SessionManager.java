@@ -15,8 +15,6 @@
  */
 package io.streamnative.oxia.client.session;
 
-import static java.util.Collections.unmodifiableMap;
-
 import com.google.common.annotations.VisibleForTesting;
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.grpc.OxiaStubProvider;
@@ -24,7 +22,7 @@ import io.streamnative.oxia.client.metrics.InstrumentProvider;
 import io.streamnative.oxia.client.shard.ShardManager.ShardAssignmentChanges;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledExecutorService;
@@ -36,7 +34,8 @@ import lombok.extern.slf4j.Slf4j;
 public class SessionManager
         implements AutoCloseable, Consumer<ShardAssignmentChanges>, SessionNotificationListener {
 
-    private final ConcurrentMap<Long, Session> sessionsByShardId = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Long, CompletableFuture<Session>> sessionsByShardId =
+            new ConcurrentHashMap<>();
     private final SessionFactory factory;
     private volatile boolean closed = false;
 
@@ -53,16 +52,18 @@ public class SessionManager
     }
 
     @NonNull
-    public Session getSession(long shardId) {
+    public CompletableFuture<Session> getSession(long shardId) {
         if (closed) {
-            throw new IllegalStateException("session manager has been closed");
+            return CompletableFuture.failedFuture(
+                    new IllegalStateException("session manager has been closed"));
         }
+
         return sessionsByShardId.computeIfAbsent(shardId, s -> factory.create(shardId));
     }
 
     @Override
     public void onSessionClosed(Session session) {
-        sessionsByShardId.remove(session.getShardId(), session);
+        sessionsByShardId.remove(session.getShardId());
     }
 
     @Override
@@ -71,12 +72,18 @@ public class SessionManager
             return;
         }
         closed = true;
-        sessionsByShardId.entrySet().parallelStream().forEach(entry -> closeQuietly(entry.getValue()));
+        sessionsByShardId.values().stream().map(this::closeQuietly).forEach(CompletableFuture::join);
     }
 
     @VisibleForTesting
     Map<Long, Session> sessions() {
-        return unmodifiableMap(new HashMap<>(sessionsByShardId));
+        Map<Long, Session> sessions = new HashMap<>(sessionsByShardId.size());
+        for (var e : sessionsByShardId.entrySet()) {
+            if (e.getValue().isDone() && !e.getValue().isCompletedExceptionally()) {
+                sessions.put(e.getKey(), e.getValue().join());
+            }
+        }
+        return sessions;
     }
 
     @Override
@@ -88,10 +95,7 @@ public class SessionManager
     }
 
     @VisibleForTesting
-    Optional<Session> closeQuietly(Session session) {
-        if (session != null) {
-            session.close();
-        }
-        return Optional.ofNullable(session);
+    CompletableFuture<Void> closeQuietly(CompletableFuture<Session> sessionFuture) {
+        return sessionFuture.thenCompose(Session::close).exceptionally(ex -> null);
     }
 }
