@@ -25,7 +25,6 @@ public record ClientConfig(
         @NonNull Duration batchLinger,
         int maxRequestsPerBatch,
         int maxBatchSize,
-        int recordCacheCapacity,
         @NonNull Duration sessionTimeout,
         @NonNull String clientIdentifier,
         OpenTelemetry openTelemetry,
