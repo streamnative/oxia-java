@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Function;
@@ -146,12 +147,14 @@ public class PerfClient {
     private static void generateWriteTraffic(AsyncOxiaClient client) {
         double writeRate = arguments.requestsRate * (100.0 - arguments.readPercentage) / 100;
         RateLimiter limiter = RateLimiter.create(writeRate);
+        Semaphore semaphore = new Semaphore(arguments.maxOutstandingRequests);
 
         byte[] value = new byte[arguments.valueSize];
         Random rand = new Random();
 
         while (true) {
             limiter.acquire();
+            semaphore.acquireUninterruptibly();
 
             String key = keys.get(rand.nextInt(keys.size()));
 
@@ -160,9 +163,11 @@ public class PerfClient {
                 writeOps.increment();
                 long latencyMicros = NANOSECONDS.toMicros(System.nanoTime() - start);
                 writeLatency.recordValue(latencyMicros);
+                semaphore.release();
             }).exceptionally(ex -> {
                 log.warn("Write operation failed {}", ex.getMessage());
                 writeFailed.increment();
+                semaphore.release();
                 return null;
             });
         }
@@ -171,11 +176,13 @@ public class PerfClient {
     private static void generateReadTraffic(AsyncOxiaClient client) {
         double readRate = arguments.requestsRate * arguments.readPercentage / 100;
         RateLimiter limiter = RateLimiter.create(readRate);
+        Semaphore semaphore = new Semaphore(arguments.maxOutstandingRequests);
 
         Random rand = new Random();
 
         while (true) {
             limiter.acquire();
+            semaphore.acquireUninterruptibly();
 
             String key = keys.get(rand.nextInt(keys.size()));
 
@@ -184,14 +191,16 @@ public class PerfClient {
                 readOps.increment();
                 long latencyMicros = NANOSECONDS.toMicros(System.nanoTime() - start);
                 readLatency.recordValue(latencyMicros);
+                semaphore.release();
             }).exceptionally(ex -> {
                 log.warn("Read operation failed {}", ex.getMessage());
                 readFailed.increment();
+                semaphore.release();
                 return null;
             });
         }
     }
 
-    static final Function<Double, String> DEC_FORMAT = d -> String.format("%7.3f", d);
+    static final Function<Double, String> DEC_FORMAT = d -> String.format("%7.1f", d);
     static final Function<Double, String> INT_FORMAT = d -> String.format("%7.0f", d);
 }
