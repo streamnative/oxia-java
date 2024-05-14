@@ -82,7 +82,6 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
         return this;
     }
 
-
     @Override
     public @NonNull OxiaClientBuilder namespace(@NonNull String namespace) {
         if (Strings.isNullOrEmpty(namespace)) {
