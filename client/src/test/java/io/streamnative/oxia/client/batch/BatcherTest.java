@@ -33,13 +33,12 @@ import io.streamnative.oxia.client.OxiaClientBuilderImpl;
 import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
+import io.streamnative.oxia.client.util.BatchedArrayBlockingQueue;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.OptionalLong;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.LinkedBlockingQueue;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -65,12 +64,12 @@ class BatcherTest {
                     null,
                     OxiaClientBuilderImpl.DefaultNamespace);
 
-    BlockingQueue<Operation<?>> queue;
+    BatchedArrayBlockingQueue<Operation<?>> queue;
     Batcher batcher;
 
     @BeforeEach
     void mocking() {
-        queue = spy(new LinkedBlockingQueue<>());
+        queue = spy(new BatchedArrayBlockingQueue<>(100));
         batcher = new Batcher(config, shardId, batchFactory, queue);
     }
 
