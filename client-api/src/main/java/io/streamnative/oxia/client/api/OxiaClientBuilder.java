@@ -38,11 +38,7 @@ public interface OxiaClientBuilder {
 
     OxiaClientBuilder maxRequestsPerBatch(int maxRequestsPerBatch);
 
-    OxiaClientBuilder recordCacheCapacity(int recordCacheCapacity);
-
     OxiaClientBuilder namespace(String namespace);
-
-    OxiaClientBuilder disableRecordCache();
 
     OxiaClientBuilder sessionTimeout(Duration sessionTimeout);
 

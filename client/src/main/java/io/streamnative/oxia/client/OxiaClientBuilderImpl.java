@@ -39,14 +39,12 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
     public static final int DefaultMaxBatchSize = 128 * 1024;
     public static final Duration DefaultRequestTimeout = Duration.ofSeconds(30);
     public static final Duration DefaultSessionTimeout = Duration.ofSeconds(15);
-    public static final int DefaultRecordCacheCapacity = 0;
     public static final String DefaultNamespace = "default";
 
     @NonNull private final String serviceAddress;
     @NonNull private Duration requestTimeout = DefaultRequestTimeout;
     @NonNull private Duration batchLinger = DefaultBatchLinger;
     private int maxRequestsPerBatch = DefaultMaxRequestsPerBatch;
-    private int recordCacheCapacity = DefaultRecordCacheCapacity;
     @NonNull private Duration sessionTimeout = DefaultSessionTimeout;
 
     @NonNull
@@ -85,27 +83,11 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
     }
 
     @Override
-    public @NonNull OxiaClientBuilder recordCacheCapacity(int recordCacheCapacity) {
-        if (recordCacheCapacity <= 0) {
-            throw new IllegalArgumentException(
-                    "recordCacheCapacity must be greater than zero: " + recordCacheCapacity);
-        }
-        this.recordCacheCapacity = recordCacheCapacity;
-        return this;
-    }
-
-    @Override
     public @NonNull OxiaClientBuilder namespace(@NonNull String namespace) {
         if (Strings.isNullOrEmpty(namespace)) {
             throw new IllegalArgumentException("namespace must not be null or empty.");
         }
         this.namespace = namespace;
-        return this;
-    }
-
-    @Override
-    public @NonNull OxiaClientBuilder disableRecordCache() {
-        recordCacheCapacity = 0;
         return this;
     }
 
@@ -146,17 +128,11 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
                         batchLinger,
                         maxRequestsPerBatch,
                         DefaultMaxBatchSize,
-                        recordCacheCapacity,
                         sessionTimeout,
                         clientIdentifier.get(),
                         openTelemetry,
                         namespace);
-        var async = AsyncOxiaClientImpl.newInstance(config);
-        if (config.recordCacheCapacity() > 0) {
-            return async.thenApply(a -> new CachingAsyncOxiaClient(config, a));
-        } else {
-            return async;
-        }
+        return AsyncOxiaClientImpl.newInstance(config);
     }
 
     @Override
