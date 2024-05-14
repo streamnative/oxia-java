@@ -183,8 +183,7 @@ class BatcherTest {
         await()
                 .untilAsserted(
                         () -> {
-                            inOrder.verify(queue, atLeastOnce()).take();
-                            inOrder.verify(queue, atLeastOnce()).poll(anyLong(), eq(NANOSECONDS));
+                            inOrder.verify(queue, atLeastOnce()).takeAll(any());
                         });
     }
 }
