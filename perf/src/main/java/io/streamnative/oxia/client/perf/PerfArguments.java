@@ -72,4 +72,9 @@ public class PerfArguments {
             names = {"--request-timeout-ms"},
             description = "Requests timeout")
     long requestTimeoutMs = OxiaClientBuilderImpl.DefaultRequestTimeout.toMillis();
+
+    @Parameter(
+            names = {"-o", "--max-outstanding-requests"},
+            description = "Max number of outstanding requests to server")
+    int maxOutstandingRequests = 100_000;
 }
