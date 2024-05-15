@@ -21,6 +21,7 @@ import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.DeleteOption;
+import io.streamnative.oxia.client.api.GetOption;
 import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.PutOption;
@@ -40,6 +41,7 @@ import io.streamnative.oxia.client.metrics.UpDownCounter;
 import io.streamnative.oxia.client.notify.NotificationManager;
 import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.client.shard.ShardManager;
+import io.streamnative.oxia.proto.KeyComparisonType;
 import io.streamnative.oxia.proto.ListRequest;
 import io.streamnative.oxia.proto.ListResponse;
 import java.util.ArrayList;
@@ -379,14 +381,18 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
     @Override
     public @NonNull CompletableFuture<GetResult> get(String key) {
+        return get(key, Collections.emptySet());
+    }
+
+    @Override
+    public @NonNull CompletableFuture<GetResult> get(String key, Set<GetOption> options) {
         long startTime = System.nanoTime();
         gaugePendingGetRequests.increment();
         var callback = new CompletableFuture<GetResult>();
         try {
             checkIfClosed();
             Objects.requireNonNull(key);
-            var shardId = shardManager.getShardForKey(key);
-            readBatchManager.getBatcher(shardId).add(new GetOperation(callback, key));
+            internalGet(key, options, callback);
         } catch (RuntimeException e) {
             callback.completeExceptionally(e);
         }
@@ -402,6 +408,65 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                         histogramGetLatency.recordFailure(System.nanoTime() - startTime);
                     }
                 });
+    }
+
+    private void internalGet(
+            String key, Set<GetOption> options, CompletableFuture<GetResult> result) {
+        KeyComparisonType comparisonType = GetOptionsUtil.getComparisonType(options);
+        if (comparisonType == KeyComparisonType.EQUAL) {
+            // Normal equality get operation
+            long shardId = shardManager.getShardForKey(key);
+            readBatchManager.getBatcher(shardId).add(new GetOperation(result, key, comparisonType));
+        } else {
+            internalGetFloorCeiling(key, comparisonType, result);
+        }
+    }
+
+    private void internalGetFloorCeiling(
+            String key, KeyComparisonType comparisonType, CompletableFuture<GetResult> result) {
+        // We need check on all the shards for a floor/ceiling query
+        List<CompletableFuture<GetResult>> futures = new ArrayList<>();
+        for (long shardId : shardManager.allShardIds()) {
+            CompletableFuture<GetResult> f = new CompletableFuture<>();
+            readBatchManager.getBatcher(shardId).add(new GetOperation(f, key, comparisonType));
+            futures.add(f);
+        }
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                .whenComplete(
+                        (v, ex) -> {
+                            if (ex != null) {
+                                result.completeExceptionally(ex);
+                                return;
+                            }
+
+                            try {
+                                List<GetResult> results =
+                                        futures.stream()
+                                                .map(CompletableFuture::join)
+                                                .filter(Objects::nonNull)
+                                                .sorted(
+                                                        (o1, o2) -> CompareWithSlash.INSTANCE.compare(o1.getKey(), o2.getKey()))
+                                                .toList();
+                                if (results.isEmpty()) {
+                                    result.complete(null);
+                                    return;
+                                }
+
+                                GetResult gr =
+                                        switch (comparisonType) {
+                                            case EQUAL,
+                                                    UNRECOGNIZED -> null; // This would be handled withing context of single
+                                                // shard
+                                            case FLOOR, LOWER -> results.get(results.size() - 1);
+                                            case CEILING, HIGHER -> results.get(0);
+                                        };
+
+                                result.complete(gr);
+                            } catch (Throwable t) {
+                                result.completeExceptionally(t);
+                            }
+                        });
     }
 
     @Override

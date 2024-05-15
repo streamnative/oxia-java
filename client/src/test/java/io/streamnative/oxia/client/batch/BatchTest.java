@@ -52,6 +52,7 @@ import io.streamnative.oxia.client.shard.NoShardAvailableException;
 import io.streamnative.oxia.proto.DeleteRangeResponse;
 import io.streamnative.oxia.proto.DeleteResponse;
 import io.streamnative.oxia.proto.GetResponse;
+import io.streamnative.oxia.proto.KeyComparisonType;
 import io.streamnative.oxia.proto.PutResponse;
 import io.streamnative.oxia.proto.ReadRequest;
 import io.streamnative.oxia.proto.ReadResponse;
@@ -328,7 +329,7 @@ class BatchTest {
     class ReadBatchTests {
         ReadBatch batch;
         CompletableFuture<GetResult> getCallable = new CompletableFuture<>();
-        GetOperation get = new GetOperation(getCallable, "");
+        GetOperation get = new GetOperation(getCallable, "", KeyComparisonType.EQUAL);
 
         @BeforeEach
         void setup() {

@@ -32,6 +32,7 @@ class GetResultTest {
         var payload = "hello".getBytes(UTF_8);
         assertThat(
                         ProtoUtil.getResultFromProto(
+                                "original-key",
                                 GetResponse.newBuilder()
                                         .setValue(ByteString.copyFrom(payload))
                                         .setVersion(
@@ -44,6 +45,32 @@ class GetResultTest {
                                         .build()))
                 .isEqualTo(
                         new GetResult(
+                                "original-key",
+                                payload,
+                                new io.streamnative.oxia.client.api.Version(
+                                        1L, 2L, 3L, 4L, Optional.empty(), Optional.empty())));
+    }
+
+    @Test
+    void fromProtoWithOverride() {
+        var payload = "hello".getBytes(UTF_8);
+        assertThat(
+                        ProtoUtil.getResultFromProto(
+                                "original-key",
+                                GetResponse.newBuilder()
+                                        .setKey("new-key")
+                                        .setValue(ByteString.copyFrom(payload))
+                                        .setVersion(
+                                                Version.newBuilder()
+                                                        .setVersionId(1L)
+                                                        .setCreatedTimestamp(2L)
+                                                        .setModifiedTimestamp(3L)
+                                                        .setModificationsCount(4L)
+                                                        .build())
+                                        .build()))
+                .isEqualTo(
+                        new GetResult(
+                                "new-key",
                                 payload,
                                 new io.streamnative.oxia.client.api.Version(
                                         1L, 2L, 3L, 4L, Optional.empty(), Optional.empty())));

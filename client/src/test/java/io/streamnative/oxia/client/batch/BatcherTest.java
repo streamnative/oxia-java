@@ -31,6 +31,7 @@ import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.util.BatchedArrayBlockingQueue;
+import io.streamnative.oxia.proto.KeyComparisonType;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Optional;
@@ -78,7 +79,7 @@ class BatcherTest {
     @Test
     void createBatchAndAdd() throws Exception {
         var callback = new CompletableFuture<GetResult>();
-        Operation<?> op = new GetOperation(callback, "key");
+        Operation<?> op = new GetOperation(callback, "key", KeyComparisonType.EQUAL);
         when(batchFactory.getBatch(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(1);
         when(batch.canAdd(any())).thenReturn(true);
@@ -90,7 +91,7 @@ class BatcherTest {
     @Test
     void sendBatchOnFull() throws Exception {
         var callback = new CompletableFuture<GetResult>();
-        Operation<?> op = new GetOperation(callback, "key");
+        Operation<?> op = new GetOperation(callback, "key", KeyComparisonType.EQUAL);
         when(batchFactory.getBatch(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(config.maxRequestsPerBatch());
         when(batch.canAdd(any())).thenReturn(true);
@@ -124,7 +125,7 @@ class BatcherTest {
     @Test
     void sendBatchOnFullThenNewBatch() throws Exception {
         var callback = new CompletableFuture<GetResult>();
-        Operation<?> op = new GetOperation(callback, "key");
+        Operation<?> op = new GetOperation(callback, "key", KeyComparisonType.EQUAL);
         when(batchFactory.getBatch(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(config.maxRequestsPerBatch(), 1);
         when(batch.canAdd(any())).thenReturn(true);
@@ -142,7 +143,7 @@ class BatcherTest {
     @Test
     void sendBatchOnLingerExpiration() throws Exception {
         var callback = new CompletableFuture<GetResult>();
-        Operation<?> op = new GetOperation(callback, "key");
+        Operation<?> op = new GetOperation(callback, "key", KeyComparisonType.EQUAL);
         when(batchFactory.getBatch(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(1);
         when(batch.canAdd(any())).thenReturn(true);
@@ -155,7 +156,7 @@ class BatcherTest {
     @Test
     void sendBatchOnLingerExpirationMulti() throws Exception {
         var callback = new CompletableFuture<GetResult>();
-        Operation<?> op = new GetOperation(callback, "key");
+        Operation<?> op = new GetOperation(callback, "key", KeyComparisonType.EQUAL);
         when(batchFactory.getBatch(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(1);
         when(batch.canAdd(any())).thenReturn(true);
@@ -171,7 +172,7 @@ class BatcherTest {
     @Test
     void unboundedTakeAtStart() throws Exception {
         var callback = new CompletableFuture<GetResult>();
-        Operation<?> op = new GetOperation(callback, "key");
+        Operation<?> op = new GetOperation(callback, "key", KeyComparisonType.EQUAL);
 
         when(batchFactory.getBatch(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(1);

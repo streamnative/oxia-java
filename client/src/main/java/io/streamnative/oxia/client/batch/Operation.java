@@ -36,6 +36,7 @@ import io.streamnative.oxia.proto.DeleteRequest;
 import io.streamnative.oxia.proto.DeleteResponse;
 import io.streamnative.oxia.proto.GetRequest;
 import io.streamnative.oxia.proto.GetResponse;
+import io.streamnative.oxia.proto.KeyComparisonType;
 import io.streamnative.oxia.proto.PutRequest;
 import io.streamnative.oxia.proto.PutResponse;
 import io.streamnative.oxia.proto.Status;
@@ -55,16 +56,23 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
     }
 
     sealed interface ReadOperation<R> extends Operation<R> permits GetOperation {
-        record GetOperation(@NonNull CompletableFuture<GetResult> callback, @NonNull String key)
+        record GetOperation(
+                @NonNull CompletableFuture<GetResult> callback,
+                @NonNull String key,
+                KeyComparisonType comparisonType)
                 implements ReadOperation<GetResult> {
             GetRequest toProto() {
-                return GetRequest.newBuilder().setKey(key).setIncludeValue(true).build();
+                return GetRequest.newBuilder()
+                        .setKey(key)
+                        .setComparisonType(comparisonType)
+                        .setIncludeValue(true)
+                        .build();
             }
 
             void complete(@NonNull GetResponse response) {
                 switch (response.getStatus()) {
                     case KEY_NOT_FOUND -> callback.complete(null);
-                    case OK -> callback.complete(ProtoUtil.getResultFromProto(response));
+                    case OK -> callback.complete(ProtoUtil.getResultFromProto(key, response));
                     default -> fail(new IllegalStateException("GRPC.Status: " + response.getStatus().name()));
                 }
             }

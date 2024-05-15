@@ -39,7 +39,6 @@ public record Version(
 
     /** Represents the state where a versionId of a record (and thus the record) does not exist. */
     public Version {
-        requireValidVersionId(versionId);
         requireValidTimestamp(createdTimestamp);
         requireValidTimestamp(modifiedTimestamp);
         requireValidModificationsCount(modificationsCount);

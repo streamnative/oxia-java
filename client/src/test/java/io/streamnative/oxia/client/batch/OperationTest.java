@@ -38,6 +38,7 @@ import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
 import io.streamnative.oxia.proto.DeleteRangeResponse;
 import io.streamnative.oxia.proto.DeleteResponse;
 import io.streamnative.oxia.proto.GetResponse;
+import io.streamnative.oxia.proto.KeyComparisonType;
 import io.streamnative.oxia.proto.PutResponse;
 import io.streamnative.oxia.proto.Version;
 import java.util.Objects;
@@ -59,7 +60,7 @@ class OperationTest {
     class GetOperationTests {
 
         CompletableFuture<GetResult> callback = new CompletableFuture<>();
-        GetOperation op = new GetOperation(callback, "key");
+        GetOperation op = new GetOperation(callback, "key", KeyComparisonType.EQUAL);
 
         @Test
         void toProto() {
@@ -79,6 +80,7 @@ class OperationTest {
             var payload = "hello".getBytes(UTF_8);
             var response =
                     GetResponse.newBuilder()
+                            .setKey("my-key")
                             .setStatus(OK)
                             .setValue(ByteString.copyFrom(payload))
                             .setVersion(
@@ -93,6 +95,7 @@ class OperationTest {
             assertThat(callback)
                     .isCompletedWithValue(
                             new GetResult(
+                                    "my-key",
                                     payload,
                                     new io.streamnative.oxia.client.api.Version(
                                             1L, 2L, 3L, 4L, Optional.empty(), Optional.empty())));
@@ -103,6 +106,7 @@ class OperationTest {
             var payload = "hello".getBytes(UTF_8);
             var response =
                     GetResponse.newBuilder()
+                            .setKey("my-key")
                             .setStatus(OK)
                             .setValue(ByteString.copyFrom(payload))
                             .setVersion(
@@ -119,6 +123,7 @@ class OperationTest {
             assertThat(callback)
                     .isCompletedWithValue(
                             new GetResult(
+                                    "my-key",
                                     payload,
                                     new io.streamnative.oxia.client.api.Version(
                                             1L, 2L, 3L, 4L, Optional.of(5L), Optional.of("client-id"))));
