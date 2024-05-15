@@ -424,7 +424,8 @@ public class OxiaClientIT {
         assertThat(keys).isEmpty();
 
         // Delete with wrong partition key would fail
-        boolean deleted = client.delete("pk_g", Set.of(DeleteOption.PartitionKey("wrong-partition-key")));
+        boolean deleted =
+                client.delete("pk_g", Set.of(DeleteOption.PartitionKey("wrong-partition-key")));
         assertThat(deleted).isFalse();
 
         deleted = client.delete("pk_g", Set.of(DeleteOption.PartitionKey("x")));
@@ -441,12 +442,15 @@ public class OxiaClientIT {
 
         gr =
                 client.get(
-                        "pk_a", Set.of(GetOption.ComparisonHigher, GetOption.PartitionKey("another-wrong-partition-key")));
+                        "pk_a",
+                        Set.of(
+                                GetOption.ComparisonHigher, GetOption.PartitionKey("another-wrong-partition-key")));
         assertThat(gr.getKey()).isNotEqualTo("pk_b");
         assertThat(gr.getValue()).isNotEqualTo("1".getBytes());
 
         // Delete with wrong partition key would fail to delete all keys
-        client.deleteRange("pk_c", "pk_e", Set.of(DeleteRangeOption.PartitionKey("wrong-partition-key")));
+        client.deleteRange(
+                "pk_c", "pk_e", Set.of(DeleteRangeOption.PartitionKey("wrong-partition-key")));
 
         keys = client.list("pk_c", "pk_f");
         assertThat(keys).containsExactly("pk_c", "pk_d", "pk_e");
