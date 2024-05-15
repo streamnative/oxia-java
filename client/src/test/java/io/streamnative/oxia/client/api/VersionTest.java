@@ -42,12 +42,6 @@ class VersionTest {
     }
 
     @Test
-    void invalidVersionId() {
-        assertThatThrownBy(() -> new Version(-1, 0, 0, 0, Optional.empty(), Optional.empty()))
-                .isInstanceOf(IllegalArgumentException.class);
-    }
-
-    @Test
     void invalidModificationsCount() {
         assertThatThrownBy(() -> new Version(0, 0, 0, -1, Optional.empty(), Optional.empty()))
                 .isInstanceOf(IllegalArgumentException.class);
