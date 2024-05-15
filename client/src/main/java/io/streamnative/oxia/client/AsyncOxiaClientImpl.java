@@ -333,7 +333,6 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
             OptionalLong versionId = OptionsUtils.getVersionId(options);
             var partitionKey = OptionsUtils.getPartitionKey(options);
             var shardId = shardManager.getShardForKey(partitionKey.orElse(key));
-            var WRONG_SHARD = shardManager.getShardForKey(key);
             writeBatchManager.getBatcher(shardId).add(new DeleteOperation(callback, key, versionId));
         } catch (RuntimeException e) {
             callback.completeExceptionally(e);
