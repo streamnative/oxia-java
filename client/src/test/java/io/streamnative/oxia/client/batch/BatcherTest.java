@@ -106,6 +106,7 @@ class BatcherTest {
                 new Operation.WriteOperation.PutOperation(
                         callback,
                         "key",
+                        Optional.empty(),
                         "value".getBytes(StandardCharsets.UTF_8),
                         OptionalLong.empty(),
                         OptionalLong.empty(),

@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.streamnative.oxia.client.DeleteOptionsUtil;
+import io.streamnative.oxia.client.OptionsUtils;
 import java.util.Collections;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
@@ -37,10 +37,6 @@ class DeleteOptionTest {
                     .satisfies(
                             o -> {
                                 assertThat(o).isInstanceOf(OptionVersionId.OptionVersionIdEqual.class);
-
-                                if (o instanceof OptionVersionId.OptionVersionIdEqual e) {
-                                    assertThat(e.versionId()).isEqualTo(1L);
-                                }
                             });
         }
 
@@ -54,17 +50,16 @@ class DeleteOptionTest {
 
     @Test
     void toVersionId() {
-        assertThat(DeleteOptionsUtil.getVersionId(Collections.emptySet())).isEmpty();
-        assertThat(DeleteOptionsUtil.getVersionId(Set.of(DeleteOption.IfVersionIdEquals(1L))))
-                .hasValue(1L);
+        assertThat(OptionsUtils.getVersionId(Collections.emptySet())).isEmpty();
+        assertThat(OptionsUtils.getVersionId(Set.of(DeleteOption.IfVersionIdEquals(1L)))).hasValue(1L);
         assertThatThrownBy(
                         () ->
-                                DeleteOptionsUtil.getVersionId(
+                                OptionsUtils.getVersionId(
                                         Set.of(DeleteOption.IfVersionIdEquals(1L), DeleteOption.IfVersionIdEquals(1L))))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(
                         () ->
-                                DeleteOptionsUtil.getVersionId(
+                                OptionsUtils.getVersionId(
                                         Set.of(DeleteOption.IfVersionIdEquals(1L), DeleteOption.IfVersionIdEquals(2L))))
                 .isInstanceOf(IllegalArgumentException.class);
     }

@@ -18,12 +18,70 @@ package io.streamnative.oxia.client;
 
 import io.streamnative.oxia.client.api.GetOption;
 import io.streamnative.oxia.client.api.OptionComparisonType;
+import io.streamnative.oxia.client.api.OptionEphemeral;
+import io.streamnative.oxia.client.api.OptionPartitionKey;
+import io.streamnative.oxia.client.api.OptionVersionId;
 import io.streamnative.oxia.proto.KeyComparisonType;
+import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.Set;
 import lombok.experimental.UtilityClass;
 
 @UtilityClass
-public class GetOptionsUtil {
+public class OptionsUtils {
+
+    public static OptionalLong getVersionId(Set<?> options) {
+        if (options == null || options.isEmpty()) {
+            return OptionalLong.empty();
+        }
+
+        OptionalLong versionId = OptionalLong.empty();
+        for (var o : options) {
+            if (o instanceof OptionVersionId e) {
+                if (versionId.isPresent()) {
+                    throw new IllegalArgumentException(
+                            "VersionId cannot be passed multiple times: " + options);
+                }
+
+                versionId = OptionalLong.of(e.versionId());
+            }
+        }
+
+        return versionId;
+    }
+
+    public static boolean isEphemeral(Set<?> options) {
+        if (options.isEmpty()) {
+            return false;
+        }
+
+        for (var option : options) {
+            if (option instanceof OptionEphemeral) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static Optional<String> getPartitionKey(Set<?> options) {
+        if (options == null || options.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Optional<String> partitionKey = Optional.empty();
+        for (var o : options) {
+            if (o instanceof OptionPartitionKey pk) {
+                if (partitionKey.isPresent()) {
+                    throw new IllegalArgumentException("PartitionKey can only specified once:  " + options);
+                }
+
+                partitionKey = Optional.of(pk.partitionKey());
+            }
+        }
+
+        return partitionKey;
+    }
 
     public static KeyComparisonType getComparisonType(Set<GetOption> options) {
         if (options == null || options.isEmpty()) {

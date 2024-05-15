@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.streamnative.oxia.client.PutOptionsUtil;
+import io.streamnative.oxia.client.OptionsUtils;
 import java.util.Collections;
 import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
@@ -37,10 +37,6 @@ class PutOptionTest {
                     .satisfies(
                             o -> {
                                 assertThat(o).isInstanceOf(OptionVersionId.OptionVersionIdEqual.class);
-
-                                if (o instanceof OptionVersionId e) {
-                                    assertThat(e.versionId()).isEqualTo(1);
-                                }
                             });
         }
 
@@ -73,41 +69,41 @@ class PutOptionTest {
     void validateFail() {
         assertThatThrownBy(
                         () ->
-                                PutOptionsUtil.getVersionId(
+                                OptionsUtils.getVersionId(
                                         Set.of(PutOption.IfRecordDoesNotExist, PutOption.IfVersionIdEquals(1L))))
                 .isInstanceOf(IllegalArgumentException.class);
 
         assertThatThrownBy(
                         () ->
-                                PutOptionsUtil.getVersionId(
+                                OptionsUtils.getVersionId(
                                         Set.of(PutOption.IfVersionIdEquals(1L), PutOption.IfVersionIdEquals(1L))))
                 .isInstanceOf(IllegalArgumentException.class);
 
         assertThatThrownBy(
                         () ->
-                                PutOptionsUtil.getVersionId(
+                                OptionsUtils.getVersionId(
                                         Set.of(PutOption.IfVersionIdEquals(1L), PutOption.IfVersionIdEquals(2L))))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void getVersionId() {
-        assertThat(PutOptionsUtil.getVersionId(Set.of(PutOption.AsEphemeralRecord))).isEmpty();
-        assertThat(PutOptionsUtil.getVersionId(Collections.emptySet())).isEmpty();
-        assertThat(PutOptionsUtil.getVersionId(Set.of(PutOption.IfRecordDoesNotExist)))
+        assertThat(OptionsUtils.getVersionId(Set.of(PutOption.AsEphemeralRecord))).isEmpty();
+        assertThat(OptionsUtils.getVersionId(Collections.emptySet())).isEmpty();
+        assertThat(OptionsUtils.getVersionId(Set.of(PutOption.IfRecordDoesNotExist)))
                 .hasValue(Version.KeyNotExists);
-        assertThat(PutOptionsUtil.getVersionId(Set.of(PutOption.IfVersionIdEquals(1L)))).hasValue(1L);
+        assertThat(OptionsUtils.getVersionId(Set.of(PutOption.IfVersionIdEquals(1L)))).hasValue(1L);
         assertThat(
-                        PutOptionsUtil.getVersionId(
+                        OptionsUtils.getVersionId(
                                 Set.of(PutOption.AsEphemeralRecord, PutOption.IfVersionIdEquals(1L))))
                 .hasValue(1L);
     }
 
     @Test
     void isEphemeral() {
-        assertThat(PutOptionsUtil.isEphemeral(Set.of(PutOption.AsEphemeralRecord))).isTrue();
-        assertThat(PutOptionsUtil.isEphemeral(Set.of(PutOption.IfRecordDoesNotExist))).isFalse();
-        assertThat(PutOptionsUtil.isEphemeral(Set.of(PutOption.IfVersionIdEquals(5)))).isFalse();
-        assertThat(PutOptionsUtil.isEphemeral(Collections.emptySet())).isFalse();
+        assertThat(OptionsUtils.isEphemeral(Set.of(PutOption.AsEphemeralRecord))).isTrue();
+        assertThat(OptionsUtils.isEphemeral(Set.of(PutOption.IfRecordDoesNotExist))).isFalse();
+        assertThat(OptionsUtils.isEphemeral(Set.of(PutOption.IfVersionIdEquals(5)))).isFalse();
+        assertThat(OptionsUtils.isEphemeral(Collections.emptySet())).isFalse();
     }
 }

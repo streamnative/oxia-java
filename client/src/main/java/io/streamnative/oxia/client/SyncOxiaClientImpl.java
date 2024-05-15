@@ -17,8 +17,10 @@ package io.streamnative.oxia.client;
 
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.DeleteOption;
+import io.streamnative.oxia.client.api.DeleteRangeOption;
 import io.streamnative.oxia.client.api.GetOption;
 import io.streamnative.oxia.client.api.GetResult;
+import io.streamnative.oxia.client.api.ListOption;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.PutOption;
 import io.streamnative.oxia.client.api.PutResult;
@@ -80,8 +82,17 @@ class SyncOxiaClientImpl implements SyncOxiaClient {
     @SneakyThrows
     @Override
     public void deleteRange(@NonNull String startKeyInclusive, @NonNull String endKeyExclusive) {
+        deleteRange(startKeyInclusive, endKeyExclusive, Collections.emptySet());
+    }
+
+    @SneakyThrows
+    @Override
+    public void deleteRange(
+            @NonNull String startKeyInclusive,
+            @NonNull String endKeyExclusive,
+            @NonNull Set<DeleteRangeOption> options) {
         try {
-            asyncClient.deleteRange(startKeyInclusive, endKeyExclusive).get();
+            asyncClient.deleteRange(startKeyInclusive, endKeyExclusive, options).get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
@@ -113,8 +124,17 @@ class SyncOxiaClientImpl implements SyncOxiaClient {
     @Override
     public @NonNull List<String> list(
             @NonNull String startKeyInclusive, @NonNull String endKeyExclusive) {
+        return list(startKeyInclusive, endKeyExclusive, Collections.emptySet());
+    }
+
+    @SneakyThrows
+    @Override
+    public @NonNull List<String> list(
+            @NonNull String startKeyInclusive,
+            @NonNull String endKeyExclusive,
+            @NonNull Set<ListOption> options) {
         try {
-            return asyncClient.list(startKeyInclusive, endKeyExclusive).get();
+            return asyncClient.list(startKeyInclusive, endKeyExclusive, options).get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);

@@ -153,6 +153,7 @@ class BatchTest {
                 new PutOperation(
                         putCallable,
                         "",
+                        Optional.empty(),
                         new byte[0],
                         OptionalLong.of(1),
                         OptionalLong.empty(),
@@ -161,6 +162,7 @@ class BatchTest {
                 new PutOperation(
                         putEphemeralCallable,
                         "",
+                        Optional.empty(),
                         new byte[0],
                         OptionalLong.of(1),
                         OptionalLong.of(1),

@@ -21,8 +21,10 @@ import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.DeleteOption;
+import io.streamnative.oxia.client.api.DeleteRangeOption;
 import io.streamnative.oxia.client.api.GetOption;
 import io.streamnative.oxia.client.api.GetResult;
+import io.streamnative.oxia.client.api.ListOption;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.PutOption;
 import io.streamnative.oxia.client.api.PutResult;
@@ -273,14 +275,16 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         gaugePendingPutRequests.increment();
         gaugePendingPutBytes.add(value.length);
 
-        var shardId = shardManager.getShardForKey(key);
-        var versionId = PutOptionsUtil.getVersionId(options);
+        var partitionKey = OptionsUtils.getPartitionKey(options);
+        var shardId = shardManager.getShardForKey(partitionKey.orElse(key));
+        var versionId = OptionsUtils.getVersionId(options);
 
         CompletableFuture<PutResult> future = new CompletableFuture<>();
 
-        if (!PutOptionsUtil.isEphemeral(options)) {
+        if (!OptionsUtils.isEphemeral(options)) {
             var op =
-                    new PutOperation(future, key, value, versionId, OptionalLong.empty(), Optional.empty());
+                    new PutOperation(
+                            future, key, partitionKey, value, versionId, OptionalLong.empty(), Optional.empty());
             writeBatchManager.getBatcher(shardId).add(op);
         } else {
             // The put operation is trying to write an ephemeral record. We need to have a valid session
@@ -293,6 +297,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                                         new PutOperation(
                                                 future,
                                                 key,
+                                                partitionKey,
                                                 value,
                                                 versionId,
                                                 OptionalLong.of(session.getSessionId()),
@@ -325,8 +330,10 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
             checkIfClosed();
             Objects.requireNonNull(key);
 
-            OptionalLong versionId = DeleteOptionsUtil.getVersionId(options);
-            var shardId = shardManager.getShardForKey(key);
+            OptionalLong versionId = OptionsUtils.getVersionId(options);
+            var partitionKey = OptionsUtils.getPartitionKey(options);
+            var shardId = shardManager.getShardForKey(partitionKey.orElse(key));
+            var WRONG_SHARD = shardManager.getShardForKey(key);
             writeBatchManager.getBatcher(shardId).add(new DeleteOperation(callback, key, versionId));
         } catch (RuntimeException e) {
             callback.completeExceptionally(e);
@@ -345,6 +352,12 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     @Override
     public @NonNull CompletableFuture<Void> deleteRange(
             String startKeyInclusive, String endKeyExclusive) {
+        return deleteRange(startKeyInclusive, endKeyExclusive, Collections.emptySet());
+    }
+
+    @Override
+    public @NonNull CompletableFuture<Void> deleteRange(
+            String startKeyInclusive, String endKeyExclusive, Set<DeleteRangeOption> options) {
         long startTime = System.nanoTime();
         gaugePendingDeleteRangeRequests.increment();
         CompletableFuture<Void> callback;
@@ -352,19 +365,31 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
             checkIfClosed();
             Objects.requireNonNull(startKeyInclusive);
             Objects.requireNonNull(endKeyExclusive);
-            var shardDeletes =
-                    shardManager.allShardIds().stream()
-                            .map(writeBatchManager::getBatcher)
-                            .map(
-                                    b -> {
-                                        var shardCallback = new CompletableFuture<Void>();
-                                        b.add(
-                                                new DeleteRangeOperation(
-                                                        shardCallback, startKeyInclusive, endKeyExclusive));
-                                        return shardCallback;
-                                    })
-                            .toArray(CompletableFuture[]::new);
-            callback = CompletableFuture.allOf(shardDeletes);
+
+            var partitionKey = OptionsUtils.getPartitionKey(options);
+            if (partitionKey.isPresent()) {
+                // When partition key is present, we only need to send the request to a single shard
+                var shardId = shardManager.getShardForKey(partitionKey.get());
+                callback = new CompletableFuture<>();
+                writeBatchManager
+                        .getBatcher(shardId)
+                        .add(new DeleteRangeOperation(callback, startKeyInclusive, endKeyExclusive));
+            } else {
+                // Perform the delete range on all the shards
+                var shardDeletes =
+                        shardManager.allShardIds().stream()
+                                .map(writeBatchManager::getBatcher)
+                                .map(
+                                        b -> {
+                                            var shardCallback = new CompletableFuture<Void>();
+                                            b.add(
+                                                    new DeleteRangeOperation(
+                                                            shardCallback, startKeyInclusive, endKeyExclusive));
+                                            return shardCallback;
+                                        })
+                                .toArray(CompletableFuture[]::new);
+                callback = CompletableFuture.allOf(shardDeletes);
+            }
         } catch (RuntimeException e) {
             callback = CompletableFuture.failedFuture(e);
         }
@@ -412,10 +437,11 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
     private void internalGet(
             String key, Set<GetOption> options, CompletableFuture<GetResult> result) {
-        KeyComparisonType comparisonType = GetOptionsUtil.getComparisonType(options);
-        if (comparisonType == KeyComparisonType.EQUAL) {
-            // Normal equality get operation
-            long shardId = shardManager.getShardForKey(key);
+        KeyComparisonType comparisonType = OptionsUtils.getComparisonType(options);
+        Optional<String> partitionKey = OptionsUtils.getPartitionKey(options);
+        if (comparisonType == KeyComparisonType.EQUAL || partitionKey.isPresent()) {
+            // Single shard get operation
+            long shardId = shardManager.getShardForKey(partitionKey.orElse(key));
             readBatchManager.getBatcher(shardId).add(new GetOperation(result, key, comparisonType));
         } else {
             internalGetFloorCeiling(key, comparisonType, result);
@@ -472,6 +498,12 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     @Override
     public @NonNull CompletableFuture<List<String>> list(
             String startKeyInclusive, String endKeyExclusive) {
+        return list(startKeyInclusive, endKeyExclusive, Collections.emptySet());
+    }
+
+    @Override
+    public @NonNull CompletableFuture<List<String>> list(
+            String startKeyInclusive, String endKeyExclusive, Set<ListOption> options) {
         long startTime = System.nanoTime();
         gaugePendingListRequests.increment();
         CompletableFuture<List<String>> callback;
@@ -479,7 +511,14 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
             checkIfClosed();
             Objects.requireNonNull(startKeyInclusive);
             Objects.requireNonNull(endKeyExclusive);
-            callback = internalList(startKeyInclusive, endKeyExclusive);
+
+            Optional<String> partitionKey = OptionsUtils.getPartitionKey(options);
+            if (partitionKey.isPresent()) {
+                long shardId = shardManager.getShardForKey(partitionKey.get());
+                callback = internalShardlist(shardId, startKeyInclusive, endKeyExclusive);
+            } else {
+                callback = internalListMultiShards(startKeyInclusive, endKeyExclusive);
+            }
         } catch (Exception e) {
             callback = CompletableFuture.failedFuture(e);
         }
@@ -501,7 +540,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         notificationManager.registerCallback(notificationCallback);
     }
 
-    private CompletableFuture<List<String>> internalList(
+    private CompletableFuture<List<String>> internalListMultiShards(
             String startKeyInclusive, String endKeyExclusive) {
         List<CompletableFuture<List<String>>> futures = new ArrayList<>();
         for (long shardId : shardManager.allShardIds()) {
