@@ -40,9 +40,14 @@ public class ProtoUtil {
         return new PutResult(getVersionFromProto(response.getVersion()));
     }
 
-    public static @NonNull GetResult getResultFromProto(@NonNull GetResponse response) {
+    public static @NonNull GetResult getResultFromProto(
+            @NonNull String originalKey, @NonNull GetResponse response) {
+        String key = originalKey;
+        if (response.hasKey()) {
+            key = response.getKey();
+        }
         return new GetResult(
-                response.getValue().toByteArray(), getVersionFromProto(response.getVersion()));
+                key, response.getValue().toByteArray(), getVersionFromProto(response.getVersion()));
     }
 
     public static @NonNull Version getVersionFromProto(

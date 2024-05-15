@@ -15,19 +15,17 @@
  */
 package io.streamnative.oxia.client.api;
 
-import lombok.NonNull;
-import lombok.Value;
+public record OptionComparisonType(ComparisonType comparisonType) implements GetOption {
 
-/** The result of a client get request. */
-@Value
-public class GetResult {
+    public enum ComparisonType {
+        Equal,
+        Floor,
+        Ceiling,
+        Lower,
+        Higher,
+    }
 
-    /** The key associated with the record. */
-    @NonNull String key;
-
-    /** The value associated with the key specified in the call. */
-    @NonNull byte[] value;
-
-    /** Metadata for the record associated with the key specified in the call. */
-    @NonNull Version version;
+    public ComparisonType getComparisonType() {
+        return comparisonType;
+    }
 }

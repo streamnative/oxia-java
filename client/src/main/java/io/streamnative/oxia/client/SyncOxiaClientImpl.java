@@ -17,6 +17,7 @@ package io.streamnative.oxia.client;
 
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.DeleteOption;
+import io.streamnative.oxia.client.api.GetOption;
 import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.PutOption;
@@ -92,8 +93,14 @@ class SyncOxiaClientImpl implements SyncOxiaClient {
     @SneakyThrows
     @Override
     public GetResult get(@NonNull String key) {
+        return get(key, Collections.emptySet());
+    }
+
+    @SneakyThrows
+    @Override
+    public GetResult get(@NonNull String key, @NonNull Set<GetOption> options) {
         try {
-            return asyncClient.get(key).get();
+            return asyncClient.get(key, options).get();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);

@@ -15,8 +15,6 @@
  */
 package io.streamnative.oxia.client.batch;
 
-import static java.util.stream.Collectors.toList;
-
 import com.google.common.annotations.VisibleForTesting;
 import io.grpc.stub.StreamObserver;
 import io.streamnative.oxia.client.grpc.OxiaStubProvider;
@@ -92,8 +90,7 @@ final class ReadBatch extends BatchBase implements Batch, StreamObserver<ReadRes
     ReadRequest toProto() {
         return ReadRequest.newBuilder()
                 .setShardId(getShardId())
-                .addAllGets(
-                        gets.stream().map(Operation.ReadOperation.GetOperation::toProto).collect(toList()))
+                .addAllGets(gets.stream().map(Operation.ReadOperation.GetOperation::toProto).toList())
                 .build();
     }
 }

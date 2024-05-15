@@ -333,7 +333,8 @@ class AsyncOxiaClientImplTest {
                 .satisfies(
                         o -> {
                             assertThat(o.key()).isEqualTo(key);
-                            var getResult = new GetResult(new byte[1], new Version(1, 2, 3, 4, empty(), empty()));
+                            var getResult =
+                                    new GetResult(key, new byte[1], new Version(1, 2, 3, 4, empty(), empty()));
                             o.callback().complete(getResult);
                         });
     }

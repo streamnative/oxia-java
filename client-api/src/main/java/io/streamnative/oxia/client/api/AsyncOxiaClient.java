@@ -109,6 +109,18 @@ public interface AsyncOxiaClient extends AutoCloseable {
     CompletableFuture<GetResult> get(String key);
 
     /**
+     * Returns the record associated with the specified key. The returned value includes the value,
+     * and other metadata.
+     *
+     * @param key The key associated with the record to be fetched.
+     * @param options Set {@link GetOption options} for the get operation.
+     * @return The value associated with the supplied key, or {@code null} if the key did not exist.
+     *     Supplied via a future returning a {@link GetResult}.
+     */
+    @NonNull
+    CompletableFuture<GetResult> get(String key, Set<GetOption> options);
+
+    /**
      * Lists any existing keys within the specified range. For more information on how keys are
      * sorted, check the relevant section in the <a
      * href="https://github.com/streamnative/oxia/blob/main/docs/oxia-key-sorting.md">Oxia

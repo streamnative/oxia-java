@@ -35,19 +35,24 @@ import io.opentelemetry.sdk.testing.exporter.InMemoryMetricReader;
 import io.opentelemetry.semconv.resource.attributes.ResourceAttributes;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.DeleteOption;
+import io.streamnative.oxia.client.api.GetOption;
+import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.Notification.KeyCreated;
 import io.streamnative.oxia.client.api.Notification.KeyDeleted;
 import io.streamnative.oxia.client.api.Notification.KeyModified;
 import io.streamnative.oxia.client.api.OxiaClientBuilder;
 import io.streamnative.oxia.client.api.PutOption;
+import io.streamnative.oxia.client.api.SyncOxiaClient;
 import io.streamnative.oxia.client.api.exceptions.KeyAlreadyExistsException;
 import io.streamnative.oxia.client.api.exceptions.UnexpectedVersionIdException;
 import io.streamnative.oxia.testcontainers.OxiaContainer;
+import java.util.Collections;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
+import lombok.Cleanup;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -216,5 +221,168 @@ public class OxiaClientIT {
                                 .map(HistogramPointData::getCount)
                                 .reduce(0L, Long::sum))
                 .isEqualTo(24);
+    }
+
+    @Test
+    void testGetFloorCeiling() throws Exception {
+        @Cleanup
+        SyncOxiaClient client = OxiaClientBuilder.create(oxia.getServiceAddress()).syncClient();
+
+        client.put("a", "0".getBytes());
+        // client.put("b", "1".getBytes()); // Skipped intentionally
+        client.put("c", "2".getBytes());
+        client.put("d", "3".getBytes());
+        client.put("e", "4".getBytes());
+        // client.put("f", "5".getBytes()); // Skipped intentionally
+        client.put("g", "6".getBytes());
+
+        GetResult gr = client.get("a");
+        assertThat(gr.getKey()).isEqualTo("a");
+        assertThat(gr.getValue()).isEqualTo("0".getBytes());
+
+        gr = client.get("a", Collections.singleton(GetOption.ComparisonEqual));
+        assertThat(gr.getKey()).isEqualTo("a");
+        assertThat(gr.getValue()).isEqualTo("0".getBytes());
+
+        gr = client.get("a", Collections.singleton(GetOption.ComparisonFloor));
+        assertThat(gr.getKey()).isEqualTo("a");
+        assertThat(gr.getValue()).isEqualTo("0".getBytes());
+
+        gr = client.get("a", Collections.singleton(GetOption.ComparisonCeiling));
+        assertThat(gr.getKey()).isEqualTo("a");
+        assertThat(gr.getValue()).isEqualTo("0".getBytes());
+
+        gr = client.get("a", Collections.singleton(GetOption.ComparisonLower));
+        assertThat(gr).isNull();
+
+        gr = client.get("a", Collections.singleton(GetOption.ComparisonHigher));
+        assertThat(gr.getKey()).isEqualTo("c");
+        assertThat(gr.getValue()).isEqualTo("2".getBytes());
+
+        // ------------------------------------------------------------------------------------------------
+
+        gr = client.get("b");
+        assertThat(gr).isNull();
+
+        gr = client.get("b", Collections.singleton(GetOption.ComparisonEqual));
+        assertThat(gr).isNull();
+
+        gr = client.get("b", Collections.singleton(GetOption.ComparisonFloor));
+        assertThat(gr.getKey()).isEqualTo("a");
+        assertThat(gr.getValue()).isEqualTo("0".getBytes());
+
+        gr = client.get("b", Collections.singleton(GetOption.ComparisonCeiling));
+        assertThat(gr.getKey()).isEqualTo("c");
+        assertThat(gr.getValue()).isEqualTo("2".getBytes());
+
+        gr = client.get("b", Collections.singleton(GetOption.ComparisonLower));
+        assertThat(gr.getKey()).isEqualTo("a");
+        assertThat(gr.getValue()).isEqualTo("0".getBytes());
+
+        gr = client.get("b", Collections.singleton(GetOption.ComparisonHigher));
+        assertThat(gr.getKey()).isEqualTo("c");
+        assertThat(gr.getValue()).isEqualTo("2".getBytes());
+
+        // ------------------------------------------------------------------------------------------------
+
+        gr = client.get("c");
+        assertThat(gr.getKey()).isEqualTo("c");
+        assertThat(gr.getValue()).isEqualTo("2".getBytes());
+
+        gr = client.get("c", Collections.singleton(GetOption.ComparisonEqual));
+        assertThat(gr.getKey()).isEqualTo("c");
+        assertThat(gr.getValue()).isEqualTo("2".getBytes());
+
+        gr = client.get("c", Collections.singleton(GetOption.ComparisonFloor));
+        assertThat(gr.getKey()).isEqualTo("c");
+        assertThat(gr.getValue()).isEqualTo("2".getBytes());
+
+        gr = client.get("c", Collections.singleton(GetOption.ComparisonCeiling));
+        assertThat(gr.getKey()).isEqualTo("c");
+        assertThat(gr.getValue()).isEqualTo("2".getBytes());
+
+        gr = client.get("c", Collections.singleton(GetOption.ComparisonLower));
+        assertThat(gr.getKey()).isEqualTo("a");
+        assertThat(gr.getValue()).isEqualTo("0".getBytes());
+
+        gr = client.get("c", Collections.singleton(GetOption.ComparisonHigher));
+        assertThat(gr.getKey()).isEqualTo("d");
+        assertThat(gr.getValue()).isEqualTo("3".getBytes());
+
+        // ------------------------------------------------------------------------------------------------
+
+        gr = client.get("d");
+        assertThat(gr.getKey()).isEqualTo("d");
+        assertThat(gr.getValue()).isEqualTo("3".getBytes());
+
+        gr = client.get("d", Collections.singleton(GetOption.ComparisonEqual));
+        assertThat(gr.getKey()).isEqualTo("d");
+        assertThat(gr.getValue()).isEqualTo("3".getBytes());
+
+        gr = client.get("d", Collections.singleton(GetOption.ComparisonFloor));
+        assertThat(gr.getKey()).isEqualTo("d");
+        assertThat(gr.getValue()).isEqualTo("3".getBytes());
+
+        gr = client.get("d", Collections.singleton(GetOption.ComparisonCeiling));
+        assertThat(gr.getKey()).isEqualTo("d");
+        assertThat(gr.getValue()).isEqualTo("3".getBytes());
+
+        gr = client.get("d", Collections.singleton(GetOption.ComparisonLower));
+        assertThat(gr.getKey()).isEqualTo("c");
+        assertThat(gr.getValue()).isEqualTo("2".getBytes());
+
+        gr = client.get("d", Collections.singleton(GetOption.ComparisonHigher));
+        assertThat(gr.getKey()).isEqualTo("e");
+        assertThat(gr.getValue()).isEqualTo("4".getBytes());
+
+        // ------------------------------------------------------------------------------------------------
+
+        gr = client.get("e");
+        assertThat(gr.getKey()).isEqualTo("e");
+        assertThat(gr.getValue()).isEqualTo("4".getBytes());
+
+        gr = client.get("e", Collections.singleton(GetOption.ComparisonEqual));
+        assertThat(gr.getKey()).isEqualTo("e");
+        assertThat(gr.getValue()).isEqualTo("4".getBytes());
+
+        gr = client.get("e", Collections.singleton(GetOption.ComparisonFloor));
+        assertThat(gr.getKey()).isEqualTo("e");
+        assertThat(gr.getValue()).isEqualTo("4".getBytes());
+
+        gr = client.get("e", Collections.singleton(GetOption.ComparisonCeiling));
+        assertThat(gr.getKey()).isEqualTo("e");
+        assertThat(gr.getValue()).isEqualTo("4".getBytes());
+
+        gr = client.get("e", Collections.singleton(GetOption.ComparisonLower));
+        assertThat(gr.getKey()).isEqualTo("d");
+        assertThat(gr.getValue()).isEqualTo("3".getBytes());
+
+        gr = client.get("e", Collections.singleton(GetOption.ComparisonHigher));
+        assertThat(gr.getKey()).isEqualTo("g");
+        assertThat(gr.getValue()).isEqualTo("6".getBytes());
+
+        // ------------------------------------------------------------------------------------------------
+
+        gr = client.get("f");
+        assertThat(gr).isNull();
+
+        gr = client.get("f", Collections.singleton(GetOption.ComparisonEqual));
+        assertThat(gr).isNull();
+
+        gr = client.get("f", Collections.singleton(GetOption.ComparisonFloor));
+        assertThat(gr.getKey()).isEqualTo("e");
+        assertThat(gr.getValue()).isEqualTo("4".getBytes());
+
+        gr = client.get("f", Collections.singleton(GetOption.ComparisonCeiling));
+        assertThat(gr.getKey()).isEqualTo("g");
+        assertThat(gr.getValue()).isEqualTo("6".getBytes());
+
+        gr = client.get("f", Collections.singleton(GetOption.ComparisonLower));
+        assertThat(gr.getKey()).isEqualTo("e");
+        assertThat(gr.getValue()).isEqualTo("4".getBytes());
+
+        gr = client.get("f", Collections.singleton(GetOption.ComparisonHigher));
+        assertThat(gr.getKey()).isEqualTo("g");
+        assertThat(gr.getValue()).isEqualTo("6".getBytes());
     }
 }
