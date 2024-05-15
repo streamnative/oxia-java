@@ -394,66 +394,66 @@ public class OxiaClientIT {
         @Cleanup
         SyncOxiaClient client = OxiaClientBuilder.create(oxia.getServiceAddress()).syncClient();
 
-        client.put("a", "0".getBytes(), Set.of(PutOption.PartitionKey("x")));
+        client.put("pk_a", "0".getBytes(), Set.of(PutOption.PartitionKey("x")));
 
-        GetResult gr = client.get("a");
+        GetResult gr = client.get("pk_a");
         assertThat(gr).isNull();
 
-        gr = client.get("a", Set.of(GetOption.PartitionKey("x")));
-        assertThat(gr.getKey()).isEqualTo("a");
+        gr = client.get("pk_a", Set.of(GetOption.PartitionKey("x")));
+        assertThat(gr.getKey()).isEqualTo("pk_a");
         assertThat(gr.getValue()).isEqualTo("0".getBytes());
 
         Set<PutOption> partitionKey = Set.of(PutOption.PartitionKey("x"));
-        client.put("a", "0".getBytes(), partitionKey);
-        client.put("b", "1".getBytes(), partitionKey);
-        client.put("c", "2".getBytes(), partitionKey);
-        client.put("d", "3".getBytes(), partitionKey);
-        client.put("e", "4".getBytes(), partitionKey);
-        client.put("f", "5".getBytes(), partitionKey);
-        client.put("g", "6".getBytes(), partitionKey);
+        client.put("pk_a", "0".getBytes(), partitionKey);
+        client.put("pk_b", "1".getBytes(), partitionKey);
+        client.put("pk_c", "2".getBytes(), partitionKey);
+        client.put("pk_d", "3".getBytes(), partitionKey);
+        client.put("pk_e", "4".getBytes(), partitionKey);
+        client.put("pk_f", "5".getBytes(), partitionKey);
+        client.put("pk_g", "6".getBytes(), partitionKey);
 
         // Listing must yield the same results
-        List<String> keys = client.list("a", "d");
-        assertThat(keys).containsExactly("a", "b", "c");
+        List<String> keys = client.list("pk_a", "pk_d");
+        assertThat(keys).containsExactly("pk_a", "pk_b", "pk_c");
 
-        keys = client.list("a", "d", Set.of(ListOption.PartitionKey("x")));
-        assertThat(keys).containsExactly("a", "b", "c");
+        keys = client.list("pk_a", "pk_d", Set.of(ListOption.PartitionKey("x")));
+        assertThat(keys).containsExactly("pk_a", "pk_b", "pk_c");
 
         // Searching with wrong partition-key will return empty list
-        keys = client.list("a", "d", Set.of(ListOption.PartitionKey("wrong-partition-key")));
+        keys = client.list("pk_a", "pk_d", Set.of(ListOption.PartitionKey("wrong-partition-key")));
         assertThat(keys).isEmpty();
 
         // Delete with wrong partition key would fail
-        boolean deleted = client.delete("g", Set.of(DeleteOption.PartitionKey("wrong-partition-key")));
+        boolean deleted = client.delete("pk_g", Set.of(DeleteOption.PartitionKey("wrong-partition-key")));
         assertThat(deleted).isFalse();
 
-        deleted = client.delete("g", Set.of(DeleteOption.PartitionKey("x")));
+        deleted = client.delete("pk_g", Set.of(DeleteOption.PartitionKey("x")));
         assertThat(deleted).isTrue();
 
         // Get tests
-        gr = client.get("a", Set.of(GetOption.ComparisonHigher));
-        assertThat(gr.getKey()).isEqualTo("b");
+        gr = client.get("pk_a", Set.of(GetOption.ComparisonHigher));
+        assertThat(gr.getKey()).isEqualTo("pk_b");
         assertThat(gr.getValue()).isEqualTo("1".getBytes());
 
-        gr = client.get("a", Set.of(GetOption.ComparisonHigher, GetOption.PartitionKey("x")));
-        assertThat(gr.getKey()).isEqualTo("b");
+        gr = client.get("pk_a", Set.of(GetOption.ComparisonHigher, GetOption.PartitionKey("x")));
+        assertThat(gr.getKey()).isEqualTo("pk_b");
         assertThat(gr.getValue()).isEqualTo("1".getBytes());
 
         gr =
                 client.get(
-                        "a", Set.of(GetOption.ComparisonHigher, GetOption.PartitionKey("wrong-partition-key")));
-        assertThat(gr.getKey()).isNotEqualTo("b");
+                        "pk_a", Set.of(GetOption.ComparisonHigher, GetOption.PartitionKey("another-wrong-partition-key")));
+        assertThat(gr.getKey()).isNotEqualTo("pk_b");
         assertThat(gr.getValue()).isNotEqualTo("1".getBytes());
 
         // Delete with wrong partition key would fail to delete all keys
-        client.deleteRange("c", "e", Set.of(DeleteRangeOption.PartitionKey("wrong-partition-key")));
+        client.deleteRange("pk_c", "pk_e", Set.of(DeleteRangeOption.PartitionKey("wrong-partition-key")));
 
-        keys = client.list("c", "f");
-        assertThat(keys).containsExactly("c", "d", "e");
+        keys = client.list("pk_c", "pk_f");
+        assertThat(keys).containsExactly("pk_c", "pk_d", "pk_e");
 
-        client.deleteRange("c", "e", Set.of(DeleteRangeOption.PartitionKey("x")));
+        client.deleteRange("pk_c", "pk_e", Set.of(DeleteRangeOption.PartitionKey("x")));
 
-        keys = client.list("c", "f");
-        assertThat(keys).containsExactly("e");
+        keys = client.list("pk_c", "pk_f");
+        assertThat(keys).containsExactly("pk_e");
     }
 }
