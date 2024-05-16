@@ -152,7 +152,13 @@ class OperationTest {
         byte[] payload = "hello".getBytes(UTF_8);
         PutOperation op =
                 new PutOperation(
-                        callback, "key", payload, OptionalLong.of(10), OptionalLong.empty(), Optional.empty());
+                        callback,
+                        "key",
+                        Optional.empty(),
+                        payload,
+                        OptionalLong.of(10),
+                        OptionalLong.empty(),
+                        Optional.empty());
         long sessionId = 0L;
 
         @Test
@@ -163,6 +169,7 @@ class OperationTest {
                                     new PutOperation(
                                             callback,
                                             "key",
+                                            Optional.empty(),
                                             payload,
                                             OptionalLong.of(KeyNotExists),
                                             OptionalLong.empty(),
@@ -173,6 +180,7 @@ class OperationTest {
                                     new PutOperation(
                                             callback,
                                             "key",
+                                            Optional.empty(),
                                             payload,
                                             OptionalLong.of(0L),
                                             OptionalLong.empty(),
@@ -182,6 +190,7 @@ class OperationTest {
                                     new PutOperation(
                                             callback,
                                             "key",
+                                            Optional.empty(),
                                             payload,
                                             OptionalLong.of(-2L),
                                             OptionalLong.empty(),
@@ -195,6 +204,7 @@ class OperationTest {
                     new PutOperation(
                             callback,
                             "key",
+                            Optional.empty(),
                             payload,
                             OptionalLong.empty(),
                             OptionalLong.empty(),
@@ -217,6 +227,7 @@ class OperationTest {
                     new PutOperation(
                             callback,
                             "key",
+                            Optional.empty(),
                             payload,
                             OptionalLong.of(1L),
                             OptionalLong.empty(),
@@ -234,11 +245,35 @@ class OperationTest {
         }
 
         @Test
+        void toProtoPartitionKey() {
+            var op =
+                    new PutOperation(
+                            callback,
+                            "key",
+                            Optional.of("my-partition-key"),
+                            payload,
+                            OptionalLong.empty(),
+                            OptionalLong.empty(),
+                            Optional.empty());
+            var request = op.toProto();
+            assertThat(request)
+                    .satisfies(
+                            r -> {
+                                assertThat(r.getKey()).isEqualTo(op.key());
+                                assertThat(r.getPartitionKey()).isEqualTo(op.partitionKey().get());
+                                assertThat(r.getValue().toByteArray()).isEqualTo(op.value());
+                                assertThat(r.hasSessionId()).isFalse();
+                                assertThat(r.hasClientIdentity()).isFalse();
+                            });
+        }
+
+        @Test
         void toProtoNoExistingVersion() {
             var op =
                     new PutOperation(
                             callback,
                             "key",
+                            Optional.empty(),
                             payload,
                             OptionalLong.of(KeyNotExists),
                             OptionalLong.empty(),
@@ -261,6 +296,7 @@ class OperationTest {
                     new PutOperation(
                             callback,
                             "key",
+                            Optional.empty(),
                             payload,
                             OptionalLong.empty(),
                             OptionalLong.of(sessionId),
@@ -298,6 +334,7 @@ class OperationTest {
                     new PutOperation(
                             callback,
                             "key",
+                            Optional.empty(),
                             payload,
                             OptionalLong.of(KeyNotExists),
                             OptionalLong.empty(),
@@ -321,6 +358,7 @@ class OperationTest {
                     new PutOperation(
                             callback,
                             "key",
+                            Optional.empty(),
                             payload,
                             OptionalLong.empty(),
                             OptionalLong.of(5),

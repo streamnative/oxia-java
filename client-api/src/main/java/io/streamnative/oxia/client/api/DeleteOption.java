@@ -15,9 +15,24 @@
  */
 package io.streamnative.oxia.client.api;
 
-public sealed interface DeleteOption permits OptionVersionId {
+import lombok.NonNull;
+
+public sealed interface DeleteOption permits OptionPartitionKey, OptionVersionId {
 
     static DeleteOption IfVersionIdEquals(long versionId) {
         return new OptionVersionId.OptionVersionIdEqual(versionId);
+    }
+
+    /**
+     * PartitionKey overrides the partition routing with the specified `partitionKey` instead of the
+     * regular record key.
+     *
+     * <p>Records with the same partitionKey will always be guaranteed to be co-located in the same
+     * Oxia shard.
+     *
+     * @param partitionKey the partition key to use
+     */
+    static DeleteOption PartitionKey(@NonNull String partitionKey) {
+        return new OptionPartitionKey(partitionKey);
     }
 }

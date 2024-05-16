@@ -84,6 +84,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
         record PutOperation(
                 @NonNull CompletableFuture<PutResult> callback,
                 @NonNull String key,
+                @NonNull Optional<String> partitionKey,
                 byte @NonNull [] value,
                 @NonNull OptionalLong expectedVersionId,
                 OptionalLong sessionId,
@@ -100,6 +101,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
 
             PutRequest toProto() {
                 var builder = PutRequest.newBuilder().setKey(key).setValue(ByteString.copyFrom(value));
+                partitionKey.ifPresent(builder::setPartitionKey);
                 expectedVersionId.ifPresent(builder::setExpectedVersionId);
                 sessionId.ifPresent(builder::setSessionId);
                 clientIdentifier.ifPresent(builder::setClientIdentity);

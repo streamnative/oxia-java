@@ -17,14 +17,7 @@ package io.streamnative.oxia.client.api;
 
 import lombok.NonNull;
 
-public sealed interface PutOption permits OptionEphemeral, OptionVersionId, OptionPartitionKey {
-
-    PutOption IfRecordDoesNotExist = new OptionVersionId.OptionRecordDoesNotExist();
-    PutOption AsEphemeralRecord = new OptionEphemeral();
-
-    static OptionVersionId.OptionVersionIdEqual IfVersionIdEquals(long versionId) {
-        return new OptionVersionId.OptionVersionIdEqual(versionId);
-    }
+public sealed interface ListOption permits OptionPartitionKey {
 
     /**
      * PartitionKey overrides the partition routing with the specified `partitionKey` instead of the
@@ -35,7 +28,7 @@ public sealed interface PutOption permits OptionEphemeral, OptionVersionId, Opti
      *
      * @param partitionKey the partition key to use
      */
-    static PutOption PartitionKey(@NonNull String partitionKey) {
+    static ListOption PartitionKey(@NonNull String partitionKey) {
         return new OptionPartitionKey(partitionKey);
     }
 }

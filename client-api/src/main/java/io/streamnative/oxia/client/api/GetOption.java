@@ -15,7 +15,9 @@
  */
 package io.streamnative.oxia.client.api;
 
-public sealed interface GetOption permits OptionComparisonType {
+import lombok.NonNull;
+
+public sealed interface GetOption permits OptionComparisonType, OptionPartitionKey {
 
     /** ComparisonEqual sets the Get() operation to compare the stored key for equality. */
     GetOption ComparisonEqual = new OptionComparisonType(OptionComparisonType.ComparisonType.Equal);
@@ -44,4 +46,17 @@ public sealed interface GetOption permits OptionComparisonType {
      * strictly > to the supplied key.
      */
     GetOption ComparisonHigher = new OptionComparisonType(OptionComparisonType.ComparisonType.Higher);
+
+    /**
+     * PartitionKey overrides the partition routing with the specified `partitionKey` instead of the
+     * regular record key.
+     *
+     * <p>Records with the same partitionKey will always be guaranteed to be co-located in the same
+     * Oxia shard.
+     *
+     * @param partitionKey the partition key to use
+     */
+    static GetOption PartitionKey(@NonNull String partitionKey) {
+        return new OptionPartitionKey(partitionKey);
+    }
 }

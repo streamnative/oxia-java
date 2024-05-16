@@ -88,6 +88,22 @@ public interface SyncOxiaClient extends AutoCloseable {
     void deleteRange(@NonNull String startKeyInclusive, @NonNull String endKeyExclusive);
 
     /**
+     * Deletes any records with keys within the specified range. For more information on how keys are
+     * sorted, check the relevant section in the <a
+     * href="https://github.com/streamnative/oxia/blob/main/docs/oxia-key-sorting.md">Oxia
+     * documentation</a>.
+     *
+     * @param startKeyInclusive The key that declares start of the range, and is <b>included</b> from
+     *     the range.
+     * @param endKeyExclusive The key that declares the end of the range, and is <b>excluded</b> from
+     *     the range.
+     */
+    void deleteRange(
+            @NonNull String startKeyInclusive,
+            @NonNull String endKeyExclusive,
+            @NonNull Set<DeleteRangeOption> options);
+
+    /**
      * Returns the record associated with the specified key. The returned value includes the value,
      * and other metadata.
      *
@@ -121,6 +137,23 @@ public interface SyncOxiaClient extends AutoCloseable {
      */
     @NonNull
     List<String> list(@NonNull String startKeyInclusive, @NonNull String endKeyExclusive);
+
+    /**
+     * Lists any existing keys within the specified range. For more information on how keys are
+     * sorted, check the relevant section in the <a
+     * href="https://github.com/streamnative/oxia/blob/main/docs/oxia-key-sorting.md">Oxia
+     * documentation</a>.
+     *
+     * @param startKeyInclusive The key that declares start of the range, and is <b>included</b> from
+     *     the range.
+     * @param endKeyExclusive The key that declares the end of the range, and is <b>excluded</b> from
+     *     the range.
+     * @return The list of keys that exist within the specified range, or an empty list if there were
+     *     none.
+     */
+    @NonNull
+    List<String> list(
+            @NonNull String startKeyInclusive, @NonNull String endKeyExclusive, Set<ListOption> options);
 
     /**
      * Registers a callback to receive Oxia {@link Notification record change notifications}. Multiple
