@@ -35,7 +35,7 @@ public sealed interface PutOption permits OptionEphemeral, OptionVersionId, Opti
      *
      * @param partitionKey the partition key to use
      */
-    static OptionPartitionKey PartitionKey(@NonNull String partitionKey) {
+    static PutOption PartitionKey(@NonNull String partitionKey) {
         return new OptionPartitionKey(partitionKey);
     }
 }

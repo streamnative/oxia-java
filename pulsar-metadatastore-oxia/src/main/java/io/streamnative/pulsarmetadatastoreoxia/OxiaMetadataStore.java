@@ -159,7 +159,7 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
                             } else {
                                 Set<DeleteOption> deleteOptions =
                                         expectedVersion
-                                                .map(v -> Collections.singleton(DeleteOption.IfVersionIdEquals(v)))
+                                                .map(v -> Set.of(DeleteOption.IfVersionIdEquals(v)))
                                                 .orElse(Collections.emptySet());
 
                                 return client

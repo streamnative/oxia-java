@@ -28,7 +28,7 @@ public sealed interface DeleteRangeOption permits OptionPartitionKey {
      *
      * @param partitionKey the partition key to use
      */
-    static OptionPartitionKey PartitionKey(@NonNull String partitionKey) {
+    static DeleteRangeOption PartitionKey(@NonNull String partitionKey) {
         return new OptionPartitionKey(partitionKey);
     }
 }

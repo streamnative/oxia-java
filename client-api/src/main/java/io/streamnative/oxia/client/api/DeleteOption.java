@@ -19,7 +19,7 @@ import lombok.NonNull;
 
 public sealed interface DeleteOption permits OptionPartitionKey, OptionVersionId {
 
-    static OptionVersionId.OptionVersionIdEqual IfVersionIdEquals(long versionId) {
+    static DeleteOption IfVersionIdEquals(long versionId) {
         return new OptionVersionId.OptionVersionIdEqual(versionId);
     }
 
@@ -32,7 +32,7 @@ public sealed interface DeleteOption permits OptionPartitionKey, OptionVersionId
      *
      * @param partitionKey the partition key to use
      */
-    static OptionPartitionKey PartitionKey(@NonNull String partitionKey) {
+    static DeleteOption PartitionKey(@NonNull String partitionKey) {
         return new OptionPartitionKey(partitionKey);
     }
 }
