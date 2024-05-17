@@ -107,6 +107,7 @@ class BatcherTest {
                         callback,
                         "key",
                         Optional.empty(),
+                        Optional.empty(),
                         "value".getBytes(StandardCharsets.UTF_8),
                         OptionalLong.empty(),
                         OptionalLong.empty(),

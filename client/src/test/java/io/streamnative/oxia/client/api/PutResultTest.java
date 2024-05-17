@@ -30,6 +30,7 @@ class PutResultTest {
         var payload = "hello".getBytes(UTF_8);
         assertThat(
                         ProtoUtil.getPutResultFromProto(
+                                "test-key",
                                 PutResponse.newBuilder()
                                         .setVersion(
                                                 io.streamnative.oxia.proto.Version.newBuilder()
@@ -41,6 +42,7 @@ class PutResultTest {
                                         .build()))
                 .isEqualTo(
                         new PutResult(
+                                "test-key",
                                 new io.streamnative.oxia.client.api.Version(
                                         1L, 2L, 3L, 4L, Optional.empty(), Optional.empty())));
     }
