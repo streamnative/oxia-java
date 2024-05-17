@@ -155,6 +155,7 @@ class OperationTest {
                         callback,
                         "key",
                         Optional.empty(),
+                        Optional.empty(),
                         payload,
                         OptionalLong.of(10),
                         OptionalLong.empty(),
@@ -170,6 +171,7 @@ class OperationTest {
                                             callback,
                                             "key",
                                             Optional.empty(),
+                                            Optional.empty(),
                                             payload,
                                             OptionalLong.of(KeyNotExists),
                                             OptionalLong.empty(),
@@ -181,6 +183,7 @@ class OperationTest {
                                             callback,
                                             "key",
                                             Optional.empty(),
+                                            Optional.empty(),
                                             payload,
                                             OptionalLong.of(0L),
                                             OptionalLong.empty(),
@@ -190,6 +193,7 @@ class OperationTest {
                                     new PutOperation(
                                             callback,
                                             "key",
+                                            Optional.empty(),
                                             Optional.empty(),
                                             payload,
                                             OptionalLong.of(-2L),
@@ -204,6 +208,7 @@ class OperationTest {
                     new PutOperation(
                             callback,
                             "key",
+                            Optional.empty(),
                             Optional.empty(),
                             payload,
                             OptionalLong.empty(),
@@ -228,6 +233,7 @@ class OperationTest {
                             callback,
                             "key",
                             Optional.empty(),
+                            Optional.empty(),
                             payload,
                             OptionalLong.of(1L),
                             OptionalLong.empty(),
@@ -251,6 +257,7 @@ class OperationTest {
                             callback,
                             "key",
                             Optional.of("my-partition-key"),
+                            Optional.empty(),
                             payload,
                             OptionalLong.empty(),
                             OptionalLong.empty(),
@@ -274,6 +281,7 @@ class OperationTest {
                             callback,
                             "key",
                             Optional.empty(),
+                            Optional.empty(),
                             payload,
                             OptionalLong.of(KeyNotExists),
                             OptionalLong.empty(),
@@ -296,6 +304,7 @@ class OperationTest {
                     new PutOperation(
                             callback,
                             "key",
+                            Optional.empty(),
                             Optional.empty(),
                             payload,
                             OptionalLong.empty(),
@@ -335,6 +344,7 @@ class OperationTest {
                             callback,
                             "key",
                             Optional.empty(),
+                            Optional.empty(),
                             payload,
                             OptionalLong.of(KeyNotExists),
                             OptionalLong.empty(),
@@ -359,6 +369,7 @@ class OperationTest {
                             callback,
                             "key",
                             Optional.empty(),
+                            Optional.empty(),
                             payload,
                             OptionalLong.empty(),
                             OptionalLong.of(5),
@@ -381,6 +392,7 @@ class OperationTest {
             var response =
                     PutResponse.newBuilder()
                             .setStatus(OK)
+                            .setKey("my-key")
                             .setVersion(
                                     Version.newBuilder()
                                             .setVersionId(1L)
@@ -393,6 +405,7 @@ class OperationTest {
             assertThat(callback)
                     .isCompletedWithValue(
                             new PutResult(
+                                    "my-key",
                                     new io.streamnative.oxia.client.api.Version(
                                             1L, 2L, 3L, 4L, Optional.empty(), Optional.empty())));
         }
@@ -402,6 +415,7 @@ class OperationTest {
             var response =
                     PutResponse.newBuilder()
                             .setStatus(OK)
+                            .setKey("my-key")
                             .setVersion(
                                     Version.newBuilder()
                                             .setVersionId(1L)
@@ -416,6 +430,7 @@ class OperationTest {
             assertThat(callback)
                     .isCompletedWithValue(
                             new PutResult(
+                                    "my-key",
                                     new io.streamnative.oxia.client.api.Version(
                                             1L, 2L, 3L, 4L, Optional.of(sessionId), Optional.of("client-id"))));
         }

@@ -45,6 +45,7 @@ import io.streamnative.oxia.client.api.Notification.KeyDeleted;
 import io.streamnative.oxia.client.api.Notification.KeyModified;
 import io.streamnative.oxia.client.api.OxiaClientBuilder;
 import io.streamnative.oxia.client.api.PutOption;
+import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.SyncOxiaClient;
 import io.streamnative.oxia.client.api.exceptions.KeyAlreadyExistsException;
 import io.streamnative.oxia.client.api.exceptions.UnexpectedVersionIdException;
@@ -459,5 +460,80 @@ public class OxiaClientIT {
 
         keys = client.list("pk_c", "pk_f");
         assertThat(keys).containsExactly("pk_e");
+    }
+
+    @Test
+    void testSequentialKeys() throws Exception {
+        @Cleanup
+        SyncOxiaClient client = OxiaClientBuilder.create(oxia.getServiceAddress()).syncClient();
+
+        assertThatThrownBy(
+                        () ->
+                                client.put(
+                                        "sk_a", "0".getBytes(), Set.of(PutOption.SequenceKeysDeltas(List.of(1L)))))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThatThrownBy(
+                        () ->
+                                client.put(
+                                        "sk_a",
+                                        "0".getBytes(),
+                                        Set.of(PutOption.SequenceKeysDeltas(List.of(0L)), PutOption.PartitionKey("x"))))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThatThrownBy(
+                        () ->
+                                client.put(
+                                        "sk_a",
+                                        "0".getBytes(),
+                                        Set.of(
+                                                PutOption.SequenceKeysDeltas(List.of(1L, -1L)),
+                                                PutOption.PartitionKey("x"))))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThatThrownBy(
+                        () ->
+                                client.put(
+                                        "sk_a",
+                                        "0".getBytes(),
+                                        Set.of(
+                                                PutOption.SequenceKeysDeltas(List.of(1L)),
+                                                PutOption.PartitionKey("x"),
+                                                PutOption.IfVersionIdEquals(1L))))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        // Positive case scenarios
+        PutResult pr =
+                client.put(
+                        "sk_a",
+                        "0".getBytes(),
+                        Set.of(PutOption.PartitionKey("x"), PutOption.SequenceKeysDeltas(List.of(1L))));
+        assertThat(pr.key()).isEqualTo(String.format("sk_a-%020d", 1));
+
+        pr =
+                client.put(
+                        "sk_a",
+                        "1".getBytes(),
+                        Set.of(PutOption.PartitionKey("x"), PutOption.SequenceKeysDeltas(List.of(3L))));
+        assertThat(pr.key()).isEqualTo(String.format("sk_a-%020d", 4));
+
+        pr =
+                client.put(
+                        "sk_a",
+                        "2".getBytes(),
+                        Set.of(PutOption.PartitionKey("x"), PutOption.SequenceKeysDeltas(List.of(1L, 6L))));
+        assertThat(pr.key()).isEqualTo(String.format("sk_a-%020d-%020d", 5, 6));
+
+        GetResult gr = client.get("sk_a", Set.of(GetOption.PartitionKey("x")));
+        assertThat(gr).isNull();
+
+        gr = client.get(String.format("sk_a-%020d", 1), Set.of(GetOption.PartitionKey("x")));
+        assertThat(gr.getValue()).isEqualTo("0".getBytes());
+
+        gr = client.get(String.format("sk_a-%020d", 4), Set.of(GetOption.PartitionKey("x")));
+        assertThat(gr.getValue()).isEqualTo("1".getBytes());
+
+        gr = client.get(String.format("sk_a-%020d-%020d", 5, 6), Set.of(GetOption.PartitionKey("x")));
+        assertThat(gr.getValue()).isEqualTo("2".getBytes());
     }
 }

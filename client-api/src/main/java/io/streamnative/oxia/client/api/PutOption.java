@@ -15,9 +15,11 @@
  */
 package io.streamnative.oxia.client.api;
 
+import java.util.List;
 import lombok.NonNull;
 
-public sealed interface PutOption permits OptionEphemeral, OptionVersionId, OptionPartitionKey {
+public sealed interface PutOption
+        permits OptionEphemeral, OptionPartitionKey, OptionSequenceKeysDeltas, OptionVersionId {
 
     PutOption IfRecordDoesNotExist = new OptionVersionId.OptionRecordDoesNotExist();
     PutOption AsEphemeralRecord = new OptionEphemeral();
@@ -37,5 +39,20 @@ public sealed interface PutOption permits OptionEphemeral, OptionVersionId, Opti
      */
     static PutOption PartitionKey(@NonNull String partitionKey) {
         return new OptionPartitionKey(partitionKey);
+    }
+
+    /**
+     * SequenceKeysDeltas will request that the final record key to be assigned by the server, based
+     * on the prefix record key and appending one or more sequences.
+     *
+     * <p>The sequence numbers will be atomically added based on the deltas. Deltas must be >= 0 and
+     * the first one strictly > 0. SequenceKeysDeltas also requires that a [PartitionKey] option is
+     * provided.
+     *
+     * @param sequenceKeysDeltas
+     * @return
+     */
+    static PutOption SequenceKeysDeltas(@NonNull List<Long> sequenceKeysDeltas) {
+        return new OptionSequenceKeysDeltas(sequenceKeysDeltas);
     }
 }

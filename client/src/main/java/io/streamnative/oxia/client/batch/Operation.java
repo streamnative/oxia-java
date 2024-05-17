@@ -41,6 +41,7 @@ import io.streamnative.oxia.proto.PutRequest;
 import io.streamnative.oxia.proto.PutResponse;
 import io.streamnative.oxia.proto.Status;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalLong;
@@ -85,6 +86,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 @NonNull CompletableFuture<PutResult> callback,
                 @NonNull String key,
                 @NonNull Optional<String> partitionKey,
+                @NonNull Optional<List<Long>> sequenceKeysDeltas,
                 byte @NonNull [] value,
                 @NonNull OptionalLong expectedVersionId,
                 OptionalLong sessionId,
@@ -97,6 +99,18 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                             "expectedVersionId must be >= -1 (KeyNotExists), was: "
                                     + expectedVersionId.getAsLong());
                 }
+
+                if (sequenceKeysDeltas.isPresent()) {
+                    if (expectedVersionId.isPresent()) {
+                        throw new IllegalArgumentException(
+                                "Usage of sequential keys does not allow to specify an ExpectedVersionId");
+                    }
+
+                    if (partitionKey.isEmpty()) {
+                        throw new IllegalArgumentException(
+                                "usage of sequential keys requires PartitionKey() to be set");
+                    }
+                }
             }
 
             PutRequest toProto() {
@@ -105,6 +119,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 expectedVersionId.ifPresent(builder::setExpectedVersionId);
                 sessionId.ifPresent(builder::setSessionId);
                 clientIdentifier.ifPresent(builder::setClientIdentity);
+                sequenceKeysDeltas.ifPresent(builder::addAllSequenceKeyDelta);
                 return builder.build();
             }
 
@@ -118,7 +133,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                             fail(new UnexpectedVersionIdException(key, expectedVersionId.getAsLong()));
                         }
                     }
-                    case OK -> callback.complete(ProtoUtil.getPutResultFromProto(response));
+                    case OK -> callback.complete(ProtoUtil.getPutResultFromProto(key, response));
                     default -> fail(new IllegalStateException("GRPC.Status: " + response.getStatus().name()));
                 }
             }

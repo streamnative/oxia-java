@@ -109,7 +109,7 @@ class AsyncOxiaClientImplTest {
                             assertThat(o.key()).isEqualTo(key);
                             assertThat(o.expectedVersionId()).isEmpty();
                             assertThat(o.value()).isEqualTo(value);
-                            var putResult = new PutResult(new Version(1, 2, 3, 4, empty(), empty()));
+                            var putResult = new PutResult(key, new Version(1, 2, 3, 4, empty(), empty()));
                             o.callback().complete(putResult);
                         });
     }
