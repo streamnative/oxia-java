@@ -44,7 +44,7 @@ public class Counter {
         add(1);
     }
 
-    public void add(int delta) {
+    public void add(long delta) {
         counter.add(delta, attributes);
     }
 }

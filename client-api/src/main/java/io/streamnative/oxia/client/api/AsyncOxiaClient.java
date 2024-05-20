@@ -170,6 +170,30 @@ public interface AsyncOxiaClient extends AutoCloseable {
             String startKeyInclusive, String endKeyExclusive, Set<ListOption> options);
 
     /**
+     * Scan any existing records within the specified range of keys.
+     *
+     * @param startKeyInclusive The key that declares start of the range, and is <b>included</b> from
+     *     the range.
+     * @param endKeyExclusive The key that declares the end of the range, and is <b>excluded</b> from
+     *     the range.
+     * @param consumer A {@link RangeScanConsumer} that will be invoked with the records or errors.
+     */
+    void rangeScan(@NonNull String startKeyInclusive, @NonNull String endKeyExclusive, @NonNull RangeScanConsumer consumer);
+
+    /**
+     * Scan any existing records within the specified range of keys.
+     *
+     * @param startKeyInclusive The key that declares start of the range, and is <b>included</b> from
+     *     the range.
+     * @param endKeyExclusive The key that declares the end of the range, and is <b>excluded</b> from
+     *     the range.
+     * @param consumer A {@link RangeScanConsumer} that will be invoked with the records or errors.
+     * @param  options the range scan options
+     */
+    void rangeScan(@NonNull String startKeyInclusive, @NonNull String endKeyExclusive,
+                   @NonNull RangeScanConsumer consumer, @NonNull Set<RangeScanOption> options);
+
+    /**
      * Registers a callback to receive Oxia {@link Notification record change notifications}. Multiple
      * callbacks can be registered.
      *

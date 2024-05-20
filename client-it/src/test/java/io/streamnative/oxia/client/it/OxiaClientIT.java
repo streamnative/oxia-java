@@ -46,6 +46,7 @@ import io.streamnative.oxia.client.api.Notification.KeyModified;
 import io.streamnative.oxia.client.api.OxiaClientBuilder;
 import io.streamnative.oxia.client.api.PutOption;
 import io.streamnative.oxia.client.api.PutResult;
+import io.streamnative.oxia.client.api.RangeScanOption;
 import io.streamnative.oxia.client.api.SyncOxiaClient;
 import io.streamnative.oxia.client.api.exceptions.KeyAlreadyExistsException;
 import io.streamnative.oxia.client.api.exceptions.UnexpectedVersionIdException;
@@ -56,6 +57,7 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import lombok.Cleanup;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterAll;
@@ -105,9 +107,9 @@ public class OxiaClientIT {
 
     @AfterAll
     static void afterAll() throws Exception {
-        if (client != null) {
-            client.close();
-        }
+//        if (client != null) {
+//            client.close();
+//        }
     }
 
     @Test
@@ -535,5 +537,56 @@ public class OxiaClientIT {
 
         gr = client.get(String.format("sk_a-%020d-%020d", 5, 6), Set.of(GetOption.PartitionKey("x")));
         assertThat(gr.getValue()).isEqualTo("2".getBytes());
+    }
+
+    @Test
+    void testRangeScanWithPartitionKey() throws Exception {
+        @Cleanup
+        SyncOxiaClient client = OxiaClientBuilder.create(oxia.getServiceAddress()).syncClient();
+
+        client.put("range-scan-pkey-a", "0".getBytes(), Set.of(PutOption.PartitionKey("x")));
+        client.put("range-scan-pkey-b", "1".getBytes(), Set.of(PutOption.PartitionKey("x")));
+        client.put("range-scan-pkey-c", "2".getBytes(), Set.of(PutOption.PartitionKey("x")));
+        client.put("range-scan-pkey-d", "3".getBytes(), Set.of(PutOption.PartitionKey("x")));
+        client.put("range-scan-pkey-e", "4".getBytes(), Set.of(PutOption.PartitionKey("x")));
+        client.put("range-scan-pkey-f", "5".getBytes(), Set.of(PutOption.PartitionKey("x")));
+        client.put("range-scan-pkey-g", "6".getBytes(), Set.of(PutOption.PartitionKey("x")));
+
+        Iterable<GetResult> iterable = client.rangeScan("range-scan-pkey-a", "range-scan-pkey-d", Set.of(
+                RangeScanOption.PartitionKey("x")));
+
+        List<String> gr1List = StreamSupport.stream(iterable.spliterator(), false)
+                .map(GetResult::getKey)
+                .toList();
+        assertThat(gr1List).containsExactly("range-scan-pkey-a", "range-scan-pkey-b", "range-scan-pkey-c");
+    }
+
+    @Test
+    void testRangeScan() throws Exception {
+        @Cleanup
+        SyncOxiaClient client = OxiaClientBuilder.create(oxia.getServiceAddress()).syncClient();
+
+        client.put("range-scan-a", "0".getBytes());
+        client.put("range-scan-b", "1".getBytes());
+        client.put("range-scan-c", "2".getBytes());
+        client.put("range-scan-d", "3".getBytes());
+        client.put("range-scan-e", "4".getBytes());
+        client.put("range-scan-f", "5".getBytes());
+        client.put("range-scan-g", "6".getBytes());
+
+        Iterable<GetResult> iterable = client.rangeScan("range-scan-a", "range-scan-d");
+
+        List<String> list = StreamSupport.stream(iterable.spliterator(), false)
+                .map(GetResult::getKey)
+                .sorted()
+                .toList();
+        assertThat(list).containsExactly("range-scan-a", "range-scan-b", "range-scan-c");
+
+        // Check that the same iterable object can be used multiple times
+        List<String> list2 = StreamSupport.stream(iterable.spliterator(), false)
+                .map(GetResult::getKey)
+                .sorted()
+                .toList();
+        assertThat(list2).isEqualTo(list);
     }
 }

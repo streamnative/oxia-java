@@ -15,5 +15,20 @@
  */
 package io.streamnative.oxia.client.api;
 
-public record OptionPartitionKey(String partitionKey)
-        implements DeleteRangeOption, GetOption, ListOption, PutOption, DeleteOption, RangeScanOption {}
+import lombok.NonNull;
+
+public sealed interface RangeScanOption permits OptionPartitionKey {
+
+    /**
+     * PartitionKey overrides the partition routing with the specified `partitionKey` instead of the
+     * regular record key.
+     *
+     * <p>Records with the same partitionKey will always be guaranteed to be co-located in the same
+     * Oxia shard.
+     *
+     * @param partitionKey the partition key to use
+     */
+    static RangeScanOption PartitionKey(@NonNull String partitionKey) {
+        return new OptionPartitionKey(partitionKey);
+    }
+}
