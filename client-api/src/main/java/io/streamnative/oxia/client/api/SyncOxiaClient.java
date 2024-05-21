@@ -176,8 +176,10 @@ public interface SyncOxiaClient extends AutoCloseable {
      * @param options the range scan options
      * @return An iterable object that will provide all the records and their version objects.
      */
-    Iterable<GetResult> rangeScan(@NonNull String startKeyInclusive, @NonNull String endKeyExclusive,
-                                  Set<RangeScanOption> options);
+    Iterable<GetResult> rangeScan(
+            @NonNull String startKeyInclusive,
+            @NonNull String endKeyExclusive,
+            Set<RangeScanOption> options);
 
     /**
      * Registers a callback to receive Oxia {@link Notification record change notifications}. Multiple

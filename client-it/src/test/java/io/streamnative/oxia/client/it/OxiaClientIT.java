@@ -107,9 +107,9 @@ public class OxiaClientIT {
 
     @AfterAll
     static void afterAll() throws Exception {
-//        if (client != null) {
-//            client.close();
-//        }
+        if (client != null) {
+            client.close();
+        }
     }
 
     @Test
@@ -552,13 +552,14 @@ public class OxiaClientIT {
         client.put("range-scan-pkey-f", "5".getBytes(), Set.of(PutOption.PartitionKey("x")));
         client.put("range-scan-pkey-g", "6".getBytes(), Set.of(PutOption.PartitionKey("x")));
 
-        Iterable<GetResult> iterable = client.rangeScan("range-scan-pkey-a", "range-scan-pkey-d", Set.of(
-                RangeScanOption.PartitionKey("x")));
+        Iterable<GetResult> iterable =
+                client.rangeScan(
+                        "range-scan-pkey-a", "range-scan-pkey-d", Set.of(RangeScanOption.PartitionKey("x")));
 
-        List<String> gr1List = StreamSupport.stream(iterable.spliterator(), false)
-                .map(GetResult::getKey)
-                .toList();
-        assertThat(gr1List).containsExactly("range-scan-pkey-a", "range-scan-pkey-b", "range-scan-pkey-c");
+        List<String> gr1List =
+                StreamSupport.stream(iterable.spliterator(), false).map(GetResult::getKey).toList();
+        assertThat(gr1List)
+                .containsExactly("range-scan-pkey-a", "range-scan-pkey-b", "range-scan-pkey-c");
     }
 
     @Test
@@ -576,17 +577,19 @@ public class OxiaClientIT {
 
         Iterable<GetResult> iterable = client.rangeScan("range-scan-a", "range-scan-d");
 
-        List<String> list = StreamSupport.stream(iterable.spliterator(), false)
-                .map(GetResult::getKey)
-                .sorted()
-                .toList();
+        List<String> list =
+                StreamSupport.stream(iterable.spliterator(), false)
+                        .map(GetResult::getKey)
+                        .sorted()
+                        .toList();
         assertThat(list).containsExactly("range-scan-a", "range-scan-b", "range-scan-c");
 
         // Check that the same iterable object can be used multiple times
-        List<String> list2 = StreamSupport.stream(iterable.spliterator(), false)
-                .map(GetResult::getKey)
-                .sorted()
-                .toList();
+        List<String> list2 =
+                StreamSupport.stream(iterable.spliterator(), false)
+                        .map(GetResult::getKey)
+                        .sorted()
+                        .toList();
         assertThat(list2).isEqualTo(list);
     }
 }
