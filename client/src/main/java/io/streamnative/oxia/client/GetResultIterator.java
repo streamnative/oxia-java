@@ -40,7 +40,7 @@ public class GetResultIterator implements Iterator<GetResult>, RangeScanConsumer
 
     @Override
     public synchronized void onError(Throwable throwable) {
-        this.error = throwable;
+        this.error = new Exception("Range scan error", throwable);
         notifyAll();
     }
 
