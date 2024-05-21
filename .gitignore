@@ -4,6 +4,7 @@ target/
 !**/src/test/**/target/
 dependency-reduced-pom.xml
 .run
+*.versionsBackup
 
 ### IntelliJ IDEA ###
 .idea/*
