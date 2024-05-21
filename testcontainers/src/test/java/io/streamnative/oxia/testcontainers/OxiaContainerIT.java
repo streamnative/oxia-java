@@ -50,8 +50,7 @@ class OxiaContainerIT {
     void testPutGetWithCLI() throws Exception {
         var address = NETWORK_ALIAS + ":" + OXIA_PORT;
 
-        var result =
-                cli.execInContainer("oxia", "client", "-a", address, "put", "hello", "world");
+        var result = cli.execInContainer("oxia", "client", "-a", address, "put", "hello", "world");
         assertThat(result.getExitCode()).isEqualTo(0);
 
         result = cli.execInContainer("oxia", "client", "-a", address, "get", "hello");
