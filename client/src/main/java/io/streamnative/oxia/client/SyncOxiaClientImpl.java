@@ -24,6 +24,7 @@ import io.streamnative.oxia.client.api.ListOption;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.PutOption;
 import io.streamnative.oxia.client.api.PutResult;
+import io.streamnative.oxia.client.api.RangeScanOption;
 import io.streamnative.oxia.client.api.SyncOxiaClient;
 import io.streamnative.oxia.client.api.exceptions.UnexpectedVersionIdException;
 import java.util.Collections;
@@ -146,6 +147,24 @@ class SyncOxiaClientImpl implements SyncOxiaClient {
     @Override
     public void notifications(@NonNull Consumer<Notification> notificationCallback) {
         asyncClient.notifications(notificationCallback);
+    }
+
+    @Override
+    public Iterable<GetResult> rangeScan(
+            @NonNull String startKeyInclusive, @NonNull String endKeyExclusive) {
+        return rangeScan(startKeyInclusive, endKeyExclusive, Collections.emptySet());
+    }
+
+    @Override
+    public Iterable<GetResult> rangeScan(
+            @NonNull String startKeyInclusive,
+            @NonNull String endKeyExclusive,
+            Set<RangeScanOption> options) {
+        return () -> {
+            GetResultIterator gri = new GetResultIterator();
+            asyncClient.rangeScan(startKeyInclusive, endKeyExclusive, gri, options);
+            return gri;
+        };
     }
 
     @Override

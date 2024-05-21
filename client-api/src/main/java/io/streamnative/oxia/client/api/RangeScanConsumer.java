@@ -15,5 +15,11 @@
  */
 package io.streamnative.oxia.client.api;
 
-public record OptionPartitionKey(String partitionKey)
-        implements DeleteRangeOption, GetOption, ListOption, PutOption, DeleteOption, RangeScanOption {}
+public interface RangeScanConsumer {
+
+    void onNext(GetResult result);
+
+    void onError(Throwable throwable);
+
+    void onCompleted();
+}
