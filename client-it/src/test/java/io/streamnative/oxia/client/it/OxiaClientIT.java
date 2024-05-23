@@ -17,6 +17,7 @@ package io.streamnative.oxia.client.it;
 
 import static io.streamnative.oxia.client.api.PutOption.IfRecordDoesNotExist;
 import static io.streamnative.oxia.client.api.PutOption.IfVersionIdEquals;
+import static io.streamnative.oxia.client.api.PutOption.PartitionKey;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.concurrent.CompletableFuture.allOf;
 import static java.util.function.Function.identity;
@@ -227,6 +228,29 @@ public class OxiaClientIT {
                                 .map(HistogramPointData::getCount)
                                 .reduce(0L, Long::sum))
                 .isEqualTo(24);
+    }
+
+    @Test
+    public void testGetFloorCeilingWithPartitionKey() throws Exception {
+        @Cleanup
+        SyncOxiaClient client = OxiaClientBuilder.create(oxia.getServiceAddress()).syncClient();
+
+
+        GetResult gr = client.get("a", Set.of(GetOption.PartitionKey("a"), GetOption.ComparisonCeiling));
+        if (gr != null) {
+            System.out.println(gr.getKey());
+        } else {
+            System.out.println("ComparisionCeiling null");
+        }
+
+
+        gr = client.get("a", Set.of(GetOption.PartitionKey("a"), GetOption.ComparisonHigher));
+        if (gr != null) {
+            System.out.println(gr.getKey());
+        } else {
+            System.out.println("ComparisionHigher null");
+        }
+
     }
 
     @Test
