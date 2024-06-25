@@ -16,6 +16,5 @@
 package io.streamnative.oxia.client.api;
 
 public enum AuthenticationType {
-
     Bearer;
 }

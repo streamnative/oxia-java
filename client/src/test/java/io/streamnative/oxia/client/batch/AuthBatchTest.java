@@ -27,7 +27,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class AuthBatchTest extends BatchTest{
+class AuthBatchTest extends BatchTest {
 
     static {
         authentication = () -> Collections.singletonMap(AuthenticationType.BEARER, "123");
@@ -37,9 +37,8 @@ class AuthBatchTest extends BatchTest{
     static class AuthInterceptor implements ServerInterceptor {
 
         @Override
-        public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call,
-                                                                     Metadata metadata,
-                                                                     ServerCallHandler<ReqT, RespT> handler) {
+        public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(
+                ServerCall<ReqT, RespT> call, Metadata metadata, ServerCallHandler<ReqT, RespT> handler) {
             String token = metadata.get(OxiaCredentialUtils.AUTHORIZATION_METADATA_KEY);
             if (!"Bearer 123".equals(token)) {
                 call.close(Status.UNAUTHENTICATED.withDescription("Token is wrong"), new Metadata());

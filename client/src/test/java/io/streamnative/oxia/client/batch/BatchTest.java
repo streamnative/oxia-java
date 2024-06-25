@@ -128,14 +128,15 @@ class BatchTest {
     public void setUp() throws Exception {
         writeResponses.clear();
         String serverName = InProcessServerBuilder.generateName();
-        InProcessServerBuilder serverBuilder = InProcessServerBuilder.forName(serverName)
-                .directExecutor()
-                .addService(serviceImpl);
+        InProcessServerBuilder serverBuilder =
+                InProcessServerBuilder.forName(serverName).directExecutor().addService(serviceImpl);
         if (serverInterceptor != null) {
             serverBuilder.intercept(serverInterceptor);
         }
         server = serverBuilder.build().start();
-        stub = new OxiaStub(InProcessChannelBuilder.forName(serverName).directExecutor().build(), authentication);
+        stub =
+                new OxiaStub(
+                        InProcessChannelBuilder.forName(serverName).directExecutor().build(), authentication);
         clientByShardId = mock(OxiaStubProvider.class);
         lenient().when(clientByShardId.getStubForShard(anyLong())).thenReturn(stub);
     }

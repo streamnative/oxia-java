@@ -54,8 +54,7 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
 
     @NonNull private String namespace = DefaultNamespace;
     @NonNull private OpenTelemetry openTelemetry = GlobalOpenTelemetry.get();
-    @Nullable
-    private Authentication authentication;
+    @Nullable private Authentication authentication;
 
     @Override
     public @NonNull OxiaClientBuilder requestTimeout(@NonNull Duration requestTimeout) {

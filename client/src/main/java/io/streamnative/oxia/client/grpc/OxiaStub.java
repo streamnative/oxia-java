@@ -34,10 +34,15 @@ public class OxiaStub implements AutoCloseable {
     private final @NonNull OxiaClientGrpc.OxiaClientStub asyncStub;
 
     public OxiaStub(String address, @Nullable Authentication authentication) {
-        // By default, "NettyChannelBuilder" supports TLS, so no additional configuration is required for the public
+        // By default, "NettyChannelBuilder" supports TLS, so no additional configuration is required
+        // for the public
         // issuer.
-        this(NettyChannelBuilder.forTarget(address, InsecureChannelCredentials.create())
-                .directExecutor().disableRetry().build(), authentication);
+        this(
+                NettyChannelBuilder.forTarget(address, InsecureChannelCredentials.create())
+                        .directExecutor()
+                        .disableRetry()
+                        .build(),
+                authentication);
     }
 
     public OxiaStub(ManagedChannel channel) {
@@ -47,19 +52,22 @@ public class OxiaStub implements AutoCloseable {
     public OxiaStub(ManagedChannel channel, @Nullable final Authentication authentication) {
         this.channel = channel;
         if (authentication != null) {
-            this.asyncStub = OxiaClientGrpc.newStub(channel).withCallCredentials(new CallCredentials() {
+            this.asyncStub =
+                    OxiaClientGrpc.newStub(channel)
+                            .withCallCredentials(
+                                    new CallCredentials() {
 
-                @Override
-                public void applyRequestMetadata(RequestInfo requestInfo, Executor appExecutor,
-                                                 MetadataApplier applier) {
-                    applier.apply(OxiaCredentialUtils.convertToOxiaCredentials(authentication));
-                }
+                                        @Override
+                                        public void applyRequestMetadata(
+                                                RequestInfo requestInfo, Executor appExecutor, MetadataApplier applier) {
+                                            applier.apply(OxiaCredentialUtils.convertToOxiaCredentials(authentication));
+                                        }
 
-                @Override
-                public void thisUsesUnstableApi() {
-                    // Nothing to do.
-                }
-            });
+                                        @Override
+                                        public void thisUsesUnstableApi() {
+                                            // Nothing to do.
+                                        }
+                                    });
         } else {
             this.asyncStub = OxiaClientGrpc.newStub(channel);
         }

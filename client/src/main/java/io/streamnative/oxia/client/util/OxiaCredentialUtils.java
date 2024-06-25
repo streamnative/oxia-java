@@ -16,6 +16,7 @@
 package io.streamnative.oxia.client.util;
 
 import static io.grpc.Metadata.ASCII_STRING_MARSHALLER;
+
 import io.grpc.Metadata;
 import io.streamnative.oxia.client.api.Authentication;
 import io.streamnative.oxia.client.api.AuthenticationType;
@@ -43,7 +44,8 @@ public class OxiaCredentialUtils {
             throw new IllegalArgumentException("Only support bearer authentication types at the moment.");
         }
         Metadata credentials = new Metadata();
-        credentials.put(AUTHORIZATION_METADATA_KEY, String.format("%s %s", BEARER_TYPE, entry.getValue()));
+        credentials.put(
+                AUTHORIZATION_METADATA_KEY, String.format("%s %s", BEARER_TYPE, entry.getValue()));
         return credentials;
     }
 }

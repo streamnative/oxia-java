@@ -23,8 +23,7 @@ import javax.annotation.Nullable;
 public class OxiaStubManager implements AutoCloseable {
     private final Map<String, OxiaStub> stubs = new ConcurrentHashMap<>();
 
-    @Nullable
-    private final Authentication authentication;
+    @Nullable private final Authentication authentication;
 
     public OxiaStubManager(@Nullable Authentication authentication) {
         this.authentication = authentication;
