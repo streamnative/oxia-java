@@ -16,7 +16,9 @@
 package io.streamnative.oxia.client;
 
 import io.opentelemetry.api.OpenTelemetry;
+import io.streamnative.oxia.client.api.Authentication;
 import java.time.Duration;
+import javax.annotation.Nullable;
 import lombok.NonNull;
 
 public record ClientConfig(
@@ -28,4 +30,5 @@ public record ClientConfig(
         @NonNull Duration sessionTimeout,
         @NonNull String clientIdentifier,
         OpenTelemetry openTelemetry,
-        @NonNull String namespace) {}
+        @NonNull String namespace,
+        @Nullable Authentication authentication) {}

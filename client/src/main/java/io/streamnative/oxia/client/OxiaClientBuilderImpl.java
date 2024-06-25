@@ -21,6 +21,7 @@ import com.google.common.base.Strings;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
+import io.streamnative.oxia.client.api.Authentication;
 import io.streamnative.oxia.client.api.OxiaClientBuilder;
 import io.streamnative.oxia.client.api.SyncOxiaClient;
 import io.streamnative.oxia.client.api.exceptions.OxiaException;
@@ -28,6 +29,7 @@ import java.time.Duration;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
+import javax.annotation.Nullable;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
@@ -52,6 +54,8 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
 
     @NonNull private String namespace = DefaultNamespace;
     @NonNull private OpenTelemetry openTelemetry = GlobalOpenTelemetry.get();
+    @Nullable
+    private Authentication authentication;
 
     @Override
     public @NonNull OxiaClientBuilder requestTimeout(@NonNull Duration requestTimeout) {
@@ -120,6 +124,12 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
     }
 
     @Override
+    public OxiaClientBuilder authentication(Authentication authentication) {
+        this.authentication = authentication;
+        return this;
+    }
+
+    @Override
     public @NonNull CompletableFuture<AsyncOxiaClient> asyncClient() {
         var config =
                 new ClientConfig(
@@ -131,7 +141,8 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
                         sessionTimeout,
                         clientIdentifier.get(),
                         openTelemetry,
-                        namespace);
+                        namespace,
+                        authentication);
         return AsyncOxiaClientImpl.newInstance(config);
     }
 

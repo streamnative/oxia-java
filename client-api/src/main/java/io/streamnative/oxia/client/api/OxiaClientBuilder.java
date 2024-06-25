@@ -47,4 +47,6 @@ public interface OxiaClientBuilder {
     OxiaClientBuilder clientIdentifier(Supplier<String> clientIdentifier);
 
     OxiaClientBuilder openTelemetry(OpenTelemetry openTelemetry);
+
+    OxiaClientBuilder authentication(Authentication authentication);
 }

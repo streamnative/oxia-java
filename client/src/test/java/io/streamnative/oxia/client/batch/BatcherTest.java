@@ -60,7 +60,8 @@ class BatcherTest {
                     Duration.ofMillis(1000),
                     "client_id",
                     null,
-                    OxiaClientBuilderImpl.DefaultNamespace);
+                    OxiaClientBuilderImpl.DefaultNamespace,
+                    null);
 
     BatchedArrayBlockingQueue<Operation<?>> queue;
     Batcher batcher;
