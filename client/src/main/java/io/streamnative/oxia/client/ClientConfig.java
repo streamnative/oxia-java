@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client;
 
-import io.grpc.TlsChannelCredentials;
 import io.opentelemetry.api.OpenTelemetry;
 import io.streamnative.oxia.client.api.Authentication;
 import java.time.Duration;

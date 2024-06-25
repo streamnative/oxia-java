@@ -435,7 +435,17 @@ class BatchTest {
     class FactoryTests {
         ClientConfig config =
                 new ClientConfig(
-                        "address", ZERO, ZERO, 1, 1024 * 1024, ZERO, "client_id", null, DefaultNamespace, null, false);
+                        "address",
+                        ZERO,
+                        ZERO,
+                        1,
+                        1024 * 1024,
+                        ZERO,
+                        "client_id",
+                        null,
+                        DefaultNamespace,
+                        null,
+                        false);
 
         @Nested
         @DisplayName("Tests of write batch factory")
