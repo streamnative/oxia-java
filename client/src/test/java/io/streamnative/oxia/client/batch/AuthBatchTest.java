@@ -30,7 +30,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class AuthBatchTest extends BatchTest {
 
     static {
-        authentication = () -> Collections.singletonMap(AuthenticationType.BEARER, "123");
+        authentication = () -> Collections.singletonMap(AuthenticationType.Bearer, "123");
         serverInterceptor = new AuthInterceptor();
     }
 

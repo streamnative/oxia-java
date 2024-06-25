@@ -40,7 +40,7 @@ public class OxiaCredentialUtils {
             throw new IllegalArgumentException("Does not support multiple authentication types yet.");
         }
         Map.Entry<AuthenticationType, String> entry = params.entrySet().iterator().next();
-        if (!entry.getKey().equals(AuthenticationType.BEARER)) {
+        if (!entry.getKey().equals(AuthenticationType.Bearer)) {
             throw new IllegalArgumentException("Only support bearer authentication types at the moment.");
         }
         Metadata credentials = new Metadata();
