@@ -78,7 +78,8 @@ class SessionTest {
                         clientId,
                         null,
                         DefaultNamespace,
-                        null);
+                        null,
+                        false);
 
         String serverName = InProcessServerBuilder.generateName();
         service = new TestService();

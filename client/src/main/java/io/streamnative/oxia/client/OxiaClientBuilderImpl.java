@@ -55,6 +55,7 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
     @NonNull private String namespace = DefaultNamespace;
     @NonNull private OpenTelemetry openTelemetry = GlobalOpenTelemetry.get();
     @Nullable private Authentication authentication;
+    private boolean enableTls;
 
     @Override
     public @NonNull OxiaClientBuilder requestTimeout(@NonNull Duration requestTimeout) {
@@ -129,6 +130,12 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
     }
 
     @Override
+    public OxiaClientBuilder enableTls(boolean enableTls) {
+        this.authentication = authentication;
+        return this;
+    }
+
+    @Override
     public @NonNull CompletableFuture<AsyncOxiaClient> asyncClient() {
         var config =
                 new ClientConfig(
@@ -141,7 +148,8 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
                         clientIdentifier.get(),
                         openTelemetry,
                         namespace,
-                        authentication);
+                        authentication,
+                        false);
         return AsyncOxiaClientImpl.newInstance(config);
     }
 

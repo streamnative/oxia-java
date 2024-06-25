@@ -20,6 +20,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import io.grpc.CallCredentials;
 import io.grpc.InsecureChannelCredentials;
 import io.grpc.ManagedChannel;
+import io.grpc.TlsChannelCredentials;
 import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
 import io.streamnative.oxia.client.api.Authentication;
 import io.streamnative.oxia.client.util.OxiaCredentialUtils;
@@ -33,11 +34,13 @@ public class OxiaStub implements AutoCloseable {
 
     private final @NonNull OxiaClientGrpc.OxiaClientStub asyncStub;
 
-    public OxiaStub(String address, @Nullable Authentication authentication) {
-        // By default, "NettyChannelBuilder" supports TLS, so no additional configuration is required
-        // for the public issuer.
+    public OxiaStub(String address, @Nullable Authentication authentication, boolean enableTls) {
         this(
-                NettyChannelBuilder.forTarget(address, InsecureChannelCredentials.create())
+                NettyChannelBuilder.forTarget(
+                                address,
+                                enableTls
+                                        ? TlsChannelCredentials.newBuilder().build()
+                                        : InsecureChannelCredentials.create())
                         .directExecutor()
                         .disableRetry()
                         .build(),

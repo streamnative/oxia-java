@@ -15,6 +15,7 @@
  */
 package io.streamnative.oxia.client;
 
+import io.grpc.TlsChannelCredentials;
 import io.opentelemetry.api.OpenTelemetry;
 import io.streamnative.oxia.client.api.Authentication;
 import java.time.Duration;
@@ -31,4 +32,5 @@ public record ClientConfig(
         @NonNull String clientIdentifier,
         OpenTelemetry openTelemetry,
         @NonNull String namespace,
-        @Nullable Authentication authentication) {}
+        @Nullable Authentication authentication,
+        boolean enableTls) {}

@@ -61,7 +61,8 @@ class BatcherTest {
                     "client_id",
                     null,
                     OxiaClientBuilderImpl.DefaultNamespace,
-                    null);
+                    null,
+                    false);
 
     BatchedArrayBlockingQueue<Operation<?>> queue;
     Batcher batcher;

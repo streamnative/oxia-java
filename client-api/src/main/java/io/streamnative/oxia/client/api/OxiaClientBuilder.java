@@ -49,4 +49,6 @@ public interface OxiaClientBuilder {
     OxiaClientBuilder openTelemetry(OpenTelemetry openTelemetry);
 
     OxiaClientBuilder authentication(Authentication authentication);
+
+    OxiaClientBuilder enableTls(boolean enableTls);
 }

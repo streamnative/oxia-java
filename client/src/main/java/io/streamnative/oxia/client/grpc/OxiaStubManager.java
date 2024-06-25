@@ -24,13 +24,15 @@ public class OxiaStubManager implements AutoCloseable {
     private final Map<String, OxiaStub> stubs = new ConcurrentHashMap<>();
 
     @Nullable private final Authentication authentication;
+    private final boolean enableTls;
 
-    public OxiaStubManager(@Nullable Authentication authentication) {
+    public OxiaStubManager(@Nullable Authentication authentication, boolean enableTls) {
         this.authentication = authentication;
+        this.enableTls = enableTls;
     }
 
     public OxiaStub getStub(String address) {
-        return stubs.computeIfAbsent(address, addr -> new OxiaStub(addr, authentication));
+        return stubs.computeIfAbsent(address, addr -> new OxiaStub(addr, authentication, enableTls));
     }
 
     @Override

@@ -99,7 +99,8 @@ class BatchTest {
                     "client_id",
                     null,
                     OxiaClientBuilderImpl.DefaultNamespace,
-                    authentication);
+                    authentication,
+                    authentication != null);
 
     private final OxiaClientImplBase serviceImpl =
             mock(
@@ -434,7 +435,7 @@ class BatchTest {
     class FactoryTests {
         ClientConfig config =
                 new ClientConfig(
-                        "address", ZERO, ZERO, 1, 1024 * 1024, ZERO, "client_id", null, DefaultNamespace, null);
+                        "address", ZERO, ZERO, 1, 1024 * 1024, ZERO, "client_id", null, DefaultNamespace, null, false);
 
         @Nested
         @DisplayName("Tests of write batch factory")
