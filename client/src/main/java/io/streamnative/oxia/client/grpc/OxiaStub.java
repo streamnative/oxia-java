@@ -35,8 +35,7 @@ public class OxiaStub implements AutoCloseable {
 
     public OxiaStub(String address, @Nullable Authentication authentication) {
         // By default, "NettyChannelBuilder" supports TLS, so no additional configuration is required
-        // for the public
-        // issuer.
+        // for the public issuer.
         this(
                 NettyChannelBuilder.forTarget(address, InsecureChannelCredentials.create())
                         .directExecutor()
