@@ -30,12 +30,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.grpc.Server;
+import io.grpc.ServerInterceptor;
 import io.grpc.StatusRuntimeException;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
 import io.grpc.stub.StreamObserver;
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.OxiaClientBuilderImpl;
+import io.streamnative.oxia.client.api.Authentication;
 import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.exceptions.UnexpectedVersionIdException;
@@ -83,6 +85,8 @@ class BatchTest {
     @Mock Session session;
     long shardId = 1L;
     long sessionId = 1L;
+    protected static volatile Authentication authentication;
+    protected static volatile ServerInterceptor serverInterceptor;
 
     static ClientConfig config =
             new ClientConfig(
@@ -94,7 +98,9 @@ class BatchTest {
                     Duration.ofMillis(1000),
                     "client_id",
                     null,
-                    OxiaClientBuilderImpl.DefaultNamespace);
+                    OxiaClientBuilderImpl.DefaultNamespace,
+                    authentication,
+                    authentication != null);
 
     private final OxiaClientImplBase serviceImpl =
             mock(
@@ -123,13 +129,15 @@ class BatchTest {
     public void setUp() throws Exception {
         writeResponses.clear();
         String serverName = InProcessServerBuilder.generateName();
-        server =
-                InProcessServerBuilder.forName(serverName)
-                        .directExecutor()
-                        .addService(serviceImpl)
-                        .build()
-                        .start();
-        stub = new OxiaStub(InProcessChannelBuilder.forName(serverName).directExecutor().build());
+        InProcessServerBuilder serverBuilder =
+                InProcessServerBuilder.forName(serverName).directExecutor().addService(serviceImpl);
+        if (serverInterceptor != null) {
+            serverBuilder.intercept(serverInterceptor);
+        }
+        server = serverBuilder.build().start();
+        stub =
+                new OxiaStub(
+                        InProcessChannelBuilder.forName(serverName).directExecutor().build(), authentication);
         clientByShardId = mock(OxiaStubProvider.class);
         lenient().when(clientByShardId.getStubForShard(anyLong())).thenReturn(stub);
     }
@@ -427,7 +435,17 @@ class BatchTest {
     class FactoryTests {
         ClientConfig config =
                 new ClientConfig(
-                        "address", ZERO, ZERO, 1, 1024 * 1024, ZERO, "client_id", null, DefaultNamespace);
+                        "address",
+                        ZERO,
+                        ZERO,
+                        1,
+                        1024 * 1024,
+                        ZERO,
+                        "client_id",
+                        null,
+                        DefaultNamespace,
+                        null,
+                        false);
 
         @Nested
         @DisplayName("Tests of write batch factory")
