@@ -131,7 +131,7 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
 
     @Override
     public OxiaClientBuilder enableTls(boolean enableTls) {
-        this.authentication = authentication;
+        this.enableTls = enableTls;
         return this;
     }
 
@@ -149,7 +149,7 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
                         openTelemetry,
                         namespace,
                         authentication,
-                        false);
+                        enableTls);
         return AsyncOxiaClientImpl.newInstance(config);
     }
 
