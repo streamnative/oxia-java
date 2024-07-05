@@ -23,7 +23,6 @@ import io.grpc.ManagedChannel;
 import io.grpc.TlsChannelCredentials;
 import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
 import io.streamnative.oxia.client.api.Authentication;
-import io.streamnative.oxia.client.util.OxiaCredentialUtils;
 import io.streamnative.oxia.proto.OxiaClientGrpc;
 import java.util.concurrent.Executor;
 import javax.annotation.Nullable;
@@ -62,7 +61,7 @@ public class OxiaStub implements AutoCloseable {
                                         @Override
                                         public void applyRequestMetadata(
                                                 RequestInfo requestInfo, Executor appExecutor, MetadataApplier applier) {
-                                            applier.apply(OxiaCredentialUtils.convertToOxiaCredentials(authentication));
+                                            applier.apply(authentication.generateCredentials());
                                         }
 
                                         @Override

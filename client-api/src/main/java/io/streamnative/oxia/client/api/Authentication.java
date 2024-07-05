@@ -15,9 +15,9 @@
  */
 package io.streamnative.oxia.client.api;
 
-import java.util.Map;
+import io.grpc.Metadata;
 
 public interface Authentication {
 
-    Map<AuthenticationType, String> generateCredentials();
+    Metadata generateCredentials();
 }

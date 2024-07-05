@@ -15,22 +15,29 @@
  */
 package io.streamnative.oxia.client.batch;
 
+import static io.grpc.Metadata.ASCII_STRING_MARSHALLER;
 import io.grpc.Metadata;
 import io.grpc.ServerCall;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
 import io.grpc.Status;
-import io.streamnative.oxia.client.api.AuthenticationType;
-import io.streamnative.oxia.client.util.OxiaCredentialUtils;
-import java.util.Collections;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class AuthBatchTest extends BatchTest {
 
+    public static final Metadata.Key<String> AUTHORIZATION_METADATA_KEY =
+            Metadata.Key.of("Authorization", ASCII_STRING_MARSHALLER);
+    public static final String BEARER_TYPE = "Bearer";
+
     static {
-        authentication = () -> Collections.singletonMap(AuthenticationType.Bearer, "123");
+        authentication = () -> {
+            Metadata credentials = new Metadata();
+            credentials.put(
+                    AUTHORIZATION_METADATA_KEY, String.format("%s %s", BEARER_TYPE, "123"));
+            return credentials;
+        };
         serverInterceptor = new AuthInterceptor();
     }
 
@@ -39,7 +46,7 @@ class AuthBatchTest extends BatchTest {
         @Override
         public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(
                 ServerCall<ReqT, RespT> call, Metadata metadata, ServerCallHandler<ReqT, RespT> handler) {
-            String token = metadata.get(OxiaCredentialUtils.AUTHORIZATION_METADATA_KEY);
+            String token = metadata.get(AUTHORIZATION_METADATA_KEY);
             if (!"Bearer 123".equals(token)) {
                 call.close(Status.UNAUTHENTICATED.withDescription("Token is wrong"), new Metadata());
                 return new ServerCall.Listener<ReqT>() {};
