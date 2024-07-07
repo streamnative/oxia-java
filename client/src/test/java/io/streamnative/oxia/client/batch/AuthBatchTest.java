@@ -16,6 +16,7 @@
 package io.streamnative.oxia.client.batch;
 
 import static io.grpc.Metadata.ASCII_STRING_MARSHALLER;
+
 import io.grpc.Metadata;
 import io.grpc.ServerCall;
 import io.grpc.ServerCallHandler;
@@ -32,12 +33,12 @@ class AuthBatchTest extends BatchTest {
     public static final String BEARER_TYPE = "Bearer";
 
     static {
-        authentication = () -> {
-            Metadata credentials = new Metadata();
-            credentials.put(
-                    AUTHORIZATION_METADATA_KEY, String.format("%s %s", BEARER_TYPE, "123"));
-            return credentials;
-        };
+        authentication =
+                () -> {
+                    Metadata credentials = new Metadata();
+                    credentials.put(AUTHORIZATION_METADATA_KEY, String.format("%s %s", BEARER_TYPE, "123"));
+                    return credentials;
+                };
         serverInterceptor = new AuthInterceptor();
     }
 
