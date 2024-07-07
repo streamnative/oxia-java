@@ -15,14 +15,24 @@
  */
 package io.streamnative.oxia.client.grpc;
 
+import io.streamnative.oxia.client.api.Authentication;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import javax.annotation.Nullable;
 
 public class OxiaStubManager implements AutoCloseable {
     private final Map<String, OxiaStub> stubs = new ConcurrentHashMap<>();
 
+    @Nullable private final Authentication authentication;
+    private final boolean enableTls;
+
+    public OxiaStubManager(@Nullable Authentication authentication, boolean enableTls) {
+        this.authentication = authentication;
+        this.enableTls = enableTls;
+    }
+
     public OxiaStub getStub(String address) {
-        return stubs.computeIfAbsent(address, OxiaStub::new);
+        return stubs.computeIfAbsent(address, addr -> new OxiaStub(addr, authentication, enableTls));
     }
 
     @Override
