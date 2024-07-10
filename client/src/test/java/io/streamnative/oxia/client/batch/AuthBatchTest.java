@@ -22,6 +22,7 @@ import io.grpc.ServerCall;
 import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptor;
 import io.grpc.Status;
+import io.streamnative.oxia.client.auth.TokenAuthentication;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -30,15 +31,9 @@ class AuthBatchTest extends BatchTest {
 
     public static final Metadata.Key<String> AUTHORIZATION_METADATA_KEY =
             Metadata.Key.of("Authorization", ASCII_STRING_MARSHALLER);
-    public static final String BEARER_TYPE = "Bearer";
 
     static {
-        authentication =
-                () -> {
-                    Metadata credentials = new Metadata();
-                    credentials.put(AUTHORIZATION_METADATA_KEY, String.format("%s %s", BEARER_TYPE, "123"));
-                    return credentials;
-                };
+        authentication = new TokenAuthentication("123");
         serverInterceptor = new AuthInterceptor();
     }
 

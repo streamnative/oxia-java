@@ -15,12 +15,17 @@
  */
 package io.streamnative.oxia.client;
 
+import static io.grpc.Metadata.ASCII_STRING_MARSHALLER;
 import static java.time.Duration.ZERO;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.grpc.Metadata;
 import io.streamnative.oxia.client.api.OxiaClientBuilder;
+import io.streamnative.oxia.client.auth.TokenAuthentication;
 import java.time.Duration;
+import java.util.Properties;
 import org.junit.jupiter.api.Test;
 
 class OxiaClientBuilderTest {
@@ -61,5 +66,70 @@ class OxiaClientBuilderTest {
         assertThatThrownBy(() -> builder.sessionTimeout(Duration.ofMillis(-1)))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatNoException().isThrownBy(() -> builder.sessionTimeout(Duration.ofMillis(1)));
+    }
+
+    @Test
+    void loadConfigWithIllegalArgument() {
+        assertThatThrownBy(() -> builder.loadConfig("configPath"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> builder.loadConfig(new java.io.File("configFile")))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> builder.loadConfig((Properties) null))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void loadConfigWithProperties() {
+        Properties properties = new Properties();
+        properties.setProperty("serviceAddress", "address:5678");
+        properties.setProperty("requestTimeout", "1");
+        properties.setProperty("batchLinger", "2");
+        properties.setProperty("maxRequestsPerBatch", "3");
+        properties.setProperty("sessionTimeout", "4");
+        properties.setProperty("clientIdentifier", "client-identifier");
+        properties.setProperty("namespace", "namespace");
+        properties.setProperty("enableTls", "true");
+        properties.setProperty("authPluginClassName", TokenAuthentication.class.getName());
+        properties.setProperty("authParams", "token:1234");
+        builder.loadConfig(properties);
+        OxiaClientBuilderImpl impl = (OxiaClientBuilderImpl) builder;
+        assertThat(impl.serviceAddress).isEqualTo("address:5678");
+        assertThat(impl.requestTimeout).isEqualTo(Duration.ofMillis(1));
+        assertThat(impl.batchLinger).isEqualTo(Duration.ofMillis(2));
+        assertThat(impl.maxRequestsPerBatch).isEqualTo(3);
+        assertThat(impl.sessionTimeout).isEqualTo(Duration.ofMillis(4));
+        assertThat(impl.clientIdentifier).isEqualTo("client-identifier");
+        assertThat(impl.namespace).isEqualTo("namespace");
+        assertThat(impl.enableTls).isTrue();
+        assertThat(impl.authPluginClassName).isEqualTo(TokenAuthentication.class.getName());
+        assertThat(impl.authParams).isEqualTo("token:1234");
+        assertThat(impl.authentication).isNotNull();
+        assertThat(impl.authentication).isInstanceOf(TokenAuthentication.class);
+        Metadata metadata = impl.authentication.generateCredentials();
+        assertThat(metadata).isNotNull();
+        String token = metadata.get(Metadata.Key.of("Authorization", ASCII_STRING_MARSHALLER));
+        assertThat(token).isEqualTo("Bearer 1234");
+    }
+
+    @Test
+    void loadConfigFromFile() {
+        builder.loadConfig("src/test/resources/test-client.properties");
+        OxiaClientBuilderImpl impl = (OxiaClientBuilderImpl) builder;
+        assertThat(impl.serviceAddress).isEqualTo("address:5678");
+        assertThat(impl.requestTimeout).isEqualTo(Duration.ofMillis(1));
+        assertThat(impl.batchLinger).isEqualTo(Duration.ofMillis(2));
+        assertThat(impl.maxRequestsPerBatch).isEqualTo(3);
+        assertThat(impl.sessionTimeout).isEqualTo(Duration.ofMillis(4));
+        assertThat(impl.clientIdentifier).isEqualTo("client-identifier");
+        assertThat(impl.namespace).isEqualTo("namespace");
+        assertThat(impl.enableTls).isTrue();
+        assertThat(impl.authPluginClassName).isEqualTo(TokenAuthentication.class.getName());
+        assertThat(impl.authParams).isEqualTo("token:1234");
+        assertThat(impl.authentication).isNotNull();
+        assertThat(impl.authentication).isInstanceOf(TokenAuthentication.class);
+        Metadata metadata = impl.authentication.generateCredentials();
+        assertThat(metadata).isNotNull();
+        String token = metadata.get(Metadata.Key.of("Authorization", ASCII_STRING_MARSHALLER));
+        assertThat(token).isEqualTo("Bearer 1234");
     }
 }
