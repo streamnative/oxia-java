@@ -49,6 +49,7 @@ public class PerfClient {
     private static final Recorder readLatency = new Recorder(TimeUnit.SECONDS.toMicros(120_000), 5);
     private static final PerfArguments arguments = new PerfArguments();
 
+
     public static void main(String[] args) throws Exception {
         JCommander jc = new JCommander(arguments);
         jc.setProgramName("oxia-java perf");
