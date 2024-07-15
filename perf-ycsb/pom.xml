@@ -85,11 +85,11 @@
             <artifactId>jackson-databind</artifactId>
             <version>2.17.2</version>
         </dependency>
-        <dependency>
-            <groupId>org.apache.pulsar</groupId>
-            <artifactId>pulsar-client</artifactId>
-            <version>3.0.5</version>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>org.apache.pulsar</groupId>-->
+<!--            <artifactId>pulsar-client</artifactId>-->
+<!--            <version>3.0.5</version>-->
+<!--        </dependency>-->
     </dependencies>
 
     <build>
@@ -126,7 +126,7 @@
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ApacheLicenseResourceTransformer"/>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>io.streamnative.oxia.client.perf.PerfClient</mainClass>
+                                    <mainClass>io.streamnative.oxia.client.perf.ycsb.WorkerStarter</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>

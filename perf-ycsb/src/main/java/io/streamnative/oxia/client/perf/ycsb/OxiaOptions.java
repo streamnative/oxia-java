@@ -21,10 +21,10 @@ import picocli.CommandLine;
 public final class OxiaOptions implements Runnable {
 
   @CommandLine.Spec
-  private CommandLine.Model.CommandSpec spec;
+  CommandLine.Model.CommandSpec spec;
 
   @Override
   public void run() {
-    spec.helpCommand();
+    throw new CommandLine.ParameterException(spec.commandLine(), "Specify a subcommand");
   }
 }

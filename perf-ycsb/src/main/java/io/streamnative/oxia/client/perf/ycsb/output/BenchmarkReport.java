@@ -28,13 +28,13 @@ public record BenchmarkReport(
         double writeOps,
         long totalFailedWrite,
         double writeFps,
-        HistogramSnapshot writeLatency,
+        HistogramSnapshot writeLatencyMs,
         /* ops read section */
         long totalRead,
         double readOps,
         long totalFailedRead,
         double readFps,
-        HistogramSnapshot readLatency
+        HistogramSnapshot readLatencyMs
 ) {
 
 }

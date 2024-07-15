@@ -15,11 +15,13 @@
  */
 package io.streamnative.oxia.client.perf.ycsb;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.streamnative.oxia.client.OxiaClientBuilderImpl;
 import picocli.CommandLine;
 
 @CommandLine.Command(name = "ycsb")
-public final class WorkerOptions implements Runnable {
+@JsonInclude
+public class WorkerOptions implements Runnable {
 
   @CommandLine.Option(
       names = {"-a", "--service-addr"},
@@ -77,15 +79,15 @@ public final class WorkerOptions implements Runnable {
   @CommandLine.Option(
       names = {"-num", "--operation-num"},
       description = "Num of total operations. 0 means no limit")
-  long operationNum = 0;
+  long operationNum = 1000;
 
 
   /* Generation */
 
   @CommandLine.Option(
       names = {"--key-distribution"},
-      description = "The key distribution. support lcg,uniform,zipfian,sequence")
-  String keyDistribution = "lcg";
+      description = "The key distribution. support uniform,zipfian,sequential")
+  String keyDistribution = "sequential";
 
   @CommandLine.Option(
       names = {"--key-prefix"},

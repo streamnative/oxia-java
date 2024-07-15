@@ -101,10 +101,10 @@ public final class Worker implements Runnable, Closeable, Operations {
     final Recorder readLatency =
         new Recorder(TimeUnit.SECONDS.toMicros(120_000), 5);
 
+    long operationNum = options.operationNum;
 
     final long taskStartTime = System.nanoTime();
-    while (closeFuture == null ||
-           (options.operationNum > 0 && options.operationNum-- == 0)) {
+    while ((options.operationNum > 0 ? operationNum-- > 0 : closeFuture == null)) {
       // jump out by closing worker
       operationRatelimiter.acquire();
       try {
@@ -116,7 +116,7 @@ public final class Worker implements Runnable, Closeable, Operations {
 
       final OperationType operationType = operationGenerator.nextValue();
       final String key = keyGenerator.nextValue();
-      Thread.ofVirtual().unstarted(() -> {
+      Thread.ofVirtual().start(() -> {
         try {
           switch (operationType) {
           case WRITE -> {
@@ -152,8 +152,7 @@ public final class Worker implements Runnable, Closeable, Operations {
     }
 
     try {
-      outstandingSemaphore.acquire(
-          maxOutstandingRequests); // acquire all of permits
+      outstandingSemaphore.acquire(maxOutstandingRequests); // acquire all of permits
     } catch (InterruptedException e) {
       throw new WorkerException(e);
     }
@@ -181,9 +180,18 @@ public final class Worker implements Runnable, Closeable, Operations {
             readFailedOps, HistogramSnapshot.fromHistogram(readLatency));
     output.report(snapshot);
 
-    if (closeFuture != null && closeFuture.complete(null)) {
-      log.warn(
-          "bug! unexpected behaviour: completed future and empty close future");
+    if (closeFuture == null) {
+      synchronized (this) {
+        if (closeFuture == null) {
+          // avoid close after running
+          closeFuture = CompletableFuture.completedFuture(null);
+        }
+      }
+    } else {
+      if (!closeFuture.complete(null)) {
+        log.warn(
+            "bug! unexpected behaviour: completed future and empty close future");
+      }
     }
   }
 
