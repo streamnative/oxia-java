@@ -30,8 +30,6 @@
     <name>Oxia YCSB</name>
 
     <properties>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
         <hdr-histogram.version>2.1.9</hdr-histogram.version>
         <maven.shade.plugin.version>3.4.1</maven.shade.plugin.version>
     </properties>
@@ -96,6 +94,14 @@
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>21</source>
+                    <target>21</target>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
