@@ -15,24 +15,22 @@
  */
 package io.streamnative.oxia.client.perf.ycsb.generator;
 
-
 import java.util.concurrent.ThreadLocalRandom;
 
 final class UniformKeyGenerator implements Generator<String> {
-  private final long bound;
-  private final String prefix;
+    private final long bound;
+    private final String prefix;
 
-
-  public UniformKeyGenerator(KeyGeneratorOptions options) {
-    this.prefix = options.prefix();
-    this.bound = options.bound();
-  }
-
-  @Override
-  public String nextValue() {
-    if (bound == 0) {
-      return prefix + Math.abs(ThreadLocalRandom.current().nextLong());
+    public UniformKeyGenerator(KeyGeneratorOptions options) {
+        this.prefix = options.prefix();
+        this.bound = options.bound();
     }
-    return prefix + Math.abs(ThreadLocalRandom.current().nextLong(bound));
-  }
+
+    @Override
+    public String nextValue() {
+        if (bound == 0) {
+            return prefix + Math.abs(ThreadLocalRandom.current().nextLong());
+        }
+        return prefix + Math.abs(ThreadLocalRandom.current().nextLong(bound));
+    }
 }

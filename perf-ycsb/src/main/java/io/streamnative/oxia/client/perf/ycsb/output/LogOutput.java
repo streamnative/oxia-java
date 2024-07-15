@@ -15,18 +15,31 @@
  */
 package io.streamnative.oxia.client.perf.ycsb.output;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 final class LogOutput implements Output {
-    private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final ObjectMapper mapper = new ObjectMapper();
+    private final boolean pretty;
+
+    public LogOutput(boolean pretty) {
+        this.pretty = pretty;
+        mapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.NONE);
+        mapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
+    }
 
     @Override
-    public void report(BenchmarkReport report) {
+    public void report(BenchmarkReportSnapshot report) {
         final String s;
         try {
-            s = MAPPER.writeValueAsString(report);
+            if (pretty) {
+                s = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(report);
+            } else {
+                s = mapper.writeValueAsString(report);
+            }
         } catch (Throwable ex) {
             throw new OutputException(ex.getMessage());
         }

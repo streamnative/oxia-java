@@ -17,14 +17,15 @@ package io.streamnative.oxia.client.perf.ycsb;
 
 import picocli.CommandLine;
 
-@CommandLine.Command(name = "oxia", subcommands = {WorkerOptions.class})
+@CommandLine.Command(
+        name = "oxia",
+        subcommands = {WorkerOptions.class})
 public final class OxiaOptions implements Runnable {
 
-  @CommandLine.Spec
-  CommandLine.Model.CommandSpec spec;
+    @CommandLine.Spec CommandLine.Model.CommandSpec spec;
 
-  @Override
-  public void run() {
-    throw new CommandLine.ParameterException(spec.commandLine(), "Specify a subcommand");
-  }
+    @Override
+    public void run() {
+        throw new CommandLine.ParameterException(spec.commandLine(), "Specify a subcommand");
+    }
 }

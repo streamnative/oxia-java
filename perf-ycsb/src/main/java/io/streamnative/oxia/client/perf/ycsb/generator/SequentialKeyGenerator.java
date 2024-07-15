@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client.perf.ycsb.generator;
 
-
 import java.util.concurrent.atomic.AtomicLong;
 
 final class SequentialKeyGenerator implements Generator<String> {

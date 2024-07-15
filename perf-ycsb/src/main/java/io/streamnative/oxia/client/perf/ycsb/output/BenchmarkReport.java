@@ -15,26 +15,99 @@
  */
 package io.streamnative.oxia.client.perf.ycsb.output;
 
-
 import io.streamnative.oxia.client.perf.ycsb.WorkerOptions;
 
-public record BenchmarkReport(
-        /* definitions section */
-        WorkerOptions definition,
-        /* metadata section */
-        long timestamp,
-        /* ops write section */
-        long totalWrite,
-        double writeOps,
-        long totalFailedWrite,
-        double writeFps,
-        HistogramSnapshot writeLatencyMs,
-        /* ops read section */
-        long totalRead,
-        double readOps,
-        long totalFailedRead,
-        double readFps,
-        HistogramSnapshot readLatencyMs
-) {
+import java.math.BigDecimal;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.LongAdder;
+import java.util.function.Function;
 
+import org.HdrHistogram.Histogram;
+import org.HdrHistogram.Recorder;
+
+public record BenchmarkReport(
+        LongAdder writeTotal,
+        LongAdder writeFailed,
+        Recorder writeLatency,
+        LongAdder readTotal,
+        LongAdder readFailed,
+        Recorder readLatency) {
+    public static BenchmarkReport createDefault() {
+        return new BenchmarkReport(
+                new LongAdder(),
+                new LongAdder(),
+                new Recorder(TimeUnit.SECONDS.toMicros(120_000), 5),
+                new LongAdder(),
+                new LongAdder(),
+                new Recorder(TimeUnit.SECONDS.toMicros(120_000), 5));
+    }
+
+
+    public Function<Long, BenchmarkReportSnapshot> snapshotFunc(WorkerOptions options, boolean interval) {
+        // recycler objects
+        final AtomicReference<Histogram> writeHistogramRef = new AtomicReference<>();
+        final AtomicReference<Histogram> readHistogramRef = new AtomicReference<>();
+
+        // lambda
+        return (taskStartTime) -> {
+
+            double elapsed = (System.nanoTime() - taskStartTime) / 1e9;
+            // write section
+            final long totalWrite = writeTotal().sumThenReset();
+            final double writeOps = Doubles.format2Scale(totalWrite / elapsed);
+            final long totalWriteFailed = writeFailed().sumThenReset();
+            final double writeFailedOps = Doubles.format2Scale(totalWriteFailed / elapsed);
+
+            // read section
+            final long totalRead = readTotal().sumThenReset();
+            final double readOps = Doubles.format2Scale(totalRead / elapsed);
+            final long totalReadFailed = readFailed().sumThenReset();
+            final double readFailedOps = Doubles.format2Scale(totalReadFailed / elapsed);
+
+            writeHistogramRef.setRelease(writeLatency().getIntervalHistogram(writeHistogramRef.get()));
+            final HistogramSnapshot writeLatencySnapshot =
+                    HistogramSnapshot.fromHistogram(writeHistogramRef.get());
+
+            readHistogramRef.setRelease(readLatency().getIntervalHistogram(readHistogramRef.get()));
+            final HistogramSnapshot readLatencySnapshot =
+                    HistogramSnapshot.fromHistogram(readHistogramRef.get());
+
+            writeHistogramRef.get().reset();
+            readHistogramRef.get().reset();
+
+            /*
+                Interval snapshot don't need total values.
+             */
+            if (interval) {
+                return new BenchmarkReportSnapshot(
+                        null,
+                        System.currentTimeMillis(),
+                        0,
+                        writeOps,
+                        0,
+                        writeFailedOps,
+                        writeLatencySnapshot,
+                        0,
+                        readOps,
+                        0,
+                        readFailedOps,
+                        readLatencySnapshot);
+            } else {
+                return new BenchmarkReportSnapshot(
+                        options,
+                        System.currentTimeMillis(),
+                        totalWrite,
+                        writeOps,
+                        totalWriteFailed,
+                        writeFailedOps,
+                        writeLatencySnapshot,
+                        totalRead,
+                        readOps,
+                        totalReadFailed,
+                        readFailedOps,
+                        readLatencySnapshot);
+            }
+        };
+    }
 }

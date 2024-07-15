@@ -15,7 +15,6 @@
  */
 package io.streamnative.oxia.client.perf.ycsb.generator;
 
-
 public record KeyGeneratorOptions(
         GeneratorType type,
         /* common parts  */
@@ -23,6 +22,4 @@ public record KeyGeneratorOptions(
         /* Uniform */
         long bound
         /* Zipfian */
-) {
-
-}
+        ) {}
