@@ -44,6 +44,16 @@ public class PerfArguments {
     double requestsRate = 100.0;
 
     @Parameter(
+            names = {"-p", "--read-write-percent"},
+            description = "Percentage of read requests, compared to total requests")
+    double readPercentage = 80.0;
+
+    @Parameter(
+            names = {"-k", "--keys-cardinality"},
+            description = "Number of unique keys")
+    int keysCardinality = 1_000;
+
+    @Parameter(
             names = {"-s", "--value-size"},
             description = "Size of the values to write")
     int valueSize = 128;
@@ -67,37 +77,4 @@ public class PerfArguments {
             names = {"-o", "--max-outstanding-requests"},
             description = "Max number of outstanding requests to server")
     int maxOutstandingRequests = 100_000;
-
-    /* Operations */
-    @Parameter(
-            names = {"--write-percent"},
-            description = "Percentage of write requests, compared to total requests")
-    double writePercentage = 20.0;
-
-    @Parameter(
-            names = {"--scan-percent"},
-            description = "Percentage of scan requests, compared to total requests")
-    double scanPercentage = 0.0;
-
-    @Parameter(
-            names = {"-p", "--read-write-percent"},
-            description = "Percentage of read requests, compared to total requests")
-    double readPercentage = 80.0;
-
-    @Parameter(
-            names = {"-num", "--operation-num"},
-            description = "Num of total operations. 0 means no limit")
-    long operationNum = 0;
-
-    /* Generation */
-
-    @Parameter(
-            names = {"--key-distribution"},
-            description = "The key distribution. support lcg,uniform,zipfian,sequence")
-    String keyDistribution = "lcg";
-
-    @Parameter(
-            names = {"-k", "--keys-cardinality"},
-            description = "Number of unique keys")
-    int keysCardinality = 1_000;
 }
