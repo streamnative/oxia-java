@@ -68,7 +68,6 @@ public class PerfArguments {
             description = "Max number of outstanding requests to server")
     int maxOutstandingRequests = 100_000;
 
-
     /* Operations */
     @Parameter(
             names = {"--write-percent"},
@@ -89,7 +88,6 @@ public class PerfArguments {
             names = {"-num", "--operation-num"},
             description = "Num of total operations. 0 means no limit")
     long operationNum = 0;
-
 
     /* Generation */
 

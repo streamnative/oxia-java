@@ -1,10 +1,11 @@
-package io.streamnative.oxia.client.perf.output;
+package io.streamnative.oxia.client.perf.ycsb.output;
 
-import io.streamnative.oxia.client.perf.PerfArguments;
+
+import io.streamnative.oxia.client.perf.ycsb.WorkerOptions;
 
 public record BenchmarkReport(
         /* definitions section */
-        PerfArguments template,
+        WorkerOptions definition,
         /* metadata section */
         long timestamp,
         /* ops write section */
@@ -18,4 +19,7 @@ public record BenchmarkReport(
         double readOps,
         long totalFailedRead,
         double readFps,
-        HistogramSnapshot readLatency) {}
+        HistogramSnapshot readLatency
+) {
+
+}

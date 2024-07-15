@@ -2,11 +2,8 @@ package io.streamnative.oxia.client.perf.output;
 
 final class PulsarOutput implements Output {
 
-    public PulsarOutput() {
-    }
+    public PulsarOutput() {}
 
     @Override
-    public void report(BenchmarkReport report) {
-
-    }
+    public void report(BenchmarkReport report) {}
 }

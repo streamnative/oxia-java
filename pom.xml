@@ -55,6 +55,7 @@
         <module>client-it</module>
         <module>perf</module>
         <module>pulsar-metadatastore-oxia</module>
+        <module>perf-ycsb</module>
     </modules>
 
     <scm>
