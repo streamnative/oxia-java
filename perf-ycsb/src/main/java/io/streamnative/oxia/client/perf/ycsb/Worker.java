@@ -93,14 +93,6 @@ public final class Worker implements Runnable, Closeable, Operations {
 
         final Thread intervalOutputTask =
                 Thread.ofVirtual()
-                        .uncaughtExceptionHandler(
-                                (t, e) -> {
-                                    if (e instanceof InterruptedException) {
-                                        log.info("exit interval output thread by interrupt");
-                                    } else {
-                                        log.warn("thread {} exit with exception", t.getName(), e);
-                                    }
-                                })
                         .start(
                                 () -> {
                                     long lastSnapshotTime = System.nanoTime();
@@ -110,12 +102,12 @@ public final class Worker implements Runnable, Closeable, Operations {
                                             //noinspection BusyWait
                                             Thread.sleep(options.intervalOutputSec * 1000L);
                                         } catch (InterruptedException e) {
+                                            Thread.currentThread().interrupt();
                                             log.info("exit interval output thread while sleeping by interrupt");
                                             return;
                                         }
 
                                         intervalOutput.report(internalSnapshotFunc.apply(lastSnapshotTime));
-
                                         lastSnapshotTime = System.nanoTime();
                                     }
                                 });
@@ -184,11 +176,6 @@ public final class Worker implements Runnable, Closeable, Operations {
 
         // interrupt the interval output task
         intervalOutputTask.interrupt();
-        try {
-            intervalOutputTask.join();
-        } catch (InterruptedException e) {
-            throw new WorkerException(e);
-        }
 
         globalOutput.report(globalSnapshot);
 
