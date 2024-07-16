@@ -15,6 +15,7 @@
  */
 package io.streamnative.oxia.client.shard;
 
+import static com.google.common.base.Throwables.*;
 import static io.streamnative.oxia.client.shard.HashRangeShardStrategy.Xxh332HashRangeShardStrategy;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
@@ -142,7 +143,7 @@ public class ShardManager implements AutoCloseable, StreamObserver<ShardAssignme
                 }
             }
         }
-        log.warn("Failed receiving shard assignments: {}", error.getMessage());
+        log.warn("Failed receiving shard assignments: {}", getRootCause(error).getMessage());
         executor.schedule(
                 () -> {
                     if (!closed) {
@@ -215,9 +216,12 @@ public class ShardManager implements AutoCloseable, StreamObserver<ShardAssignme
                                         .filter(e -> !toDelete.contains(e.getKey()))
                                         .map(Map.Entry::getValue),
                                 updates.stream())
-                        .collect(toMap(Shard::id, identity(),
-                                // merge function to avoid throw any exception when receive unchanged events
-                                (existing, newValue) -> newValue)));
+                        .collect(
+                                toMap(
+                                        Shard::id,
+                                        identity(),
+                                        // merge function to avoid throw any exception when receive unchanged events
+                                        (existing, newValue) -> newValue)));
     }
 
     @VisibleForTesting

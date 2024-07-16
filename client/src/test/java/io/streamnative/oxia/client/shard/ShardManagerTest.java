@@ -100,22 +100,24 @@ public class ShardManagerTest {
                             4L, new Shard(4L, "leader 2", new HashRange(10, 11)),
                             5L, new Shard(5L, "leader 3", new HashRange(11, 12)),
                             6L, new Shard(6L, "leader 4", new HashRange(13, 13)));
-            var assignments = ShardManager.recomputeShardHashBoundaries(existing,
-                    // same values
-                    new HashSet<>(existing.values()));
+            var assignments =
+                    ShardManager.recomputeShardHashBoundaries(
+                            existing,
+                            // same values
+                            new HashSet<>(existing.values()));
             assertThat(assignments)
-                    .satisfies( a -> {
-                        assertThat(a)
-                                .containsOnly(
-                                        entry(1L, new Shard(1L, "leader 1", new HashRange(1, 3))),
-                                        entry(2L, new Shard(2L, "leader 1", new HashRange(7, 9))),
-                                        entry(3L, new Shard(3L, "leader 2", new HashRange(4, 6))),
-                                        entry(4L, new Shard(4L, "leader 2", new HashRange(10, 11))),
-                                        entry(5L, new Shard(5L, "leader 3", new HashRange(11, 12))),
-                                        entry(6L, new Shard(6L, "leader 4", new HashRange(13, 13)))
-                                );
-                        assertThat(a).isUnmodifiable();
-                    });
+                    .satisfies(
+                            a -> {
+                                assertThat(a)
+                                        .containsOnly(
+                                                entry(1L, new Shard(1L, "leader 1", new HashRange(1, 3))),
+                                                entry(2L, new Shard(2L, "leader 1", new HashRange(7, 9))),
+                                                entry(3L, new Shard(3L, "leader 2", new HashRange(4, 6))),
+                                                entry(4L, new Shard(4L, "leader 2", new HashRange(10, 11))),
+                                                entry(5L, new Shard(5L, "leader 3", new HashRange(11, 12))),
+                                                entry(6L, new Shard(6L, "leader 4", new HashRange(13, 13))));
+                                assertThat(a).isUnmodifiable();
+                            });
         }
     }
 
