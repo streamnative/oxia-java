@@ -15,7 +15,7 @@
  */
 package io.streamnative.oxia.client.shard;
 
-import static com.google.common.base.Throwables.*;
+import static com.google.common.base.Throwables.getRootCause;
 import static io.streamnative.oxia.client.shard.HashRangeShardStrategy.Xxh332HashRangeShardStrategy;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
