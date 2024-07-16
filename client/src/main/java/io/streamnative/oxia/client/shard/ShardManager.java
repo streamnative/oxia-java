@@ -215,7 +215,9 @@ public class ShardManager implements AutoCloseable, StreamObserver<ShardAssignme
                                         .filter(e -> !toDelete.contains(e.getKey()))
                                         .map(Map.Entry::getValue),
                                 updates.stream())
-                        .collect(toMap(Shard::id, identity())));
+                        .collect(toMap(Shard::id, identity(),
+                                // merge function to avoid throw any exception when receive unchanged events
+                                (existing, newValue) -> newValue)));
     }
 
     @VisibleForTesting
