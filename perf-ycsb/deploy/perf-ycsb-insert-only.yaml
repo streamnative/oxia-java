@@ -17,13 +17,22 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: perf-ycsb
+  name: perf-ycsb-insert-only
+  namespace: oxia-perf
 spec:
+  ttlSecondsAfterFinished: 30
   template:
     spec:
       containers:
         - name: perf-ycsb
           image: mattison/oxia-perf-ycsb
-          command: [ "java",  "-jar", "/perf/oxia-perf-ycsb.jar", "ycsb", "--service-addr", "oxia-perf-oxia.oxia-perf.svc.cluster.local:6648" ]
+          command: [ "java",  "-jar", "/perf/oxia-perf-ycsb.jar", "ycsb",
+                     "--service-addr", "oxia-perf-oxia.oxia-perf.svc.cluster.local:6648",
+                     "--write-percent", "100.0",
+                     "--read-percent", "0.0",
+                     "--operation-num", "10000000",
+                     "--rate", "1000000",
+                     "--"
+          ]
           imagePullPolicy: Always
       restartPolicy: Never

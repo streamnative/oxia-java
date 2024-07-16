@@ -17,6 +17,8 @@ package io.streamnative.oxia.client.perf.ycsb;
 
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.util.concurrent.RateLimiter;
 import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
 import io.streamnative.oxia.client.api.GetResult;
@@ -24,19 +26,30 @@ import io.streamnative.oxia.client.api.OxiaClientBuilder;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.SyncOxiaClient;
 import io.streamnative.oxia.client.api.exceptions.OxiaException;
-import io.streamnative.oxia.client.perf.ycsb.generator.*;
+import io.streamnative.oxia.client.perf.ycsb.generator.Generator;
+import io.streamnative.oxia.client.perf.ycsb.generator.GeneratorType;
+import io.streamnative.oxia.client.perf.ycsb.generator.Generators;
+import io.streamnative.oxia.client.perf.ycsb.generator.KeyGeneratorOptions;
+import io.streamnative.oxia.client.perf.ycsb.generator.OperationGeneratorOptions;
+import io.streamnative.oxia.client.perf.ycsb.generator.OperationType;
 import io.streamnative.oxia.client.perf.ycsb.operations.Operations;
 import io.streamnative.oxia.client.perf.ycsb.operations.Status;
-import io.streamnative.oxia.client.perf.ycsb.output.*;
 import java.io.Closeable;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
+
+import io.streamnative.oxia.client.perf.ycsb.output.BenchmarkReport;
+import io.streamnative.oxia.client.perf.ycsb.output.BenchmarkReportSnapshot;
+import io.streamnative.oxia.client.perf.ycsb.output.Output;
+import io.streamnative.oxia.client.perf.ycsb.output.Outputs;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public final class Worker implements Runnable, Closeable, Operations {
+    private static final ObjectMapper MAPPER = new ObjectMapper();
     private final WorkerOptions options;
     private final SyncOxiaClient client;
     private final Generator<String> keyGenerator;
@@ -79,6 +92,13 @@ public final class Worker implements Runnable, Closeable, Operations {
     @SuppressWarnings("UnstableApiUsage")
     @Override
     public void run() {
+        try {
+            final String optionsStr = MAPPER.writeValueAsString(options);
+            log.info("starting worker. the options={}", optionsStr);
+        } catch (JsonProcessingException ex) {
+            throw new WorkerException(ex);
+        }
+
         final RateLimiter operationRatelimiter = RateLimiter.create(options.requestsRate);
         final int maxOutstandingRequests = options.maxOutstandingRequests;
         final Semaphore outstandingSemaphore = new Semaphore(maxOutstandingRequests);
@@ -91,10 +111,13 @@ public final class Worker implements Runnable, Closeable, Operations {
         final Function<Long, BenchmarkReportSnapshot> internalSnapshotFunc =
                 intervalReport.snapshotFunc(options, true);
 
+        log.info("performance test is starting");
+        final AtomicLong operationNum = new AtomicLong(options.operationNum);
         final Thread intervalOutputTask =
                 Thread.ofVirtual()
                         .start(
                                 () -> {
+                                    log.info("starting interval output task.");
                                     long lastSnapshotTime = System.nanoTime();
                                     //noinspection InfiniteLoopStatement
                                     while (true) {
@@ -108,13 +131,14 @@ public final class Worker implements Runnable, Closeable, Operations {
                                         }
 
                                         intervalOutput.report(internalSnapshotFunc.apply(lastSnapshotTime));
+                                        if (options.operationNum > 0) {
+                                            log.info("remain operation num {}", operationNum.get());
+                                        }
                                         lastSnapshotTime = System.nanoTime();
                                     }
                                 });
-
-        long operationNum = options.operationNum;
         final long taskStartTime = System.nanoTime();
-        while ((options.operationNum > 0 ? operationNum-- > 0 : closeFuture == null)) {
+        while ((options.operationNum > 0 ? operationNum.getAndDecrement() > 0 : closeFuture == null)) {
             // jump out by closing worker
             operationRatelimiter.acquire();
             try {
@@ -191,6 +215,7 @@ public final class Worker implements Runnable, Closeable, Operations {
                 log.warn("bug! unexpected behaviour: completed future and empty close future");
             }
         }
+        log.info("performance test is done");
     }
 
     @Override
