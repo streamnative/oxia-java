@@ -17,9 +17,6 @@ package io.streamnative.oxia.client.perf.ycsb.generator;
 
 import org.apache.commons.math3.distribution.ZipfDistribution;
 
-import java.util.HashMap;
-import java.util.Map;
-
 final class ZipfianKeyGenerator implements Generator<String> {
     private final ZipfDistribution distribution;
     private final String prefix;

@@ -30,6 +30,9 @@ public final class Generators {
     public static Generator<OperationType> createOperationGenerator(
             OperationGeneratorOptions options) {
         requireNonNull(options);
+        if (!options.validate()) {
+            throw new IllegalArgumentException("not validate operation. The probabilities do not sum to 1 ");
+        }
         return new OperationGenerator(options);
     }
 
