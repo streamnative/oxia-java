@@ -15,12 +15,22 @@
  */
 package io.streamnative.oxia.client.perf.ycsb.generator;
 
-final class ZipfianKeyGenerator implements Generator<String> {
+import org.apache.commons.math3.distribution.ZipfDistribution;
 
-    public ZipfianKeyGenerator(KeyGeneratorOptions options) {}
+import java.util.HashMap;
+import java.util.Map;
+
+final class ZipfianKeyGenerator implements Generator<String> {
+    private final ZipfDistribution distribution;
+    private final String prefix;
+
+    public ZipfianKeyGenerator(KeyGeneratorOptions options) {
+        this.prefix = options.prefix();
+        this.distribution = new ZipfDistribution(options.elements(), options.exponent());
+    }
 
     @Override
     public String nextValue() {
-        return null;
+         return prefix + distribution.sample();
     }
 }

@@ -1,0 +1,35 @@
+apiVersion: k8s.streamnative.io/v1alpha1
+kind: OxiaCluster
+metadata:
+  name: cluster-a
+  namespace: oxia-perf
+spec:
+  coordinator:
+    resources:
+      limits:
+        cpu: 500m
+        memory: 400Mi
+  image: streamnative/oxia:0.6.0
+  pprofEnabled: true
+  labels:
+    oxia-cluster: oxia-perf
+  server:
+    persistentVolumeClaimRetentionPolicy:
+      whenDeleted: Delete
+    pod:
+      resources: {}
+    replicas: 3
+    resources:
+      limits:
+        cpu: "4"
+        memory: 2Gi
+      requests:
+        cpu: "4"
+        memory: 2Gi
+    volumeClaimSpec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 40Gi
+      storageClassName: sn-default

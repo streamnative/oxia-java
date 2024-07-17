@@ -27,12 +27,12 @@ spec:
         - name: perf-ycsb
           image: mattison/oxia-perf-ycsb
           command: [ "java",  "-jar", "/perf/oxia-perf-ycsb.jar", "ycsb",
-                     "--service-addr", "cluster-a-oxia.oxia-perf.svc.cluster.local:6648",
+                     "--service-addr", "oxia-perf-oxia.oxia-perf.svc.cluster.local:6648",
                      "--write-percent", "100.0",
                      "--read-percent", "0.0",
                      "--operation-num", "10000000",
                      "--rate", "1000000",
-                     "--value-size", "64"
+                     "--value-size", "1024"
           ]
           resources:
             requests:

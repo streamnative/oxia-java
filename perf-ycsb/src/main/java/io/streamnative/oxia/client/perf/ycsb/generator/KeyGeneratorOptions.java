@@ -20,6 +20,9 @@ public record KeyGeneratorOptions(
         /* common parts  */
         String prefix,
         /* Uniform */
-        long bound
+        int lowerBound,
+        int upperBound,
         /* Zipfian */
+        int elements,
+        double exponent
         ) {}

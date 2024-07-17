@@ -91,10 +91,34 @@ public final class WorkerOptions implements Runnable {
 
     /* Uniform distribution */
     @CommandLine.Option(
-            names = {"--key-uniform-bound"},
+            names = {"--key-uniform-lower-bound"},
             description =
-                    "The upper bound of uniform key distribution. the default is 0 which means no bound")
-    int bound = 100_000;
+                    "The lower bound of uniform key distribution.(inclusive)")
+    int lowerBound = 0;
+
+    @CommandLine.Option(
+            names = {"--key-uniform-upper-bound"},
+            description =
+                    "The upper bound of uniform key distribution.(inclusive)")
+    int upperBound = 100_000;
+
+
+    @CommandLine.Option(
+            names = {"--key-zipfian-elements"},
+            description = "The number of elements for zipfain distribution"
+    )
+    int elements = 100_000;
+
+    @CommandLine.Option(
+            names = {"--key-zipfian-exponent"},
+            description = """
+                    The exponent for zipfain distribution.
+                    When s=1, the Zipf distribution degenerates into a classic power-law distribution.
+                    When s>1, the distribution will be more sparse, meaning fewer elements will occupy a larger proportion.
+                    When s<1, the distribution will be more dense, meaning more elements will occupy a larger proportion.
+                    """
+    )
+    double exponent = 1.0;
 
     /* Value Generation */
     @CommandLine.Option(

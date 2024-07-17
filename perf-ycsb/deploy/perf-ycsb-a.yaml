@@ -17,7 +17,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: perf-ycsb-insert-only
+  name: perf-ycsb-a
   namespace: oxia-perf
 spec:
   ttlSecondsAfterFinished: 30
@@ -28,10 +28,12 @@ spec:
           image: mattison/oxia-perf-ycsb
           command: [ "java",  "-jar", "/perf/oxia-perf-ycsb.jar", "ycsb",
                      "--service-addr", "cluster-a-oxia.oxia-perf.svc.cluster.local:6648",
-                     "--write-percent", "100.0",
-                     "--read-percent", "0.0",
+                     "--write-percent", "50.0",
+                     "--read-percent", "50.0",
                      "--operation-num", "10000000",
                      "--rate", "1000000",
+                     "--key-distribution", "uniform",
+                     "--key-uniform-bound", "1000",
                      "--value-size", "64"
           ]
           resources:
