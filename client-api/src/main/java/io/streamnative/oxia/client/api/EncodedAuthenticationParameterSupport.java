@@ -13,15 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.streamnative.oxia.client.api.exceptions;
+package io.streamnative.oxia.client.api;
 
-/** A super-class of exceptions describing errors that occurred on an Oxia server. */
-public abstract class OxiaException extends Exception {
-    OxiaException(String message) {
-        super(message);
-    }
+/** Support for encoded authentication configuration parameters. */
+public interface EncodedAuthenticationParameterSupport {
 
-    OxiaException(String message, Throwable cause) {
-        super(message, cause);
-    }
+    /**
+     * Plugins which use ":" and/or "," in a configuration parameter value need to implement this
+     * interface.
+     *
+     * @param encodedAuthParamString
+     */
+    void configure(String encodedAuthParamString);
 }
