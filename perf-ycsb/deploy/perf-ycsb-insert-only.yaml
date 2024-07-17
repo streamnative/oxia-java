@@ -32,7 +32,9 @@ spec:
                      "--read-percent", "0.0",
                      "--operation-num", "10000000",
                      "--rate", "1000000",
-                     "--value-size", "64"
+                     "--value-size", "64",
+                     "--key-distribution", "zipfian",
+                     "--key-zipfian-elements", "10000000"
           ]
           resources:
             requests:

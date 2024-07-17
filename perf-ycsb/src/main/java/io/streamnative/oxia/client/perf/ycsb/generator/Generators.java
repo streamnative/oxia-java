@@ -31,7 +31,7 @@ public final class Generators {
             OperationGeneratorOptions options) {
         requireNonNull(options);
         if (!options.validate()) {
-            throw new IllegalArgumentException("not validate operation. The probabilities do not sum to 1 ");
+            throw new IllegalArgumentException("not validate operation. The probabilities do not sum to 100% ");
         }
         return new OperationGenerator(options);
     }

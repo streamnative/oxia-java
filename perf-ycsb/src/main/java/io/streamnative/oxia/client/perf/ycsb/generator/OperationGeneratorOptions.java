@@ -19,6 +19,6 @@ public record OperationGeneratorOptions(
         double writePercentage, double readPercentage, double scanPercentage) {
 
     public boolean validate() {
-        return writePercentage + scanPercentage + readPercentage == 1.0;
+        return writePercentage + scanPercentage + readPercentage == 100.0;
     }
 }
