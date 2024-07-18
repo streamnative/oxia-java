@@ -36,6 +36,7 @@ import io.streamnative.oxia.client.perf.ycsb.operations.Operations;
 import io.streamnative.oxia.client.perf.ycsb.operations.Status;
 import io.streamnative.oxia.client.perf.ycsb.output.*;
 import java.io.Closeable;
+import java.io.IOException;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Semaphore;
@@ -246,6 +247,12 @@ public final class Worker implements Runnable, Closeable, Operations {
         closeFuture.join();
         try {
             client.close();
+            if (globalOutput != null) {
+                globalOutput.close();
+            }
+            if (intervalOutput != null) {
+                intervalOutput.close();
+            }
         } catch (Exception ex) {
             throw new WorkerException(ex);
         }
