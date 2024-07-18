@@ -173,6 +173,7 @@ public final class Worker implements Runnable, Closeable, Operations {
                                             final long start = System.nanoTime();
                                             final Status sts = write(key, valueGenerator.nextValue());
                                             if (!sts.isSuccess()) {
+                                                log.warn("write failed. the error info {}", sts.getErrorInfo());
                                                 globalReport.writeFailed().increment();
                                                 intervalReport.writeFailed().increment();
                                             } else {
@@ -187,6 +188,7 @@ public final class Worker implements Runnable, Closeable, Operations {
                                             final long start = System.nanoTime();
                                             final Status sts = read(key);
                                             if (!sts.isSuccess()) {
+                                                log.warn("read failed. the error info {}", sts.getErrorInfo());
                                                 globalReport.readFailed().increment();
                                                 intervalReport.readFailed().increment();
                                             } else {

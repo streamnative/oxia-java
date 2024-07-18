@@ -22,6 +22,10 @@ public final class Status {
 
     private Status() {}
 
+    public String getErrorInfo() {
+        return errorInfo;
+    }
+
     public static Status success() {
         final Status status = new Status();
         status.code = CODE_SUCCESS;
