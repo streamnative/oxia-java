@@ -15,9 +15,24 @@
  */
 package io.streamnative.oxia.client.perf.ycsb.output;
 
+import lombok.Data;
 import org.HdrHistogram.Histogram;
 
-public record HistogramSnapshot(double p50, double p95, double p99, double p999, double max) {
+@Data
+public final class HistogramSnapshot {
+    private final double p50;
+    private final double p95;
+    private final double p99;
+    private final double p999;
+    private final double max;
+
+    public HistogramSnapshot(double p50, double p95, double p99, double p999, double max) {
+        this.p50 = p50;
+        this.p95 = p95;
+        this.p99 = p99;
+        this.p999 = p999;
+        this.max = max;
+    }
 
     public static HistogramSnapshot fromHistogram(Histogram histogram) {
         return new HistogramSnapshot(

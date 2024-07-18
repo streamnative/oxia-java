@@ -16,8 +16,10 @@
 package io.streamnative.oxia.client.perf.ycsb;
 
 import io.streamnative.oxia.client.OxiaClientBuilderImpl;
+import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine;
 
+@Slf4j
 @CommandLine.Command(name = "ycsb")
 public final class WorkerOptions implements Runnable {
 
@@ -172,6 +174,8 @@ public final class WorkerOptions implements Runnable {
     public void run() {
         try (Worker worker = new Worker(this)) {
             worker.run();
+        } catch (Throwable ex) {
+            log.error("unexpected error. ", ex);
         }
     }
 }

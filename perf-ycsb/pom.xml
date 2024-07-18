@@ -83,7 +83,7 @@
         <dependency>
             <groupId>org.apache.pulsar</groupId>
             <artifactId>pulsar-client</artifactId>
-            <version>3.0.5</version>
+            <version>3.3.0</version>
         </dependency>
         <dependency>
             <groupId>org.hdrhistogram</groupId>

@@ -36,7 +36,6 @@ final class PulsarOutput implements Output {
                     client
                             .newProducer(Schema.AVRO(BenchmarkReportSnapshot.class))
                             .topic(options.targetTopic())
-                            .producerName("oxia-ycsb-perf")
                             .create();
         } catch (PulsarClientException ex) {
             throw new WorkerException(ex);
@@ -48,8 +47,8 @@ final class PulsarOutput implements Output {
         try {
             final MessageId send = producer.send(report);
             log.info("output to pulsar success, the response message id: {}", send);
-        } catch (PulsarClientException e) {
-            throw new RuntimeException(e);
+        } catch (Throwable e) {
+            throw new WorkerException(e);
         }
     }
 

@@ -17,21 +17,57 @@ package io.streamnative.oxia.client.perf.ycsb.output;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import io.streamnative.oxia.client.perf.ycsb.WorkerOptions;
+import lombok.Data;
 
-public record BenchmarkReportSnapshot(
-        /* definitions section */
-        @JsonInclude(JsonInclude.Include.NON_NULL) WorkerOptions definition,
-        /* metadata section */
-        long timestamp,
-        /* ops write section */
-        @JsonInclude(JsonInclude.Include.NON_DEFAULT) long totalWrite,
-        double writeOps,
-        @JsonInclude(JsonInclude.Include.NON_DEFAULT) long totalFailedWrite,
-        double writeFps,
-        HistogramSnapshot writeLatencyMs,
-        /* ops read section */
-        @JsonInclude(JsonInclude.Include.NON_DEFAULT) long totalRead,
-        double readOps,
-        @JsonInclude(JsonInclude.Include.NON_DEFAULT) long totalFailedRead,
-        double readFps,
-        HistogramSnapshot readLatencyMs) {}
+
+@Data
+public final class BenchmarkReportSnapshot {
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private final WorkerOptions definition;
+    private final long timestamp;
+    @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+    private final long totalWrite;
+    private final double writeOps;
+    @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+    private final long totalFailedWrite;
+    private final double writeFps;
+    private final HistogramSnapshot writeLatencyMs;
+    @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+    private final long totalRead;
+    private final double readOps;
+    @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+    private final long totalFailedRead;
+    private final double readFps;
+    private final HistogramSnapshot readLatencyMs;
+
+    public BenchmarkReportSnapshot(
+            /* definitions section */
+            @JsonInclude(JsonInclude.Include.NON_NULL) WorkerOptions definition,
+            /* metadata section */
+            long timestamp,
+            /* ops write section */
+            @JsonInclude(JsonInclude.Include.NON_DEFAULT) long totalWrite,
+            double writeOps,
+            @JsonInclude(JsonInclude.Include.NON_DEFAULT) long totalFailedWrite,
+            double writeFps,
+            HistogramSnapshot writeLatencyMs,
+            /* ops read section */
+            @JsonInclude(JsonInclude.Include.NON_DEFAULT) long totalRead,
+            double readOps,
+            @JsonInclude(JsonInclude.Include.NON_DEFAULT) long totalFailedRead,
+            double readFps,
+            HistogramSnapshot readLatencyMs) {
+        this.definition = definition;
+        this.timestamp = timestamp;
+        this.totalWrite = totalWrite;
+        this.writeOps = writeOps;
+        this.totalFailedWrite = totalFailedWrite;
+        this.writeFps = writeFps;
+        this.writeLatencyMs = writeLatencyMs;
+        this.totalRead = totalRead;
+        this.readOps = readOps;
+        this.totalFailedRead = totalFailedRead;
+        this.readFps = readFps;
+        this.readLatencyMs = readLatencyMs;
+    }
+}

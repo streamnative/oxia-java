@@ -36,7 +36,6 @@ import io.streamnative.oxia.client.perf.ycsb.operations.Operations;
 import io.streamnative.oxia.client.perf.ycsb.operations.Status;
 import io.streamnative.oxia.client.perf.ycsb.output.*;
 import java.io.Closeable;
-import java.io.IOException;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Semaphore;
