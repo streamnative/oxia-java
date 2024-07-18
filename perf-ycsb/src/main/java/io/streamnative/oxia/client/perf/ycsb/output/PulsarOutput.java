@@ -35,6 +35,7 @@ final class PulsarOutput implements Output {
             this.producer =
                     client
                             .newProducer(Schema.AVRO(BenchmarkReportSnapshot.class))
+                            .topic(options.targetTopic())
                             .producerName("oxia-ycsb-perf")
                             .create();
         } catch (PulsarClientException ex) {
