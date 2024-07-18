@@ -28,6 +28,6 @@ final class ZipfianKeyGenerator implements Generator<String> {
 
     @Override
     public String nextValue() {
-         return prefix + distribution.sample();
+        return prefix + distribution.sample();
     }
 }

@@ -133,6 +133,41 @@ public final class WorkerOptions implements Runnable {
             description = "The interval(second) of output")
     int intervalOutputSec = 10;
 
+    @CommandLine.Option(
+            names = {"--output-global-type"},
+            description = "The type of global output. supported: log,pulsar"
+    )
+    String globalOutputType = "log";
+
+    /* output log */
+    @CommandLine.Option(
+            names = {"--output-global-log-pretty"},
+            description = "Whether pretty the data for the log output type."
+    )
+    boolean globalOutputLogPretty = true;
+
+    /* output pulsar */
+    @CommandLine.Option(
+            names = {"--output-global-pulsar-service-url"},
+            description = "The pulsar service URL."
+    )
+    String globalOutputPulsarServiceURL;
+    @CommandLine.Option(
+            names = {"--output-global-pulsar-target-topic"},
+            description = "The target pulsar service topic."
+    )
+    String globalOutputPulsarTargetTopic;
+    @CommandLine.Option(
+            names = {"--output-global-pulsar-authentication-plugin"},
+            description = "The authentication plugin name."
+    )
+    String globalOutputPulsarAuthenticationPlugin;
+    @CommandLine.Option(
+            names = {"--output-global-pulsar-authentication-params"},
+            description = "The authentication plugin params."
+    )
+    String globalOutputPulsarAuthenticationParams;
+
     @Override
     public void run() {
         try (Worker worker = new Worker(this)) {

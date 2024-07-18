@@ -24,5 +24,4 @@ public record KeyGeneratorOptions(
         int upperBound,
         /* Zipfian */
         int elements,
-        double exponent
-        ) {}
+        double exponent) {}

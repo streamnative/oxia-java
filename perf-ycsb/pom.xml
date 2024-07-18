@@ -76,6 +76,16 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-math3</artifactId>
+            <version>3.6.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.pulsar</groupId>
+            <artifactId>pulsar-client</artifactId>
+            <version>3.0.5</version>
+        </dependency>
+        <dependency>
             <groupId>org.hdrhistogram</groupId>
             <artifactId>HdrHistogram</artifactId>
             <version>${hdr-histogram.version}</version>
@@ -85,16 +95,6 @@
             <artifactId>slf4j-simple</artifactId>
             <version>${slf4j.version}</version>
         </dependency>
-        <dependency>
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-math3</artifactId>
-            <version>3.6.1</version>
-        </dependency>
-        <!--        <dependency>-->
-        <!--            <groupId>org.apache.pulsar</groupId>-->
-        <!--            <artifactId>pulsar-client</artifactId>-->
-        <!--            <version>3.0.5</version>-->
-        <!--        </dependency>-->
     </dependencies>
 
     <build>

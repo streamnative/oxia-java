@@ -45,4 +45,7 @@ final class LogOutput implements Output {
         }
         log.info(s);
     }
+
+    @Override
+    public void close() {}
 }

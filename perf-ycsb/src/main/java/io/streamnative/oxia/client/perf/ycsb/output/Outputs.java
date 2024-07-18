@@ -20,4 +20,17 @@ public final class Outputs {
     public static Output createLogOutput(boolean pretty) {
         return new LogOutput(pretty);
     }
+
+    public static Output createOutput(OutputTypes types, OutputOptions options) {
+        return switch (types) {
+            case LOG -> new LogOutput(options.pretty());
+            case PULSAR -> {
+                final PulsarOutputOptions pulsarOutputOptions = options.pulsarOptions();
+                if (!pulsarOutputOptions.validate()) {
+                    throw new IllegalArgumentException("unexpected pulsar options");
+                }
+                yield new PulsarOutput(options.pulsarOptions());
+            }
+        };
+    }
 }

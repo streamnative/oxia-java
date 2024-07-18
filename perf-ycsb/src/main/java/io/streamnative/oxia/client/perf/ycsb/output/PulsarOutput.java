@@ -15,8 +15,47 @@
  */
 package io.streamnative.oxia.client.perf.ycsb.output;
 
+import io.streamnative.oxia.client.perf.ycsb.WorkerException;
+import java.io.IOException;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.pulsar.client.api.*;
+
+@Slf4j
 final class PulsarOutput implements Output {
+    private final PulsarClient client;
+    private final Producer<BenchmarkReportSnapshot> producer;
+
+    public PulsarOutput(PulsarOutputOptions options) {
+        try {
+            this.client =
+                    PulsarClient.builder()
+                            .serviceUrl(options.serviceURL())
+                            .authentication(options.authenticationPlugin(), options.authenticationParams())
+                            .build();
+            this.producer =
+                    client
+                            .newProducer(Schema.AVRO(BenchmarkReportSnapshot.class))
+                            .producerName("oxia-ycsb-perf")
+                            .create();
+        } catch (PulsarClientException ex) {
+            throw new WorkerException(ex);
+        }
+    }
 
     @Override
-    public void report(BenchmarkReportSnapshot report) {}
+    public void report(BenchmarkReportSnapshot report) {
+        try {
+            final MessageId send = producer.send(report);
+            log.info("output to pulsar success, the response message id: {}", send);
+        } catch (PulsarClientException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public void close() throws IOException {
+        if (client != null) {
+            client.close();
+        }
+    }
 }

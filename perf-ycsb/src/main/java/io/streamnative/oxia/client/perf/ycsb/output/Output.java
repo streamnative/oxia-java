@@ -15,7 +15,9 @@
  */
 package io.streamnative.oxia.client.perf.ycsb.output;
 
-public interface Output {
+import java.io.Closeable;
+
+public interface Output extends Closeable {
 
     void report(BenchmarkReportSnapshot report);
 }

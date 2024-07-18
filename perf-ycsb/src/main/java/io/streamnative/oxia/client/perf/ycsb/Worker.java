@@ -34,18 +34,13 @@ import io.streamnative.oxia.client.perf.ycsb.generator.OperationGeneratorOptions
 import io.streamnative.oxia.client.perf.ycsb.generator.OperationType;
 import io.streamnative.oxia.client.perf.ycsb.operations.Operations;
 import io.streamnative.oxia.client.perf.ycsb.operations.Status;
-
+import io.streamnative.oxia.client.perf.ycsb.output.*;
 import java.io.Closeable;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
-
-import io.streamnative.oxia.client.perf.ycsb.output.BenchmarkReport;
-import io.streamnative.oxia.client.perf.ycsb.output.BenchmarkReportSnapshot;
-import io.streamnative.oxia.client.perf.ycsb.output.Output;
-import io.streamnative.oxia.client.perf.ycsb.output.Outputs;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -79,15 +74,30 @@ public final class Worker implements Runnable, Closeable, Operations {
 
         this.keyGenerator =
                 Generators.createKeyGenerator(
-                        new KeyGeneratorOptions(generatorType, options.keyPrefix, options.lowerBound,
-                                options.upperBound, options.elements, options.exponent));
+                        new KeyGeneratorOptions(
+                                generatorType,
+                                options.keyPrefix,
+                                options.lowerBound,
+                                options.upperBound,
+                                options.elements,
+                                options.exponent));
         this.valueGenerator = Generators.createFixedLengthValueGenerator(options.valueSize);
         this.operationGenerator =
                 Generators.createOperationGenerator(
                         new OperationGeneratorOptions(
                                 options.writePercentage, options.readPercentage, options.scanPercentage));
         this.intervalOutput = Outputs.createLogOutput(false);
-        this.globalOutput = Outputs.createLogOutput(true);
+        final OutputTypes outputTypes = OutputTypes.fromString(options.globalOutputType);
+        this.globalOutput =
+                Outputs.createOutput(
+                        outputTypes,
+                        new OutputOptions(
+                                options.globalOutputLogPretty,
+                                new PulsarOutputOptions(
+                                        options.globalOutputPulsarServiceURL,
+                                        options.globalOutputPulsarTargetTopic,
+                                        options.globalOutputPulsarAuthenticationPlugin,
+                                        options.globalOutputPulsarAuthenticationParams)));
         this.options = options;
     }
 

@@ -28,8 +28,8 @@ spec:
           image: mattison/oxia-perf-ycsb
           command: [ "java",  "-jar", "/perf/oxia-perf-ycsb.jar", "ycsb",
                      "--service-addr", "cluster-a-oxia.oxia-perf.svc.cluster.local:6648",
-                     "--write-percent", "100.0",
-                     "--read-percent", "0.0",
+                     "--write-percent", "0.0",
+                     "--read-percent", "100.0",
                      "--operation-num", "10000000",
                      "--rate", "1000000",
                      "--value-size", "64",

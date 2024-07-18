@@ -20,23 +20,18 @@ import io.streamnative.oxia.client.perf.ycsb.WorkerOptions;
 
 public record BenchmarkReportSnapshot(
         /* definitions section */
-        @JsonInclude(JsonInclude.Include.NON_NULL)
-        WorkerOptions definition,
+        @JsonInclude(JsonInclude.Include.NON_NULL) WorkerOptions definition,
         /* metadata section */
         long timestamp,
         /* ops write section */
-        @JsonInclude(JsonInclude.Include.NON_DEFAULT)
-        long totalWrite,
+        @JsonInclude(JsonInclude.Include.NON_DEFAULT) long totalWrite,
         double writeOps,
-        @JsonInclude(JsonInclude.Include.NON_DEFAULT)
-        long totalFailedWrite,
+        @JsonInclude(JsonInclude.Include.NON_DEFAULT) long totalFailedWrite,
         double writeFps,
         HistogramSnapshot writeLatencyMs,
         /* ops read section */
-        @JsonInclude(JsonInclude.Include.NON_DEFAULT)
-        long totalRead,
+        @JsonInclude(JsonInclude.Include.NON_DEFAULT) long totalRead,
         double readOps,
-        @JsonInclude(JsonInclude.Include.NON_DEFAULT)
-        long totalFailedRead,
+        @JsonInclude(JsonInclude.Include.NON_DEFAULT) long totalFailedRead,
         double readFps,
         HistogramSnapshot readLatencyMs) {}
