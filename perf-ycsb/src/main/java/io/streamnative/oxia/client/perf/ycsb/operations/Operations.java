@@ -20,4 +20,6 @@ public interface Operations {
     Status read(String key);
 
     Status write(String key, byte[] value);
+
+    Status writeWithSequence(String key, byte[] value);
 }

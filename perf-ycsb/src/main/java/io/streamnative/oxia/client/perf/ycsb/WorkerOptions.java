@@ -15,6 +15,9 @@
  */
 package io.streamnative.oxia.client.perf.ycsb;
 
+import io.opentelemetry.exporter.prometheus.PrometheusHttpServer;
+import io.opentelemetry.sdk.OpenTelemetrySdk;
+import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
 import io.streamnative.oxia.client.OxiaClientBuilderImpl;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine;
@@ -170,9 +173,26 @@ public final class WorkerOptions implements Runnable {
     )
     String globalOutputPulsarAuthenticationParams;
 
+
+
+    /* metrics */
+    @CommandLine.Option(
+            names = "--enable-metrics",
+            description = "whether enable metrics"
+    )
+    boolean enableMetrics = true;
+
+    @CommandLine.Option(
+            names = "--prometheus-port",
+            description = "The prometheus port"
+    )
+    int prometheusPort = 9464;
+
     @Override
     public void run() {
-        try (Worker worker = new Worker(this)) {
+        final var sdk = AutoConfiguredOpenTelemetrySdk.initialize().getOpenTelemetrySdk();
+
+        try (Worker worker = new Worker(this, sdk)) {
             worker.run();
         } catch (Throwable ex) {
             log.error("unexpected error. ", ex);

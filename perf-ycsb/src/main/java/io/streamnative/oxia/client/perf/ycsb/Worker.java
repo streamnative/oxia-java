@@ -19,13 +19,15 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.RateLimiter;
-import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
-import io.streamnative.oxia.client.api.GetResult;
-import io.streamnative.oxia.client.api.OxiaClientBuilder;
-import io.streamnative.oxia.client.api.PutResult;
-import io.streamnative.oxia.client.api.SyncOxiaClient;
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.api.metrics.DoubleHistogram;
+import io.opentelemetry.api.metrics.LongCounter;
+import io.streamnative.oxia.client.api.*;
 import io.streamnative.oxia.client.api.exceptions.OxiaException;
+import io.streamnative.oxia.client.metrics.Unit;
 import io.streamnative.oxia.client.perf.ycsb.generator.Generator;
 import io.streamnative.oxia.client.perf.ycsb.generator.GeneratorType;
 import io.streamnative.oxia.client.perf.ycsb.generator.Generators;
@@ -37,14 +39,18 @@ import io.streamnative.oxia.client.perf.ycsb.operations.Status;
 import io.streamnative.oxia.client.perf.ycsb.output.*;
 import java.io.Closeable;
 import java.time.Duration;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public final class Worker implements Runnable, Closeable, Operations {
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private final WorkerOptions options;
     private final SyncOxiaClient client;
@@ -56,8 +62,21 @@ public final class Worker implements Runnable, Closeable, Operations {
 
     private volatile CompletableFuture<Void> closeFuture;
 
-    public Worker(WorkerOptions options) {
-        final AutoConfiguredOpenTelemetrySdk sdk = AutoConfiguredOpenTelemetrySdk.builder().build();
+    /* Otl section */
+    private final LongCounter operationCounter;
+    private final Attributes operationWriteSuccessAttributes;
+    private final Attributes operationWriteFailedAttributes;
+    private final Attributes operationReadSuccessAttributes;
+    private final Attributes operationReadFailedAttributes;
+
+    private final DoubleHistogram operationLatency;
+    private static final List<Double> LATENCY_BUCKET =
+            Lists.newArrayList(
+                    .0005, .001, .0025, .005, .01, .025, .05, .1, .25, .5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0,
+                    90.0, 120.0, 240.0);
+    private static final double MICROS = TimeUnit.SECONDS.toMicros(1);
+
+    public Worker(WorkerOptions options, OpenTelemetry openTelemetry) {
         try {
             this.client =
                     OxiaClientBuilder.create(options.serviceAddr)
@@ -65,7 +84,7 @@ public final class Worker implements Runnable, Closeable, Operations {
                             .maxRequestsPerBatch(options.maxRequestsPerBatch)
                             .requestTimeout(Duration.ofMillis(options.requestTimeoutMs))
                             .namespace(options.namespace)
-                            .openTelemetry(sdk.getOpenTelemetrySdk())
+                            .openTelemetry(openTelemetry)
                             .syncClient();
         } catch (OxiaException e) {
             throw new WorkerException(e);
@@ -99,6 +118,28 @@ public final class Worker implements Runnable, Closeable, Operations {
                                         options.globalOutputPulsarAuthenticationPlugin,
                                         options.globalOutputPulsarAuthenticationParams)));
         this.options = options;
+        final var meter = openTelemetry.getMeter("io.streamnative.oxia.perf-ycsb");
+        this.operationCounter =
+                meter
+                        .counterBuilder("oxia.perf.ycsb.op")
+                        .setDescription("oxia perf operation counter")
+                        .setUnit(Unit.Requests.toString())
+                        .build();
+        this.operationLatency =
+                meter
+                        .histogramBuilder("oxia.perf.ycsb.op.second")
+                        .setUnit(Unit.Seconds.toString())
+                        .setDescription("oxia perf operation latency")
+                        .setExplicitBucketBoundariesAdvice(LATENCY_BUCKET)
+                        .build();
+        this.operationWriteSuccessAttributes =
+                Attributes.builder().put("type", "write").put("response", "success").build();
+        this.operationWriteFailedAttributes =
+                Attributes.builder().put("type", "write").put("response", "failed").build();
+        this.operationReadSuccessAttributes =
+                Attributes.builder().put("type", "read").put("response", "success").build();
+        this.operationReadFailedAttributes =
+                Attributes.builder().put("type", "read").put("response", "failed").build();
     }
 
     @SuppressWarnings("UnstableApiUsage")
@@ -173,11 +214,18 @@ public final class Worker implements Runnable, Closeable, Operations {
                                             final long start = System.nanoTime();
                                             final Status sts = write(key, valueGenerator.nextValue());
                                             if (!sts.isSuccess()) {
+                                                operationCounter.add(1, operationWriteFailedAttributes);
                                                 log.warn("write failed. the error info {}", sts.getErrorInfo());
+                                                final long latencyMicros = NANOSECONDS.toMicros(System.nanoTime() - start);
+                                                operationLatency.record(
+                                                        latencyMicros / MICROS, operationWriteFailedAttributes);
                                                 globalReport.writeFailed().increment();
                                                 intervalReport.writeFailed().increment();
                                             } else {
+                                                operationCounter.add(1, operationWriteSuccessAttributes);
                                                 final long latencyMicros = NANOSECONDS.toMicros(System.nanoTime() - start);
+                                                operationLatency.record(
+                                                        latencyMicros / MICROS, operationWriteSuccessAttributes);
                                                 globalReport.writeLatency().recordValue(latencyMicros);
                                                 intervalReport.writeLatency().recordValue(latencyMicros);
                                             }
@@ -188,11 +236,18 @@ public final class Worker implements Runnable, Closeable, Operations {
                                             final long start = System.nanoTime();
                                             final Status sts = read(key);
                                             if (!sts.isSuccess()) {
+                                                operationCounter.add(1, operationReadFailedAttributes);
+                                                final long latencyMicros = NANOSECONDS.toMicros(System.nanoTime() - start);
+                                                operationLatency.record(
+                                                        latencyMicros / MICROS, operationReadFailedAttributes);
                                                 log.warn("read failed. the error info {}", sts.getErrorInfo());
                                                 globalReport.readFailed().increment();
                                                 intervalReport.readFailed().increment();
                                             } else {
+                                                operationCounter.add(1, operationReadSuccessAttributes);
                                                 final long latencyMicros = NANOSECONDS.toMicros(System.nanoTime() - start);
+                                                operationLatency.record(
+                                                        latencyMicros / MICROS, operationReadSuccessAttributes);
                                                 globalReport.readLatency().recordValue(latencyMicros);
                                                 intervalReport.readLatency().recordValue(latencyMicros);
                                             }
@@ -261,6 +316,25 @@ public final class Worker implements Runnable, Closeable, Operations {
     public Status write(String key, byte[] value) {
         try {
             final PutResult result = client.put(key, value);
+            if (result != null) {
+                return Status.success();
+            }
+            return Status.failed("empty result");
+        } catch (Throwable ex) {
+            return Status.failed(ex.getMessage());
+        }
+    }
+
+    @Override
+    public Status writeWithSequence(String key, byte[] value) {
+        try {
+            final PutResult result =
+                    client.put(
+                            key,
+                            value,
+                            Set.of(
+                                    PutOption.PartitionKey(key),
+                                    PutOption.SequenceKeysDeltas(List.of(1L, (long) value.length))));
             if (result != null) {
                 return Status.success();
             }

@@ -19,24 +19,32 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import io.streamnative.oxia.client.perf.ycsb.WorkerOptions;
 import lombok.Data;
 
-
 @Data
 public final class BenchmarkReportSnapshot {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private final WorkerOptions definition;
+
     private final long timestamp;
+
     @JsonInclude(JsonInclude.Include.NON_DEFAULT)
     private final long totalWrite;
+
     private final double writeOps;
+
     @JsonInclude(JsonInclude.Include.NON_DEFAULT)
     private final long totalFailedWrite;
+
     private final double writeFps;
     private final HistogramSnapshot writeLatencyMs;
+
     @JsonInclude(JsonInclude.Include.NON_DEFAULT)
     private final long totalRead;
+
     private final double readOps;
+
     @JsonInclude(JsonInclude.Include.NON_DEFAULT)
     private final long totalFailedRead;
+
     private final double readFps;
     private final HistogramSnapshot readLatencyMs;
 
