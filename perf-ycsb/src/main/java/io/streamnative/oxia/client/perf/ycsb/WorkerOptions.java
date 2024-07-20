@@ -27,6 +27,13 @@ import picocli.CommandLine;
 public final class WorkerOptions implements Runnable {
 
     @CommandLine.Option(
+            names = {"--name"},
+            required = true,
+            description = "worker name for this test"
+    )
+    String workerName = "";
+
+    @CommandLine.Option(
             names = {"--service-addr"},
             description = "Oxia Service Address")
     String serviceAddr = "localhost:6648";
@@ -173,25 +180,9 @@ public final class WorkerOptions implements Runnable {
     )
     String globalOutputPulsarAuthenticationParams;
 
-
-
-    /* metrics */
-    @CommandLine.Option(
-            names = "--enable-metrics",
-            description = "whether enable metrics"
-    )
-    boolean enableMetrics = true;
-
-    @CommandLine.Option(
-            names = "--prometheus-port",
-            description = "The prometheus port"
-    )
-    int prometheusPort = 9464;
-
     @Override
     public void run() {
         final var sdk = AutoConfiguredOpenTelemetrySdk.initialize().getOpenTelemetrySdk();
-
         try (Worker worker = new Worker(this, sdk)) {
             worker.run();
         } catch (Throwable ex) {

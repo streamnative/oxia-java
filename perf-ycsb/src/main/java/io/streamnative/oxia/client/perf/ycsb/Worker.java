@@ -133,13 +133,29 @@ public final class Worker implements Runnable, Closeable, Operations {
                         .setExplicitBucketBoundariesAdvice(LATENCY_BUCKET)
                         .build();
         this.operationWriteSuccessAttributes =
-                Attributes.builder().put("type", "write").put("response", "success").build();
+                Attributes.builder()
+                        .put("type", "write")
+                        .put("worker", options.workerName)
+                        .put("response", "success")
+                        .build();
         this.operationWriteFailedAttributes =
-                Attributes.builder().put("type", "write").put("response", "failed").build();
+                Attributes.builder()
+                        .put("type", "write")
+                        .put("worker", options.workerName)
+                        .put("response", "failed")
+                        .build();
         this.operationReadSuccessAttributes =
-                Attributes.builder().put("type", "read").put("response", "success").build();
+                Attributes.builder()
+                        .put("type", "read")
+                        .put("worker", options.workerName)
+                        .put("response", "success")
+                        .build();
         this.operationReadFailedAttributes =
-                Attributes.builder().put("type", "read").put("response", "failed").build();
+                Attributes.builder()
+                        .put("type", "read")
+                        .put("worker", options.workerName)
+                        .put("response", "failed")
+                        .build();
     }
 
     @SuppressWarnings("UnstableApiUsage")
