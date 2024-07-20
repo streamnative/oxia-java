@@ -135,24 +135,28 @@ public final class Worker implements Runnable, Closeable, Operations {
         this.operationWriteSuccessAttributes =
                 Attributes.builder()
                         .put("type", "write")
+                        .put("value.size", options.valueSize)
                         .put("worker", options.workerName)
                         .put("response", "success")
                         .build();
         this.operationWriteFailedAttributes =
                 Attributes.builder()
                         .put("type", "write")
+                        .put("value.size", options.valueSize)
                         .put("worker", options.workerName)
                         .put("response", "failed")
                         .build();
         this.operationReadSuccessAttributes =
                 Attributes.builder()
                         .put("type", "read")
+                        .put("value.size", options.valueSize)
                         .put("worker", options.workerName)
                         .put("response", "success")
                         .build();
         this.operationReadFailedAttributes =
                 Attributes.builder()
                         .put("type", "read")
+                        .put("value.size", options.valueSize)
                         .put("worker", options.workerName)
                         .put("response", "failed")
                         .build();
