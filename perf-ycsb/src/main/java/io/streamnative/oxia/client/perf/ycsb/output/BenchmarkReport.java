@@ -26,6 +26,7 @@ import java.util.function.Function;
 import org.HdrHistogram.Histogram;
 import org.HdrHistogram.Recorder;
 
+@Deprecated
 public record BenchmarkReport(
         LongAdder writeTotal,
         LongAdder writeFailed,

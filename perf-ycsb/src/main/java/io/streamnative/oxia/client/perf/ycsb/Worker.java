@@ -223,6 +223,7 @@ public final class Worker implements Runnable, Closeable, Operations {
 
             final OperationType operationType = operationGenerator.nextValue();
             final String key = keyGenerator.nextValue();
+            final byte[] value = valueGenerator.nextValue();
             Thread.ofVirtual()
                     .start(
                             () -> {
@@ -232,7 +233,12 @@ public final class Worker implements Runnable, Closeable, Operations {
                                             globalReport.writeTotal().increment();
                                             intervalReport.writeTotal().increment();
                                             final long start = System.nanoTime();
-                                            final Status sts = write(key, valueGenerator.nextValue());
+                                            final Status sts;
+                                            if (options.writeWithSequence) {
+                                                sts = writeWithSequence(key, value);
+                                            } else {
+                                                sts = write(key, value);
+                                            }
                                             if (!sts.isSuccess()) {
                                                 operationCounter.add(1, operationWriteFailedAttributes);
                                                 log.warn("write failed. the error info {}", sts.getErrorInfo());

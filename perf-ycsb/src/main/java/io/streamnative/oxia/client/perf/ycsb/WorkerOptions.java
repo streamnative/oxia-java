@@ -89,6 +89,12 @@ public final class WorkerOptions implements Runnable {
             description = "Num of total operations. 0 means no limit")
     long operationNum = 1000;
 
+    @CommandLine.Option(
+            names = {"--write-with-sequence"},
+            description = "Whether enable write with sequence."
+    )
+    boolean writeWithSequence = false;
+
     /* Generation */
 
     @CommandLine.Option(
