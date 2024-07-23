@@ -199,9 +199,9 @@ public final class WorkerOptions implements Runnable {
         try (Worker worker = new Worker(this, sdk)) {
             final long startRunningTime = System.currentTimeMillis();
             worker.run();
-            final long elapsedSec = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis() - startRunningTime);
-            if (elapsedSec < minExitTimeSec) {
-                Thread.sleep(TimeUnit.SECONDS.toMillis(elapsedSec));
+            long elapsedMs = System.currentTimeMillis() - startRunningTime;
+            if (TimeUnit.MILLISECONDS.toSeconds(elapsedMs) < minExitTimeSec) {
+                Thread.sleep(TimeUnit.SECONDS.toMillis(elapsedMs));
             }
         } catch (Throwable ex) {
             log.error("unexpected error. ", ex);
