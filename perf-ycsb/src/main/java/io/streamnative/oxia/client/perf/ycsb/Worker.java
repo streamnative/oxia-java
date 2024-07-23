@@ -132,7 +132,7 @@ public final class Worker implements Runnable, Closeable, Operations {
                         .build();
         this.outstandingRequestGauge =
                 meter
-                        .gaugeBuilder("oxia.operf.ycsb.op.outstanding")
+                        .gaugeBuilder("oxia.perf.ycsb.op.outstanding")
                         .setDescription("oxia outstanding request")
                         .setUnit(Unit.Requests.toString())
                         .ofLongs()
