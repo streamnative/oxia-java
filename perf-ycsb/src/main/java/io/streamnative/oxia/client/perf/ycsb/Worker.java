@@ -25,6 +25,7 @@ import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.metrics.DoubleHistogram;
 import io.opentelemetry.api.metrics.LongCounter;
+import io.opentelemetry.api.metrics.ObservableLongGauge;
 import io.streamnative.oxia.client.api.*;
 import io.streamnative.oxia.client.api.exceptions.OxiaException;
 import io.streamnative.oxia.client.metrics.Unit;
@@ -62,8 +63,11 @@ public final class Worker implements Runnable, Closeable, Operations {
 
     private volatile CompletableFuture<Void> closeFuture;
 
+    private final Semaphore outstandingSemaphore;
+
     /* Otl section */
     private final LongCounter operationCounter;
+    private final ObservableLongGauge outstandingRequestGauge;
     private final Attributes operationWriteSuccessAttributes;
     private final Attributes operationWriteFailedAttributes;
     private final Attributes operationReadSuccessAttributes;
@@ -91,6 +95,7 @@ public final class Worker implements Runnable, Closeable, Operations {
         }
         final GeneratorType generatorType = GeneratorType.fromString(options.keyDistribution);
 
+        this.outstandingSemaphore = new Semaphore(options.maxOutstandingRequests);
         this.keyGenerator =
                 Generators.createKeyGenerator(
                         new KeyGeneratorOptions(
@@ -125,6 +130,21 @@ public final class Worker implements Runnable, Closeable, Operations {
                         .setDescription("oxia perf operation counter")
                         .setUnit(Unit.Requests.toString())
                         .build();
+        this.outstandingRequestGauge =
+                meter
+                        .gaugeBuilder("oxia.operf.ycsb.op.outstanding")
+                        .setDescription("oxia outstanding request")
+                        .setUnit(Unit.Requests.toString())
+                        .ofLongs()
+                        .buildWithCallback(
+                                (ob) -> {
+                                    ob.record(
+                                            options.maxOutstandingRequests - outstandingSemaphore.availablePermits(),
+                                            Attributes.builder()
+                                                    .put("value.size", options.valueSize)
+                                                    .put("worker", options.workerName)
+                                                    .build());
+                                });
         this.operationLatency =
                 meter
                         .histogramBuilder("oxia.perf.ycsb.op.second")
@@ -174,7 +194,6 @@ public final class Worker implements Runnable, Closeable, Operations {
 
         final RateLimiter operationRatelimiter = RateLimiter.create(options.requestsRate);
         final int maxOutstandingRequests = options.maxOutstandingRequests;
-        final Semaphore outstandingSemaphore = new Semaphore(maxOutstandingRequests);
 
         final BenchmarkReport globalReport = BenchmarkReport.createDefault();
         final BenchmarkReport intervalReport = BenchmarkReport.createDefault();
@@ -336,6 +355,8 @@ public final class Worker implements Runnable, Closeable, Operations {
         } catch (Exception ex) {
             throw new WorkerException(ex);
         }
+
+        outstandingRequestGauge.close(); // close observer
     }
 
     @Override
