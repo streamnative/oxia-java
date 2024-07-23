@@ -22,6 +22,8 @@ import io.streamnative.oxia.client.OxiaClientBuilderImpl;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine;
 
+import java.util.concurrent.TimeUnit;
+
 @Slf4j
 @CommandLine.Command(name = "ycsb")
 public final class WorkerOptions implements Runnable {
@@ -32,6 +34,11 @@ public final class WorkerOptions implements Runnable {
             description = "worker name for this test"
     )
     String workerName = "";
+
+    @CommandLine.Option(
+            names = {"--min-exit-time-sec"},
+            description = "minimal exit time in the second")
+    int minExitTimeSec = 60 * 3;  // at least exist 3 min to let metrics collector
 
     @CommandLine.Option(
             names = {"--service-addr"},
@@ -190,7 +197,12 @@ public final class WorkerOptions implements Runnable {
     public void run() {
         final var sdk = AutoConfiguredOpenTelemetrySdk.initialize().getOpenTelemetrySdk();
         try (Worker worker = new Worker(this, sdk)) {
+            final long startRunningTime = System.currentTimeMillis();
             worker.run();
+            final long elapsedSec = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis() - startRunningTime);
+            if (elapsedSec < minExitTimeSec) {
+                Thread.sleep(TimeUnit.SECONDS.toMillis(elapsedSec));
+            }
         } catch (Throwable ex) {
             log.error("unexpected error. ", ex);
         }
