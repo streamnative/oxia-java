@@ -42,6 +42,12 @@ public final class WorkerOptions implements Runnable {
     String envName = "";
 
     @CommandLine.Option(
+            names = {"--env-shards"},
+            description = "the worker environment shards number"
+    )
+    int envShards = 0;
+
+    @CommandLine.Option(
             names = {"--min-exit-time-sec"},
             description = "minimal exit time in the second")
     int minExitTimeSec = 60 * 5;  // at least exist 3 min to let metrics collector
