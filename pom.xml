@@ -499,5 +499,11 @@
                 </plugins>
             </build>
         </profile>
+        <profile>
+            <id>perf-ycsb</id>
+            <modules>
+                <module>perf-ycsb</module>
+            </modules>
+        </profile>
     </profiles>
 </project>
