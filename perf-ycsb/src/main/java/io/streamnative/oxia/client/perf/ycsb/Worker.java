@@ -144,6 +144,7 @@ public final class Worker implements Runnable, Closeable, Operations {
                                                     .put("operation.num", options.operationNum)
                                                     .put("value.size", options.valueSize)
                                                     .put("worker", options.workerName)
+                                                    .put("env", options.envName)
                                                     .build());
                                 });
         this.operationLatency =
@@ -159,6 +160,7 @@ public final class Worker implements Runnable, Closeable, Operations {
                         .put("operation.num", options.operationNum)
                         .put("value.size", options.valueSize)
                         .put("worker", options.workerName)
+                        .put("env", options.envName)
                         .put("response", "success")
                         .build();
         this.operationWriteFailedAttributes =
@@ -167,6 +169,7 @@ public final class Worker implements Runnable, Closeable, Operations {
                         .put("operation.num", options.operationNum)
                         .put("value.size", options.valueSize)
                         .put("worker", options.workerName)
+                        .put("env", options.envName)
                         .put("response", "failed")
                         .build();
         this.operationReadSuccessAttributes =
@@ -175,6 +178,7 @@ public final class Worker implements Runnable, Closeable, Operations {
                         .put("operation.num", options.operationNum)
                         .put("value.size", options.valueSize)
                         .put("worker", options.workerName)
+                        .put("env", options.envName)
                         .put("response", "success")
                         .build();
         this.operationReadFailedAttributes =
@@ -183,6 +187,7 @@ public final class Worker implements Runnable, Closeable, Operations {
                         .put("operation.num", options.operationNum)
                         .put("value.size", options.valueSize)
                         .put("worker", options.workerName)
+                        .put("env", options.envName)
                         .put("response", "failed")
                         .build();
     }
