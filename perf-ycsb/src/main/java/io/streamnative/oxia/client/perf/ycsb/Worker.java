@@ -141,6 +141,7 @@ public final class Worker implements Runnable, Closeable, Operations {
                                     ob.record(
                                             options.maxOutstandingRequests - outstandingSemaphore.availablePermits(),
                                             Attributes.builder()
+                                                    .put("operation.num", options.operationNum)
                                                     .put("value.size", options.valueSize)
                                                     .put("worker", options.workerName)
                                                     .build());
@@ -155,6 +156,7 @@ public final class Worker implements Runnable, Closeable, Operations {
         this.operationWriteSuccessAttributes =
                 Attributes.builder()
                         .put("type", "write")
+                        .put("operation.num", options.operationNum)
                         .put("value.size", options.valueSize)
                         .put("worker", options.workerName)
                         .put("response", "success")
@@ -162,6 +164,7 @@ public final class Worker implements Runnable, Closeable, Operations {
         this.operationWriteFailedAttributes =
                 Attributes.builder()
                         .put("type", "write")
+                        .put("operation.num", options.operationNum)
                         .put("value.size", options.valueSize)
                         .put("worker", options.workerName)
                         .put("response", "failed")
@@ -169,6 +172,7 @@ public final class Worker implements Runnable, Closeable, Operations {
         this.operationReadSuccessAttributes =
                 Attributes.builder()
                         .put("type", "read")
+                        .put("operation.num", options.operationNum)
                         .put("value.size", options.valueSize)
                         .put("worker", options.workerName)
                         .put("response", "success")
@@ -176,6 +180,7 @@ public final class Worker implements Runnable, Closeable, Operations {
         this.operationReadFailedAttributes =
                 Attributes.builder()
                         .put("type", "read")
+                        .put("operation.num", options.operationNum)
                         .put("value.size", options.valueSize)
                         .put("worker", options.workerName)
                         .put("response", "failed")
