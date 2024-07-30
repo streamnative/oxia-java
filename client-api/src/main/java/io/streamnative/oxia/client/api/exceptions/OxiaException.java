@@ -20,4 +20,8 @@ public abstract class OxiaException extends Exception {
     OxiaException(String message) {
         super(message);
     }
+
+    OxiaException(String message, Throwable cause) {
+        super(message, cause);
+    }
 }

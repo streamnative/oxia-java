@@ -17,10 +17,15 @@ package io.streamnative.oxia.client.grpc;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
-import io.grpc.Grpc;
+import io.grpc.CallCredentials;
 import io.grpc.InsecureChannelCredentials;
 import io.grpc.ManagedChannel;
+import io.grpc.TlsChannelCredentials;
+import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
+import io.streamnative.oxia.client.api.Authentication;
 import io.streamnative.oxia.proto.OxiaClientGrpc;
+import java.util.concurrent.Executor;
+import javax.annotation.Nullable;
 import lombok.NonNull;
 
 public class OxiaStub implements AutoCloseable {
@@ -28,16 +33,45 @@ public class OxiaStub implements AutoCloseable {
 
     private final @NonNull OxiaClientGrpc.OxiaClientStub asyncStub;
 
-    public OxiaStub(String address) {
+    public OxiaStub(String address, @Nullable Authentication authentication, boolean enableTls) {
         this(
-                Grpc.newChannelBuilder(address, InsecureChannelCredentials.create())
+                NettyChannelBuilder.forTarget(
+                                address,
+                                enableTls
+                                        ? TlsChannelCredentials.newBuilder().build()
+                                        : InsecureChannelCredentials.create())
                         .directExecutor()
-                        .build());
+                        .disableRetry()
+                        .build(),
+                authentication);
     }
 
     public OxiaStub(ManagedChannel channel) {
+        this(channel, null);
+    }
+
+    public OxiaStub(ManagedChannel channel, @Nullable final Authentication authentication) {
         this.channel = channel;
-        this.asyncStub = OxiaClientGrpc.newStub(channel);
+        if (authentication != null) {
+            this.asyncStub =
+                    OxiaClientGrpc.newStub(channel)
+                            .withCallCredentials(
+                                    new CallCredentials() {
+
+                                        @Override
+                                        public void applyRequestMetadata(
+                                                RequestInfo requestInfo, Executor appExecutor, MetadataApplier applier) {
+                                            applier.apply(authentication.generateCredentials());
+                                        }
+
+                                        @Override
+                                        public void thisUsesUnstableApi() {
+                                            // Nothing to do.
+                                        }
+                                    });
+        } else {
+            this.asyncStub = OxiaClientGrpc.newStub(channel);
+        }
     }
 
     public OxiaClientGrpc.OxiaClientStub async() {

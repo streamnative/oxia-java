@@ -21,13 +21,22 @@ import com.google.common.base.Strings;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
+import io.streamnative.oxia.client.api.Authentication;
 import io.streamnative.oxia.client.api.OxiaClientBuilder;
 import io.streamnative.oxia.client.api.SyncOxiaClient;
 import io.streamnative.oxia.client.api.exceptions.OxiaException;
+import io.streamnative.oxia.client.api.exceptions.UnsupportedAuthenticationException;
+import io.streamnative.oxia.client.auth.AuthenticationFactory;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.Duration;
+import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
+import javax.annotation.Nullable;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
@@ -40,18 +49,23 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
     public static final Duration DefaultRequestTimeout = Duration.ofSeconds(30);
     public static final Duration DefaultSessionTimeout = Duration.ofSeconds(15);
     public static final String DefaultNamespace = "default";
+    public static final boolean DefaultEnableTls = false;
 
-    @NonNull private final String serviceAddress;
-    @NonNull private Duration requestTimeout = DefaultRequestTimeout;
-    @NonNull private Duration batchLinger = DefaultBatchLinger;
-    private int maxRequestsPerBatch = DefaultMaxRequestsPerBatch;
-    @NonNull private Duration sessionTimeout = DefaultSessionTimeout;
+    @NonNull protected final String serviceAddress;
+    @NonNull protected Duration requestTimeout = DefaultRequestTimeout;
+    @NonNull protected Duration batchLinger = DefaultBatchLinger;
+    protected int maxRequestsPerBatch = DefaultMaxRequestsPerBatch;
+    @NonNull protected Duration sessionTimeout = DefaultSessionTimeout;
 
-    @NonNull
-    private Supplier<String> clientIdentifier = OxiaClientBuilderImpl::randomClientIdentifier;
+    protected String clientIdentifier = randomClientIdentifier();
+    @NonNull protected Supplier<String> clientIdentifierSupplier = () -> clientIdentifier;
 
-    @NonNull private String namespace = DefaultNamespace;
-    @NonNull private OpenTelemetry openTelemetry = GlobalOpenTelemetry.get();
+    @NonNull protected String namespace = DefaultNamespace;
+    @NonNull protected OpenTelemetry openTelemetry = GlobalOpenTelemetry.get();
+    @Nullable protected String authPluginClassName;
+    @Nullable protected String authParams;
+    @Nullable protected Authentication authentication;
+    protected boolean enableTls = DefaultEnableTls;
 
     @Override
     public @NonNull OxiaClientBuilder requestTimeout(@NonNull Duration requestTimeout) {
@@ -103,19 +117,99 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
 
     @Override
     public @NonNull OxiaClientBuilder clientIdentifier(@NonNull String clientIdentifier) {
-        this.clientIdentifier = () -> clientIdentifier;
+        this.clientIdentifier = clientIdentifier;
+        this.clientIdentifierSupplier = () -> clientIdentifier;
         return this;
     }
 
     @Override
-    public @NonNull OxiaClientBuilder clientIdentifier(@NonNull Supplier<String> clientIdentifier) {
-        this.clientIdentifier = clientIdentifier;
+    public @NonNull OxiaClientBuilder clientIdentifier(
+            @NonNull Supplier<String> clientIdentifierSupplier) {
+        this.clientIdentifierSupplier = clientIdentifierSupplier;
         return this;
     }
 
     @Override
     public @NonNull OxiaClientBuilder openTelemetry(@NonNull OpenTelemetry openTelemetry) {
         this.openTelemetry = openTelemetry;
+        return this;
+    }
+
+    @Override
+    public OxiaClientBuilder authentication(Authentication authentication) {
+        this.authentication = authentication;
+        return this;
+    }
+
+    @Override
+    public OxiaClientBuilder authentication(String authPluginClassName, String authParamsString)
+            throws UnsupportedAuthenticationException {
+        this.authPluginClassName = authPluginClassName;
+        this.authParams = authParamsString;
+        this.authentication = AuthenticationFactory.create(authPluginClassName, authParamsString);
+        return this;
+    }
+
+    @Override
+    public OxiaClientBuilder enableTls(boolean enableTls) {
+        this.enableTls = enableTls;
+        return this;
+    }
+
+    @Override
+    public OxiaClientBuilder loadConfig(String configPath) {
+        // Load the configuration from the given path.
+        try {
+            File configFile = new File(configPath);
+            return loadConfig(configFile);
+        } catch (Throwable e) {
+            throw new IllegalArgumentException(
+                    "Failed to load configuration from file: " + configPath, e);
+        }
+    }
+
+    @Override
+    public OxiaClientBuilder loadConfig(File configFile) {
+        // Load the configuration from the given file.
+        Properties properties = new Properties();
+        try (InputStream input = new FileInputStream(configFile)) {
+            properties.load(input);
+        } catch (IOException ex) {
+            throw new IllegalArgumentException(
+                    "Failed to load configuration from file: " + configFile, ex);
+        }
+        return loadConfig(properties);
+    }
+
+    @Override
+    public OxiaClientBuilder loadConfig(Properties properties) {
+        if (properties == null) {
+            throw new IllegalArgumentException("Properties must not be null.");
+        }
+        // Load the configuration from the given properties using reflection.
+        for (String name : properties.stringPropertyNames()) {
+            try {
+                var field = getClass().getDeclaredField(name);
+                field.setAccessible(true);
+                if (field.getType().equals(Duration.class)) {
+                    field.set(this, Duration.ofMillis(Long.parseLong(properties.getProperty(name))));
+                } else if (field.getType().equals(int.class)) {
+                    field.set(this, Integer.parseInt(properties.getProperty(name)));
+                } else if (field.getType().equals(boolean.class)) {
+                    field.set(this, Boolean.parseBoolean(properties.getProperty(name)));
+                } else {
+                    field.set(this, properties.getProperty(name));
+                }
+            } catch (NoSuchFieldException | IllegalAccessException e) {
+                throw new IllegalArgumentException("Invalid configuration property: " + name);
+            }
+        }
+        // Create the authentication from the configuration.
+        try {
+            this.authentication = AuthenticationFactory.create(authPluginClassName, authParams);
+        } catch (UnsupportedAuthenticationException e) {
+            throw new IllegalArgumentException("Failed to create authentication from configuration.", e);
+        }
         return this;
     }
 
@@ -129,9 +223,11 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
                         maxRequestsPerBatch,
                         DefaultMaxBatchSize,
                         sessionTimeout,
-                        clientIdentifier.get(),
+                        clientIdentifierSupplier.get(),
                         openTelemetry,
-                        namespace);
+                        namespace,
+                        authentication,
+                        enableTls);
         return AsyncOxiaClientImpl.newInstance(config);
     }
 
