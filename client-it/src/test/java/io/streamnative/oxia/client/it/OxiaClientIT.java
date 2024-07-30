@@ -51,10 +51,12 @@ import io.streamnative.oxia.client.api.SyncOxiaClient;
 import io.streamnative.oxia.client.api.exceptions.KeyAlreadyExistsException;
 import io.streamnative.oxia.client.api.exceptions.UnexpectedVersionIdException;
 import io.streamnative.oxia.testcontainers.OxiaContainer;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -227,6 +229,30 @@ public class OxiaClientIT {
                                 .map(HistogramPointData::getCount)
                                 .reduce(0L, Long::sum))
                 .isEqualTo(24);
+    }
+
+    @Test
+    public void testPutRequestOrder() throws Exception {
+        @Cleanup
+        AsyncOxiaClient oxiaClient = OxiaClientBuilder.create(oxia.getServiceAddress()).maxRequestsPerBatch(100).asyncClient().join();
+
+        int testNum = 10000;
+
+        List<CompletableFuture<PutResult>> resultList = new ArrayList<>();
+        for (int i = 0; i < testNum; i++) {
+            final byte[] value = new String("messasge-" + i).getBytes();
+            resultList.add(oxiaClient.put("idx", value, Set.of(PutOption.PartitionKey("ids"), PutOption.SequenceKeysDeltas(List.of(1L)))));
+        }
+
+        CompletableFuture.allOf(resultList.toArray(new CompletableFuture[0])).join();
+
+        for (int i = 0; i < testNum; i++) {
+            PutResult result = resultList.get(i).join();
+            String number = result.key().substring(4);
+            if (i + 1 != Integer.parseInt(number)) {
+                System.out.println("Out of order!!!");
+            }
+        }
     }
 
     @Test
