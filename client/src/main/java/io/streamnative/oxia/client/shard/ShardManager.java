@@ -239,7 +239,7 @@ public class ShardManager implements AutoCloseable, StreamObserver<ShardAssignme
                 oldAssignments.values().stream()
                         .filter(s -> newAssignments.containsKey(s.id()))
                         .filter(s -> !newAssignments.get(s.id()).leader().equals(s.leader()))
-                        .map(s -> newAssignments.get(s.id())) // return changed value
+                        .map(s -> newAssignments.get(s.id())) // return reassigned leader
                         .collect(toSet());
         return new ShardAssignmentChanges(
                 unmodifiableSet(added), unmodifiableSet(removed), unmodifiableSet(changed));
