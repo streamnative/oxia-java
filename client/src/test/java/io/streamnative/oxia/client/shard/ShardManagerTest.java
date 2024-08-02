@@ -124,8 +124,7 @@ public class ShardManagerTest {
         void recomputeAssignmentsWithSameBoundariesAndDiffLeader() {
             final var existing = Map.of(1L, new Shard(1L, "leader 1", new HashRange(0, 4294967295L)));
             final var updates = Set.of(new Shard(1L, "leader 2", new HashRange(0, 4294967295L)));
-            final var updatedMap =
-                    ShardManager.recomputeShardHashBoundaries(existing, updates);
+            final var updatedMap = ShardManager.recomputeShardHashBoundaries(existing, updates);
             final var changes = ShardManager.computeShardLeaderChanges(existing, updatedMap);
             assertThat(changes.reassigned()).isEqualTo(updates);
         }
