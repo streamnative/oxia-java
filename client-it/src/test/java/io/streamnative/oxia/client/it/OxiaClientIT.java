@@ -54,8 +54,7 @@ import io.streamnative.oxia.client.api.exceptions.UnexpectedVersionIdException;
 import io.streamnative.oxia.testcontainers.OxiaContainer;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import lombok.Cleanup;
@@ -595,7 +594,67 @@ public class OxiaClientIT {
 
 
     @Test
-    void testVersionIdUnique() throws Exception {
+    void testVersionIdUniqueWithMoreClient() throws Exception {
+        final String path = "/testVersionIdUnique";
+        final byte[] value = new byte[0];
+        @Cleanup
+        var client1 =
+                OxiaClientBuilder.create(oxia.getServiceAddress())
+                        .asyncClient()
+                        .join();
+        @Cleanup
+        var client2 =
+                OxiaClientBuilder.create(oxia.getServiceAddress())
+                        .asyncClient()
+                        .join();
+        @Cleanup("shutdown")
+        ExecutorService executor1 = Executors.newSingleThreadExecutor();
+
+        @Cleanup("shutdown")
+        ExecutorService executor2 = Executors.newSingleThreadExecutor();
+
+        // :client-1
+        List<CompletableFuture<PutResult>> r1 = new ArrayList<>();
+        final CountDownLatch cdl1 = new CountDownLatch(1);
+        executor1.execute(() -> {
+            for (int i = 0; i < 10; i++) {
+                client1.put(path, value);
+                r1.add(client1.put(path, value, Set.of(PutOption.AsNonBatchRecord)));
+                client1.put(path, value);
+                cdl1.countDown();
+            }
+        });
+        cdl1.await();
+        CompletableFuture.allOf(r1.toArray(new CompletableFuture[0])).get();
+        Set<Long> v1 = new HashSet<>();
+        for (CompletableFuture<PutResult> result : r1) {
+            v1.add(result.get().version().versionId());
+        }
+        assertEquals(10, v1.size());
+
+
+        // :client-2
+        List<CompletableFuture<PutResult>> r2 = new ArrayList<>();
+        final CountDownLatch cdl2 = new CountDownLatch(1);
+        executor2.execute(() -> {
+            for (int i = 0; i < 10; i++) {
+                client2.put(path, value);
+                r2.add(client2.put(path, value, Set.of(PutOption.AsNonBatchRecord)));
+                client2.put(path, value);
+                cdl2.countDown();
+            }
+        });
+        cdl2.await();
+        CompletableFuture.allOf(r2.toArray(new CompletableFuture[0])).get();
+        Set<Long> v2 = new HashSet<>();
+        for (CompletableFuture<PutResult> result : r2) {
+            v2.add(result.get().version().versionId());
+        }
+        assertEquals(10, v2.size());
+    }
+
+    @Test
+    void testVersionIdUnique() throws ExecutionException, InterruptedException {
         final String path = "/testVersionIdUnique";
         final byte[] value = new byte[0];
         List<CompletableFuture<PutResult>> results = new ArrayList<>();
@@ -614,6 +673,7 @@ public class OxiaClientIT {
 
         assertEquals(10, versionId.size());
     }
+
 
     @Test
     public void testModificationCount() throws Exception {
