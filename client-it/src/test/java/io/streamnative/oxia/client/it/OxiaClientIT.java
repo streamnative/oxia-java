@@ -619,7 +619,9 @@ public class OxiaClientIT {
         executor1.execute(() -> {
             for (int i = 0; i < 10; i++) {
                 client1.put(path, value);
+                client1.put(path, value);
                 r1.add(client1.put(path, value, Set.of(PutOption.AsNonBatchRecord)));
+                client1.put(path, value);
                 client1.put(path, value);
                 cdl1.countDown();
             }
@@ -639,7 +641,9 @@ public class OxiaClientIT {
         executor2.execute(() -> {
             for (int i = 0; i < 10; i++) {
                 client2.put(path, value);
+                client2.put(path, value);
                 r2.add(client2.put(path, value, Set.of(PutOption.AsNonBatchRecord)));
+                client2.put(path, value);
                 client2.put(path, value);
                 cdl2.countDown();
             }
