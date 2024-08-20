@@ -602,7 +602,7 @@ public class OxiaClientIT {
 
 
     @Test
-    void testVersionIdUniqueWithMoreClient() throws Exception {
+    void testVersionIdUniqueWithMultipleClient() throws Exception {
         final String path = "/testVersionIdUnique";
         final byte[] value = new byte[0];
         @Cleanup
@@ -634,15 +634,6 @@ public class OxiaClientIT {
                 cdl1.countDown();
             }
         });
-        cdl1.await();
-        CompletableFuture.allOf(r1.toArray(new CompletableFuture[0])).get();
-        Set<Long> v1 = new HashSet<>();
-        for (CompletableFuture<PutResult> result : r1) {
-            v1.add(result.get().version().versionId());
-        }
-        assertEquals(10, v1.size());
-
-
         // :client-2
         List<CompletableFuture<PutResult>> r2 = new ArrayList<>();
         final CountDownLatch cdl2 = new CountDownLatch(1);
@@ -656,6 +647,15 @@ public class OxiaClientIT {
                 cdl2.countDown();
             }
         });
+
+        cdl1.await();
+        CompletableFuture.allOf(r1.toArray(new CompletableFuture[0])).get();
+        Set<Long> v1 = new HashSet<>();
+        for (CompletableFuture<PutResult> result : r1) {
+            v1.add(result.get().version().versionId());
+        }
+        assertEquals(10, v1.size());
+
         cdl2.await();
         CompletableFuture.allOf(r2.toArray(new CompletableFuture[0])).get();
         Set<Long> v2 = new HashSet<>();
