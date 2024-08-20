@@ -55,8 +55,8 @@ public class LatencyHistogram {
             attributes = attributes.toBuilder().put("oxia.namespace", namespace).build();
         }
 
-        successAttributes = attributes.toBuilder().put("oxia.response.status", "success").build();
-        failedAttributes = attributes.toBuilder().put("oxia.response.status", "failed").build();
+        successAttributes = attributes.toBuilder().put("oxia.response.lockStatus", "success").build();
+        failedAttributes = attributes.toBuilder().put("oxia.response.lockStatus", "failed").build();
         this.histogram = builder.build();
     }
 

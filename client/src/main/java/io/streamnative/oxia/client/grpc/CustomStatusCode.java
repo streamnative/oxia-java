@@ -18,7 +18,7 @@ package io.streamnative.oxia.client.grpc;
 import java.util.Objects;
 import lombok.NonNull;
 
-/** Customised GRPC status code. */
+/** Customised GRPC lockStatus code. */
 public enum CustomStatusCode {
     ErrorNamespaceNotFound,
     // fallback to Status.code
