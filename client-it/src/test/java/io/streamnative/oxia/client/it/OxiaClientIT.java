@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
@@ -600,21 +601,12 @@ public class OxiaClientIT {
         assertThat(list2).isEqualTo(list);
     }
 
-
     @Test
     void testVersionIdUniqueWithMultipleClient() throws Exception {
         final String path = "/testVersionIdUnique";
         final byte[] value = new byte[0];
-        @Cleanup
-        var client1 =
-                OxiaClientBuilder.create(oxia.getServiceAddress())
-                        .asyncClient()
-                        .join();
-        @Cleanup
-        var client2 =
-                OxiaClientBuilder.create(oxia.getServiceAddress())
-                        .asyncClient()
-                        .join();
+        @Cleanup var client1 = OxiaClientBuilder.create(oxia.getServiceAddress()).asyncClient().join();
+        @Cleanup var client2 = OxiaClientBuilder.create(oxia.getServiceAddress()).asyncClient().join();
         @Cleanup("shutdown")
         ExecutorService executor1 = Executors.newSingleThreadExecutor();
 
@@ -624,29 +616,31 @@ public class OxiaClientIT {
         // :client-1
         List<CompletableFuture<PutResult>> r1 = new ArrayList<>();
         final CountDownLatch cdl1 = new CountDownLatch(1);
-        executor1.execute(() -> {
-            for (int i = 0; i < 10; i++) {
-                client1.put(path, value);
-                client1.put(path, value);
-                r1.add(client1.put(path, value, Set.of(PutOption.AsNonBatchRecord)));
-                client1.put(path, value);
-                client1.put(path, value);
-                cdl1.countDown();
-            }
-        });
+        executor1.execute(
+                () -> {
+                    for (int i = 0; i < 10; i++) {
+                        client1.put(path, value);
+                        client1.put(path, value);
+                        r1.add(client1.put(path, value, Set.of(PutOption.AsNonBatchRecord)));
+                        client1.put(path, value);
+                        client1.put(path, value);
+                        cdl1.countDown();
+                    }
+                });
         // :client-2
         List<CompletableFuture<PutResult>> r2 = new ArrayList<>();
         final CountDownLatch cdl2 = new CountDownLatch(1);
-        executor2.execute(() -> {
-            for (int i = 0; i < 10; i++) {
-                client2.put(path, value);
-                client2.put(path, value);
-                r2.add(client2.put(path, value, Set.of(PutOption.AsNonBatchRecord)));
-                client2.put(path, value);
-                client2.put(path, value);
-                cdl2.countDown();
-            }
-        });
+        executor2.execute(
+                () -> {
+                    for (int i = 0; i < 10; i++) {
+                        client2.put(path, value);
+                        client2.put(path, value);
+                        r2.add(client2.put(path, value, Set.of(PutOption.AsNonBatchRecord)));
+                        client2.put(path, value);
+                        client2.put(path, value);
+                        cdl2.countDown();
+                    }
+                });
 
         cdl1.await();
         CompletableFuture.allOf(r1.toArray(new CompletableFuture[0])).get();
@@ -685,7 +679,6 @@ public class OxiaClientIT {
 
         assertEquals(10, versionId.size());
     }
-
 
     @Test
     public void testModificationCount() throws Exception {
@@ -730,7 +723,8 @@ public class OxiaClientIT {
         final byte[] value = new byte[0];
         List<CompletableFuture<PutResult>> results = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
-            results.add(client.put(path, value, Set.of(PutOption.PartitionKey("x"), PutOption.AsNonBatchRecord)));
+            results.add(
+                    client.put(path, value, Set.of(PutOption.PartitionKey("x"), PutOption.AsNonBatchRecord)));
         }
 
         CompletableFuture.allOf(results.toArray(new CompletableFuture[0])).get();

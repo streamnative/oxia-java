@@ -19,7 +19,11 @@ import java.util.List;
 import lombok.NonNull;
 
 public sealed interface PutOption
-        permits OptionEphemeral, OptionNonBatch, OptionPartitionKey, OptionSequenceKeysDeltas, OptionVersionId {
+        permits OptionEphemeral,
+                OptionNonBatch,
+                OptionPartitionKey,
+                OptionSequenceKeysDeltas,
+                OptionVersionId {
 
     PutOption IfRecordDoesNotExist = new OptionVersionId.OptionRecordDoesNotExist();
     PutOption AsEphemeralRecord = new OptionEphemeral();

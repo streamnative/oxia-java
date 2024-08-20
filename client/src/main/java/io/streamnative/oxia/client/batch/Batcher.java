@@ -112,9 +112,10 @@ public class Batcher implements AutoCloseable {
                 try {
                     flushBatch = operation.nonBatch();
                     // Checking the batch bytes size
-                    if (!batch.canAdd(operation) ||
-                        // Checking flush the previous operations
-                        (batch.size() > 0 && flushBatch)) {
+                    if (!batch.canAdd(operation)
+                            ||
+                            // Checking flush the previous operations
+                            (batch.size() > 0 && flushBatch)) {
                         batch.send();
                         batch = batchFactory.getBatch(shardId);
                         lingerBudgetNanos = config.batchLinger().toNanos();

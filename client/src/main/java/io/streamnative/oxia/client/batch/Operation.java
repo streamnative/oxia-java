@@ -108,8 +108,16 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                     @NonNull OptionalLong expectedVersionId,
                     OptionalLong sessionId,
                     Optional<String> clientIdentifier) {
-                this(callback, key, partitionKey, sequenceKeysDeltas, value,
-                        expectedVersionId, sessionId, clientIdentifier, true);
+                this(
+                        callback,
+                        key,
+                        partitionKey,
+                        sequenceKeysDeltas,
+                        value,
+                        expectedVersionId,
+                        sessionId,
+                        clientIdentifier,
+                        true);
             }
 
             public PutOperation {
