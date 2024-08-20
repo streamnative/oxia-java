@@ -117,7 +117,7 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                         expectedVersionId,
                         sessionId,
                         clientIdentifier,
-                        true);
+                        false);
             }
 
             public PutOperation {
