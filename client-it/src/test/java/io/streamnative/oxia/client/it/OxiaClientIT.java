@@ -600,7 +600,9 @@ public class OxiaClientIT {
         final byte[] value = new byte[0];
         List<CompletableFuture<PutResult>> results = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
+            client.put(path, value);
             results.add(client.put(path, value, Set.of(PutOption.AsNonBatchRecord)));
+            client.put(path, value);
         }
 
         CompletableFuture.allOf(results.toArray(new CompletableFuture[0])).get();
