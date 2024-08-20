@@ -23,6 +23,7 @@ import static java.util.function.Function.identity;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.Attributes;
@@ -51,10 +52,13 @@ import io.streamnative.oxia.client.api.SyncOxiaClient;
 import io.streamnative.oxia.client.api.exceptions.KeyAlreadyExistsException;
 import io.streamnative.oxia.client.api.exceptions.UnexpectedVersionIdException;
 import io.streamnative.oxia.testcontainers.OxiaContainer;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -110,6 +114,83 @@ public class OxiaClientIT {
         if (client != null) {
             client.close();
         }
+    }
+
+    @Test
+    void testVersionIdUnique() throws Exception {
+        final String path = "/testVersionIdUnique";
+        final byte[] value = new byte[0];
+        List<CompletableFuture<PutResult>> results = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            results.add(client.put(path, value));
+        }
+
+        CompletableFuture.allOf(results.toArray(new CompletableFuture[0])).get();
+
+        Set<Long> versionId = new HashSet<>();
+        for (CompletableFuture<PutResult> result : results) {
+            versionId.add(result.get().version().versionId());
+        }
+
+        assertEquals(10, versionId.size()); // failed, it always is 1
+//        assertEquals(1, versionId.size());
+    }
+
+    @Test
+    public void testModificationCount() throws Exception {
+        final String path = "/testModificationCount";
+        final byte[] value = new byte[0];
+        List<CompletableFuture<PutResult>> results = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            results.add(client.put(path, value));
+        }
+
+        CompletableFuture.allOf(results.toArray(new CompletableFuture[0])).join();
+
+        Set<Long> modificationCountNumber = new HashSet<>();
+        for (CompletableFuture<PutResult> result : results) {
+            modificationCountNumber.add(result.get().version().modificationsCount());
+        }
+        assertEquals(10, modificationCountNumber.size());
+    }
+
+    @Test
+    void testVersionIdUniqueWithDifferentValue() throws Exception {
+        final String path = "/testVersionIdUniqueWithValue";
+        List<CompletableFuture<PutResult>> results = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            byte[] value = ("value" + i).getBytes();
+            results.add(client.put(path, value));
+        }
+
+        CompletableFuture.allOf(results.toArray(new CompletableFuture[0])).get();
+
+        Set<Long> versionId = new HashSet<>();
+        for (CompletableFuture<PutResult> result : results) {
+            versionId.add(result.get().version().versionId());
+        }
+
+        assertEquals(10, versionId.size()); // failed, it always is 1
+//        assertEquals(1, versionId.size());
+    }
+
+    @Test
+    void testVersionIdUniqueWithOption() throws Exception {
+        final String path = "/testVersionIdUniqueWithOption";
+        final byte[] value = new byte[0];
+        List<CompletableFuture<PutResult>> results = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            results.add(client.put(path, value, Set.of(PutOption.PartitionKey("x"))));
+        }
+
+        CompletableFuture.allOf(results.toArray(new CompletableFuture[0])).get();
+
+        Set<Long> versionId = new HashSet<>();
+        for (CompletableFuture<PutResult> result : results) {
+            versionId.add(result.get().version().versionId());
+        }
+
+        assertEquals(10, versionId.size()); // failed, it always is 1
     }
 
     @Test
