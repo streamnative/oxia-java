@@ -101,6 +101,7 @@ public class Batcher implements AutoCloseable {
                 return;
             }
 
+            boolean flushBatch = false;
             if (localOperationsIndex < localOperationsCount) {
                 if (batch == null) {
                     batch = batchFactory.getBatch(shardId);
@@ -109,11 +110,16 @@ public class Batcher implements AutoCloseable {
 
                 Operation<?> operation = localOperations[localOperationsIndex++];
                 try {
-                    if (!batch.canAdd(operation)) {
+                    flushBatch = operation.nonBatch();
+                    // Checking the batch bytes size
+                    if (!batch.canAdd(operation) ||
+                        // Checking flush the previous operations
+                        flushBatch) {
                         batch.send();
                         batch = batchFactory.getBatch(shardId);
                         lingerBudgetNanos = config.batchLinger().toNanos();
                     }
+
                     batch.add(operation);
                 } catch (Exception e) {
                     operation.fail(e);
@@ -121,7 +127,8 @@ public class Batcher implements AutoCloseable {
             }
 
             if (batch != null) {
-                if (batch.size() == config.maxRequestsPerBatch() || lingerBudgetNanos == 0) {
+                // Checking the batch request size
+                if (flushBatch || batch.size() == config.maxRequestsPerBatch() || lingerBudgetNanos == 0) {
                     batch.send();
                     batch = null;
                 }

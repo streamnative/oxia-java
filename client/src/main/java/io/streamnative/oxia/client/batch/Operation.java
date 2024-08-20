@@ -52,6 +52,10 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
 
     CompletableFuture<R> callback();
 
+    default boolean nonBatch() {
+        return false;
+    }
+
     default void fail(Throwable t) {
         callback().completeExceptionally(t);
     }
@@ -90,8 +94,23 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 byte @NonNull [] value,
                 @NonNull OptionalLong expectedVersionId,
                 OptionalLong sessionId,
-                Optional<String> clientIdentifier)
+                Optional<String> clientIdentifier,
+                boolean nonBatch)
                 implements WriteOperation<PutResult> {
+
+            @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
+            public PutOperation(
+                    @NonNull CompletableFuture<PutResult> callback,
+                    @NonNull String key,
+                    @NonNull Optional<String> partitionKey,
+                    @NonNull Optional<List<Long>> sequenceKeysDeltas,
+                    byte @NonNull [] value,
+                    @NonNull OptionalLong expectedVersionId,
+                    OptionalLong sessionId,
+                    Optional<String> clientIdentifier) {
+                this(callback, key, partitionKey, sequenceKeysDeltas, value,
+                        expectedVersionId, sessionId, clientIdentifier, true);
+            }
 
             public PutOperation {
                 if (expectedVersionId.isPresent() && expectedVersionId.getAsLong() < KeyNotExists) {
@@ -121,6 +140,11 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 clientIdentifier.ifPresent(builder::setClientIdentity);
                 sequenceKeysDeltas.ifPresent(builder::addAllSequenceKeyDelta);
                 return builder.build();
+            }
+
+            @Override
+            public boolean nonBatch() {
+                return nonBatch;
             }
 
             void complete(@NonNull PutResponse response) {

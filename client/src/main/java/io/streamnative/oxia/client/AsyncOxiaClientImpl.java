@@ -309,6 +309,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         var shardId = shardManager.getShardForKey(partitionKey.orElse(key));
         var versionId = OptionsUtils.getVersionId(options);
         var sequenceKeysDeltas = OptionsUtils.getSequenceKeysDeltas(options);
+        var nonBatch = OptionsUtils.getNonBatch(options);
 
         CompletableFuture<PutResult> future = new CompletableFuture<>();
 
@@ -322,7 +323,8 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                             value,
                             versionId,
                             OptionalLong.empty(),
-                            Optional.empty());
+                            Optional.empty(),
+                            nonBatch);
             writeBatchManager.getBatcher(shardId).add(op);
         } else {
             // The put operation is trying to write an ephemeral record. We need to have a valid session
@@ -340,7 +342,8 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                                                 value,
                                                 versionId,
                                                 OptionalLong.of(session.getSessionId()),
-                                                Optional.of(clientIdentifier));
+                                                Optional.of(clientIdentifier),
+                                                nonBatch);
                                 writeBatchManager.getBatcher(shardId).add(op);
                             })
                     .exceptionally(

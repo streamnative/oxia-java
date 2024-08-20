@@ -16,12 +16,7 @@
 
 package io.streamnative.oxia.client;
 
-import io.streamnative.oxia.client.api.GetOption;
-import io.streamnative.oxia.client.api.OptionComparisonType;
-import io.streamnative.oxia.client.api.OptionEphemeral;
-import io.streamnative.oxia.client.api.OptionPartitionKey;
-import io.streamnative.oxia.client.api.OptionSequenceKeysDeltas;
-import io.streamnative.oxia.client.api.OptionVersionId;
+import io.streamnative.oxia.client.api.*;
 import io.streamnative.oxia.proto.KeyComparisonType;
 import java.util.List;
 import java.util.Optional;
@@ -83,6 +78,24 @@ public class OptionsUtils {
         }
 
         return partitionKey;
+    }
+
+    public static boolean getNonBatch(Set<?> options) {
+        if (options == null || options.isEmpty()) {
+            return false;
+        }
+
+        Optional<Boolean> noBatch = Optional.empty();
+        for (var o : options) {
+            if (o instanceof OptionNonBatch) {
+                if (noBatch.isPresent()) {
+                    throw new IllegalArgumentException("NoBatch can only specified once:  " + options);
+                }
+
+                noBatch = Optional.of(true);
+            }
+        }
+        return noBatch.orElse(false);
     }
 
     public static Optional<List<Long>> getSequenceKeysDeltas(Set<?> options) {
