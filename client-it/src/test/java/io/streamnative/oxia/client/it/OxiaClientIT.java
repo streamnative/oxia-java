@@ -133,7 +133,7 @@ public class OxiaClientIT {
         }
 
         assertEquals(10, versionId.size()); // failed, it always is 1
-//        assertEquals(1, versionId.size());
+        //        assertEquals(1, versionId.size());
     }
 
     @Test
@@ -171,7 +171,7 @@ public class OxiaClientIT {
         }
 
         assertEquals(10, versionId.size()); // failed, it always is 1
-//        assertEquals(1, versionId.size());
+        //        assertEquals(1, versionId.size());
     }
 
     @Test
