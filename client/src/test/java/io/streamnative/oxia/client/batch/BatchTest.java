@@ -112,30 +112,26 @@ class BatchTest {
                                 @Override
                                 public StreamObserver<WriteRequest> writeStream(
                                         StreamObserver<WriteResponse> responseObserver) {
-                                    ForkJoinPool.commonPool().submit(() -> {
-                                        try {
-                                            Thread.sleep(1000);
-                                        } catch (InterruptedException e) {
-                                            throw new RuntimeException(e);
-                                        }
-                                        writeResponses.forEach(wr -> wr.accept(responseObserver));
-                                    });
+                                    ForkJoinPool.commonPool()
+                                            .submit(
+                                                    () -> {
+                                                        try {
+                                                            Thread.sleep(1000);
+                                                        } catch (InterruptedException e) {
+                                                            throw new RuntimeException(e);
+                                                        }
+                                                        writeResponses.forEach(wr -> wr.accept(responseObserver));
+                                                    });
 
                                     return new StreamObserver<WriteRequest>() {
                                         @Override
-                                        public void onNext(WriteRequest value) {
-
-                                        }
+                                        public void onNext(WriteRequest value) {}
 
                                         @Override
-                                        public void onError(Throwable t) {
-
-                                        }
+                                        public void onError(Throwable t) {}
 
                                         @Override
-                                        public void onCompleted() {
-
-                                        }
+                                        public void onCompleted() {}
                                     };
                                 }
 
@@ -169,7 +165,9 @@ class BatchTest {
         server = serverBuilder.build().start();
         stub =
                 new OxiaStub(
-                        InProcessChannelBuilder.forName(serverName).directExecutor().build(), "default", authentication);
+                        InProcessChannelBuilder.forName(serverName).directExecutor().build(),
+                        "default",
+                        authentication);
         clientByShardId = mock(OxiaStubProvider.class);
         lenient().when(clientByShardId.getStubForShard(anyLong())).thenReturn(stub);
     }
@@ -279,9 +277,11 @@ class BatchTest {
 
             batch.send();
 
-            Awaitility.await().untilAsserted(() -> {
-                assertThat(putCallable).isCompletedExceptionally();
-            });
+            Awaitility.await()
+                    .untilAsserted(
+                            () -> {
+                                assertThat(putCallable).isCompletedExceptionally();
+                            });
 
             assertThat(putEphemeralCallable).isCompleted();
             assertThatThrownBy(putCallable::get)
@@ -302,9 +302,11 @@ class BatchTest {
 
             batch.send();
 
-            Awaitility.await().untilAsserted(() -> {
-                assertThat(putCallable).isCompletedExceptionally();
-            });
+            Awaitility.await()
+                    .untilAsserted(
+                            () -> {
+                                assertThat(putCallable).isCompletedExceptionally();
+                            });
 
             assertThatThrownBy(putCallable::get).hasCauseInstanceOf(StatusRuntimeException.class);
             assertThat(putEphemeralCallable).isCompletedExceptionally();

@@ -34,33 +34,34 @@ public class WriteStreamWrapper {
     private volatile Throwable failed = null;
 
     public WriteStreamWrapper(OxiaClientGrpc.OxiaClientStub stub) {
-        this.clientStream = stub.writeStream(new StreamObserver<>() {
-            @Override
-            public void onNext(WriteResponse value) {
-                synchronized (WriteStreamWrapper.this) {
-                    var future = pendingWrites.poll();
-                    if (future != null) {
-                        future.complete(value);
-                    }
-                }
-            }
+        this.clientStream =
+                stub.writeStream(
+                        new StreamObserver<>() {
+                            @Override
+                            public void onNext(WriteResponse value) {
+                                synchronized (WriteStreamWrapper.this) {
+                                    var future = pendingWrites.poll();
+                                    if (future != null) {
+                                        future.complete(value);
+                                    }
+                                }
+                            }
 
-            @Override
-            public void onError(Throwable t) {
-                synchronized (WriteStreamWrapper.this) {
-                    if (!pendingWrites.isEmpty()) {
-                        log.warn("Got Error", t);
-                    }
-                    pendingWrites.forEach(f -> f.completeExceptionally(t));
-                    pendingWrites.clear();
-                    failed = t;
-                }
-            }
+                            @Override
+                            public void onError(Throwable t) {
+                                synchronized (WriteStreamWrapper.this) {
+                                    if (!pendingWrites.isEmpty()) {
+                                        log.warn("Got Error", t);
+                                    }
+                                    pendingWrites.forEach(f -> f.completeExceptionally(t));
+                                    pendingWrites.clear();
+                                    failed = t;
+                                }
+                            }
 
-            @Override
-            public void onCompleted() {
-            }
-        });
+                            @Override
+                            public void onCompleted() {}
+                        });
     }
 
     public synchronized CompletableFuture<WriteResponse> send(WriteRequest request) {

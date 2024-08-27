@@ -18,6 +18,7 @@ package io.streamnative.oxia.client.batch;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.toList;
+
 import com.google.common.annotations.VisibleForTesting;
 import io.streamnative.oxia.client.grpc.OxiaStubProvider;
 import io.streamnative.oxia.client.session.SessionManager;
@@ -96,23 +97,29 @@ final class WriteBatch extends BatchBase implements Batch {
     public void send() {
         startSendTimeNanos = System.nanoTime();
         try {
-            getStub().writeStream(getShardId()).send(toProto())
-                    .thenAccept(response -> {
-                        factory.writeRequestLatencyHistogram.recordSuccess(System.nanoTime() - startSendTimeNanos);
+            getStub()
+                    .writeStream(getShardId())
+                    .send(toProto())
+                    .thenAccept(
+                            response -> {
+                                factory.writeRequestLatencyHistogram.recordSuccess(
+                                        System.nanoTime() - startSendTimeNanos);
 
-                        for (var i = 0; i < deletes.size(); i++) {
-                            deletes.get(i).complete(response.getDeletes(i));
-                        }
-                        for (var i = 0; i < deleteRanges.size(); i++) {
-                            deleteRanges.get(i).complete(response.getDeleteRanges(i));
-                        }
-                        for (var i = 0; i < puts.size(); i++) {
-                            puts.get(i).complete(response.getPuts(i));
-                        }
-                    }).exceptionally(ex -> {
-                        handleError(ex);
-                        return null;
-                    });
+                                for (var i = 0; i < deletes.size(); i++) {
+                                    deletes.get(i).complete(response.getDeletes(i));
+                                }
+                                for (var i = 0; i < deleteRanges.size(); i++) {
+                                    deleteRanges.get(i).complete(response.getDeleteRanges(i));
+                                }
+                                for (var i = 0; i < puts.size(); i++) {
+                                    puts.get(i).complete(response.getPuts(i));
+                                }
+                            })
+                    .exceptionally(
+                            ex -> {
+                                handleError(ex);
+                                return null;
+                            });
         } catch (Throwable t) {
             handleError(t);
         }

@@ -123,7 +123,7 @@ public class OxiaClientIT {
         allOf(a, b, c, d).join();
 
         assertThatThrownBy(
-                () -> client.put("a", "a".getBytes(UTF_8), Set.of(IfRecordDoesNotExist)).join())
+                        () -> client.put("a", "a".getBytes(UTF_8), Set.of(IfRecordDoesNotExist)).join())
                 .hasCauseInstanceOf(KeyAlreadyExistsException.class);
         // verify 'a' is present
         var getResult = client.get("a").join();
@@ -151,16 +151,16 @@ public class OxiaClientIT {
         // put with unexpected version
         var bVersion = client.get("b").join().getVersion().versionId();
         assertThatThrownBy(
-                () ->
-                        client
-                                .put("b", "b2".getBytes(UTF_8), Set.of(IfVersionIdEquals(bVersion + 1L)))
-                                .join())
+                        () ->
+                                client
+                                        .put("b", "b2".getBytes(UTF_8), Set.of(IfVersionIdEquals(bVersion + 1L)))
+                                        .join())
                 .hasCauseInstanceOf(UnexpectedVersionIdException.class);
 
         // delete with unexpected version
         var cVersion = client.get("c").join().getVersion().versionId();
         assertThatThrownBy(
-                () -> client.delete("c", Set.of(DeleteOption.IfVersionIdEquals(cVersion + 1L))).join())
+                        () -> client.delete("c", Set.of(DeleteOption.IfVersionIdEquals(cVersion + 1L))).join())
                 .hasCauseInstanceOf(UnexpectedVersionIdException.class);
 
         // list all keys
@@ -192,10 +192,10 @@ public class OxiaClientIT {
 
         var identity = getClass().getSimpleName();
         try (var otherClient =
-                     OxiaClientBuilder.create(oxia.getServiceAddress())
-                             .clientIdentifier(identity)
-                             .asyncClient()
-                             .join()) {
+                OxiaClientBuilder.create(oxia.getServiceAddress())
+                        .clientIdentifier(identity)
+                        .asyncClient()
+                        .join()) {
             otherClient.put("f", "f".getBytes(), Set.of(PutOption.AsEphemeralRecord)).join();
             getResult = client.get("f").join();
             var sessionId = getResult.getVersion().sessionId().get();
@@ -225,9 +225,9 @@ public class OxiaClientIT {
         System.out.println(metricsByName);
 
         assertThat(
-                metricsByName.get("oxia.client.ops").getHistogramData().getPoints().stream()
-                        .map(HistogramPointData::getCount)
-                        .reduce(0L, Long::sum))
+                        metricsByName.get("oxia.client.ops").getHistogramData().getPoints().stream()
+                                .map(HistogramPointData::getCount)
+                                .reduce(0L, Long::sum))
                 .isEqualTo(24);
     }
 
@@ -472,38 +472,38 @@ public class OxiaClientIT {
         SyncOxiaClient client = OxiaClientBuilder.create(oxia.getServiceAddress()).syncClient();
 
         assertThatThrownBy(
-                () ->
-                        client.put(
-                                "sk_a", "0".getBytes(), Set.of(PutOption.SequenceKeysDeltas(List.of(1L)))))
+                        () ->
+                                client.put(
+                                        "sk_a", "0".getBytes(), Set.of(PutOption.SequenceKeysDeltas(List.of(1L)))))
                 .isInstanceOf(IllegalArgumentException.class);
 
         assertThatThrownBy(
-                () ->
-                        client.put(
-                                "sk_a",
-                                "0".getBytes(),
-                                Set.of(PutOption.SequenceKeysDeltas(List.of(0L)), PutOption.PartitionKey("x"))))
+                        () ->
+                                client.put(
+                                        "sk_a",
+                                        "0".getBytes(),
+                                        Set.of(PutOption.SequenceKeysDeltas(List.of(0L)), PutOption.PartitionKey("x"))))
                 .isInstanceOf(IllegalArgumentException.class);
 
         assertThatThrownBy(
-                () ->
-                        client.put(
-                                "sk_a",
-                                "0".getBytes(),
-                                Set.of(
-                                        PutOption.SequenceKeysDeltas(List.of(1L, -1L)),
-                                        PutOption.PartitionKey("x"))))
+                        () ->
+                                client.put(
+                                        "sk_a",
+                                        "0".getBytes(),
+                                        Set.of(
+                                                PutOption.SequenceKeysDeltas(List.of(1L, -1L)),
+                                                PutOption.PartitionKey("x"))))
                 .isInstanceOf(IllegalArgumentException.class);
 
         assertThatThrownBy(
-                () ->
-                        client.put(
-                                "sk_a",
-                                "0".getBytes(),
-                                Set.of(
-                                        PutOption.SequenceKeysDeltas(List.of(1L)),
-                                        PutOption.PartitionKey("x"),
-                                        PutOption.IfVersionIdEquals(1L))))
+                        () ->
+                                client.put(
+                                        "sk_a",
+                                        "0".getBytes(),
+                                        Set.of(
+                                                PutOption.SequenceKeysDeltas(List.of(1L)),
+                                                PutOption.PartitionKey("x"),
+                                                PutOption.IfVersionIdEquals(1L))))
                 .isInstanceOf(IllegalArgumentException.class);
 
         // Positive case scenarios
@@ -602,8 +602,11 @@ public class OxiaClientIT {
         List<CompletableFuture<PutResult>> resultList = new ArrayList<>();
         for (int i = 1; i <= testNum; i++) {
             final byte[] value = ("message-" + i).getBytes();
-            resultList.add(client.put("idx", value,
-                    Set.of(PutOption.PartitionKey("ids"), PutOption.SequenceKeysDeltas(List.of(1L)))));
+            resultList.add(
+                    client.put(
+                            "idx",
+                            value,
+                            Set.of(PutOption.PartitionKey("ids"), PutOption.SequenceKeysDeltas(List.of(1L)))));
         }
 
         CompletableFuture.allOf(resultList.toArray(new CompletableFuture[0])).join();

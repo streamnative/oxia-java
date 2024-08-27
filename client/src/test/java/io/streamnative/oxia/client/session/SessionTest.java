@@ -89,7 +89,9 @@ class SessionTest {
                         .addService(service)
                         .build()
                         .start();
-        stub = new OxiaStub(InProcessChannelBuilder.forName(serverName).directExecutor().build(), "default");
+        stub =
+                new OxiaStub(
+                        InProcessChannelBuilder.forName(serverName).directExecutor().build(), "default");
 
         stubProvider = mock(OxiaStubProvider.class);
         lenient().when(stubProvider.getStubForShard(anyLong())).thenReturn(stub);

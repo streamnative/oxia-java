@@ -18,7 +18,6 @@ package io.streamnative.oxia.client.grpc;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import io.grpc.CallCredentials;
-import io.grpc.CallOptions;
 import io.grpc.InsecureChannelCredentials;
 import io.grpc.ManagedChannel;
 import io.grpc.Metadata;
@@ -42,7 +41,11 @@ public class OxiaStub implements AutoCloseable {
 
     private final Map<Long, WriteStreamWrapper> writeStreams = new ConcurrentHashMap<>();
 
-    public OxiaStub(String address, String namespace, @Nullable Authentication authentication, boolean enableTls) {
+    public OxiaStub(
+            String address,
+            String namespace,
+            @Nullable Authentication authentication,
+            boolean enableTls) {
         this(
                 NettyChannelBuilder.forTarget(
                                 address,
@@ -60,7 +63,8 @@ public class OxiaStub implements AutoCloseable {
         this(channel, namespace, null);
     }
 
-    public OxiaStub(ManagedChannel channel, String namespace, @Nullable final Authentication authentication) {
+    public OxiaStub(
+            ManagedChannel channel, String namespace, @Nullable final Authentication authentication) {
         this.namespace = namespace;
         this.channel = channel;
         if (authentication != null) {
@@ -89,19 +93,23 @@ public class OxiaStub implements AutoCloseable {
         return asyncStub;
     }
 
-    private static final Metadata.Key<String> NAMESPACE_KEY = Metadata.Key.of("namespace", Metadata.ASCII_STRING_MARSHALLER);
-    private static final Metadata.Key<String> SHARD_ID_KEY = Metadata.Key.of("shard-id", Metadata.ASCII_STRING_MARSHALLER);
+    private static final Metadata.Key<String> NAMESPACE_KEY =
+            Metadata.Key.of("namespace", Metadata.ASCII_STRING_MARSHALLER);
+    private static final Metadata.Key<String> SHARD_ID_KEY =
+            Metadata.Key.of("shard-id", Metadata.ASCII_STRING_MARSHALLER);
 
     public WriteStreamWrapper writeStream(long streamId) {
-        return writeStreams.computeIfAbsent(streamId, key -> {
-            Metadata headers = new Metadata();
-            headers.put(NAMESPACE_KEY, namespace);
-            headers.put(SHARD_ID_KEY, String.format("%d", streamId));
+        return writeStreams.computeIfAbsent(
+                streamId,
+                key -> {
+                    Metadata headers = new Metadata();
+                    headers.put(NAMESPACE_KEY, namespace);
+                    headers.put(SHARD_ID_KEY, String.format("%d", streamId));
 
-            OxiaClientGrpc.OxiaClientStub stub = asyncStub
-                    .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
-            return new WriteStreamWrapper(stub);
-        });
+                    OxiaClientGrpc.OxiaClientStub stub =
+                            asyncStub.withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
+                    return new WriteStreamWrapper(stub);
+                });
     }
 
     @Override
