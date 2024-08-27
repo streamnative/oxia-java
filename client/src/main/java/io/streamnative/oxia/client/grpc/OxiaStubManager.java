@@ -23,16 +23,18 @@ import javax.annotation.Nullable;
 public class OxiaStubManager implements AutoCloseable {
     private final Map<String, OxiaStub> stubs = new ConcurrentHashMap<>();
 
+    private final String namespace;
     @Nullable private final Authentication authentication;
     private final boolean enableTls;
 
-    public OxiaStubManager(@Nullable Authentication authentication, boolean enableTls) {
+    public OxiaStubManager(String namespace, @Nullable Authentication authentication, boolean enableTls) {
+        this.namespace = namespace;
         this.authentication = authentication;
         this.enableTls = enableTls;
     }
 
     public OxiaStub getStub(String address) {
-        return stubs.computeIfAbsent(address, addr -> new OxiaStub(addr, authentication, enableTls));
+        return stubs.computeIfAbsent(address, addr -> new OxiaStub(addr, namespace, authentication, enableTls));
     }
 
     @Override

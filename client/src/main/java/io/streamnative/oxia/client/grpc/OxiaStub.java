@@ -18,22 +18,31 @@ package io.streamnative.oxia.client.grpc;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import io.grpc.CallCredentials;
+import io.grpc.CallOptions;
 import io.grpc.InsecureChannelCredentials;
 import io.grpc.ManagedChannel;
+import io.grpc.Metadata;
 import io.grpc.TlsChannelCredentials;
 import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
+import io.grpc.stub.MetadataUtils;
 import io.streamnative.oxia.client.api.Authentication;
+import io.streamnative.oxia.client.batch.WriteStreamWrapper;
 import io.streamnative.oxia.proto.OxiaClientGrpc;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import javax.annotation.Nullable;
 import lombok.NonNull;
 
 public class OxiaStub implements AutoCloseable {
     private final ManagedChannel channel;
+    private final String namespace;
 
     private final @NonNull OxiaClientGrpc.OxiaClientStub asyncStub;
 
-    public OxiaStub(String address, @Nullable Authentication authentication, boolean enableTls) {
+    private final Map<Long, WriteStreamWrapper> writeStreams = new ConcurrentHashMap<>();
+
+    public OxiaStub(String address, String namespace, @Nullable Authentication authentication, boolean enableTls) {
         this(
                 NettyChannelBuilder.forTarget(
                                 address,
@@ -43,14 +52,16 @@ public class OxiaStub implements AutoCloseable {
                         .directExecutor()
                         .disableRetry()
                         .build(),
+                namespace,
                 authentication);
     }
 
-    public OxiaStub(ManagedChannel channel) {
-        this(channel, null);
+    public OxiaStub(ManagedChannel channel, String namespace) {
+        this(channel, namespace, null);
     }
 
-    public OxiaStub(ManagedChannel channel, @Nullable final Authentication authentication) {
+    public OxiaStub(ManagedChannel channel, String namespace, @Nullable final Authentication authentication) {
+        this.namespace = namespace;
         this.channel = channel;
         if (authentication != null) {
             this.asyncStub =
@@ -76,6 +87,21 @@ public class OxiaStub implements AutoCloseable {
 
     public OxiaClientGrpc.OxiaClientStub async() {
         return asyncStub;
+    }
+
+    private static final Metadata.Key<String> NAMESPACE_KEY = Metadata.Key.of("namespace", Metadata.ASCII_STRING_MARSHALLER);
+    private static final Metadata.Key<String> SHARD_ID_KEY = Metadata.Key.of("shard-id", Metadata.ASCII_STRING_MARSHALLER);
+
+    public WriteStreamWrapper writeStream(long streamId) {
+        return writeStreams.computeIfAbsent(streamId, key -> {
+            Metadata headers = new Metadata();
+            headers.put(NAMESPACE_KEY, namespace);
+            headers.put(SHARD_ID_KEY, String.format("%d", streamId));
+
+            OxiaClientGrpc.OxiaClientStub stub = asyncStub
+                    .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
+            return new WriteStreamWrapper(stub);
+        });
     }
 
     @Override

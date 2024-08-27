@@ -295,8 +295,8 @@ class NotificationManagerTest {
                             .start();
             channel1 = InProcessChannelBuilder.forName(serverName1).directExecutor().build();
             channel2 = InProcessChannelBuilder.forName(serverName2).directExecutor().build();
-            var stub1 = new OxiaStub(channel1);
-            var stub2 = new OxiaStub(channel2);
+            var stub1 = new OxiaStub(channel1, "default");
+            var stub2 = new OxiaStub(channel2, "default");
             when(stubManager.getStub("leader1")).thenReturn(stub1);
             when(stubManager.getStub("leader2")).thenReturn(stub2);
         }

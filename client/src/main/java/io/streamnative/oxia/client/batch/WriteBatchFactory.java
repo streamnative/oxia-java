@@ -15,12 +15,14 @@
  */
 package io.streamnative.oxia.client.batch;
 
+import io.grpc.stub.StreamObserver;
 import io.opentelemetry.api.common.Attributes;
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.grpc.OxiaStubProvider;
 import io.streamnative.oxia.client.metrics.InstrumentProvider;
 import io.streamnative.oxia.client.metrics.LatencyHistogram;
 import io.streamnative.oxia.client.session.SessionManager;
+import io.streamnative.oxia.proto.WriteResponse;
 import lombok.NonNull;
 
 class WriteBatchFactory extends BatchFactory {
