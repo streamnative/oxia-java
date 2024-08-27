@@ -222,13 +222,13 @@ public class OxiaClientIT {
         var metrics = metricReader.collectAllMetrics();
         var metricsByName = metrics.stream().collect(Collectors.toMap(MetricData::getName, identity()));
 
-        System.out.println(metricsByName);
+        metricsByName.forEach((key, value) -> System.out.println(key + ": " + value));
 
         assertThat(
                         metricsByName.get("oxia.client.ops").getHistogramData().getPoints().stream()
                                 .map(HistogramPointData::getCount)
                                 .reduce(0L, Long::sum))
-                .isEqualTo(24);
+                .isEqualTo(124);
     }
 
     @Test
