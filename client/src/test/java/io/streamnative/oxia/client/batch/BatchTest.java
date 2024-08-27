@@ -67,6 +67,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
@@ -107,6 +108,37 @@ class BatchTest {
                     OxiaClientImplBase.class,
                     delegatesTo(
                             new OxiaClientImplBase() {
+
+                                @Override
+                                public StreamObserver<WriteRequest> writeStream(
+                                        StreamObserver<WriteResponse> responseObserver) {
+                                    ForkJoinPool.commonPool().submit(() -> {
+                                        try {
+                                            Thread.sleep(1000);
+                                        } catch (InterruptedException e) {
+                                            throw new RuntimeException(e);
+                                        }
+                                        writeResponses.forEach(wr -> wr.accept(responseObserver));
+                                    });
+
+                                    return new StreamObserver<WriteRequest>() {
+                                        @Override
+                                        public void onNext(WriteRequest value) {
+
+                                        }
+
+                                        @Override
+                                        public void onError(Throwable t) {
+
+                                        }
+
+                                        @Override
+                                        public void onCompleted() {
+
+                                        }
+                                    };
+                                }
+
                                 @Override
                                 public void write(
                                         WriteRequest request, StreamObserver<WriteResponse> responseObserver) {
@@ -247,7 +279,10 @@ class BatchTest {
 
             batch.send();
 
-            assertThat(putCallable).isCompletedExceptionally();
+            Awaitility.await().untilAsserted(() -> {
+                assertThat(putCallable).isCompletedExceptionally();
+            });
+
             assertThat(putEphemeralCallable).isCompleted();
             assertThatThrownBy(putCallable::get)
                     .hasCauseExactlyInstanceOf(UnexpectedVersionIdException.class);
@@ -267,7 +302,10 @@ class BatchTest {
 
             batch.send();
 
-            assertThat(putCallable).isCompletedExceptionally();
+            Awaitility.await().untilAsserted(() -> {
+                assertThat(putCallable).isCompletedExceptionally();
+            });
+
             assertThatThrownBy(putCallable::get).hasCauseInstanceOf(StatusRuntimeException.class);
             assertThat(putEphemeralCallable).isCompletedExceptionally();
             assertThatThrownBy(putEphemeralCallable::get)

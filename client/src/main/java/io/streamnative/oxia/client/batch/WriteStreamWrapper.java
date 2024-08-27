@@ -31,7 +31,7 @@ public class WriteStreamWrapper {
 
     private final ArrayDeque<CompletableFuture<WriteResponse>> pendingWrites = new ArrayDeque<>();
 
-    private volatile boolean failed = false;
+    private volatile Throwable failed = null;
 
     public WriteStreamWrapper(OxiaClientGrpc.OxiaClientStub stub) {
         this.clientStream = stub.writeStream(new StreamObserver<>() {
@@ -53,7 +53,7 @@ public class WriteStreamWrapper {
                     }
                     pendingWrites.forEach(f -> f.completeExceptionally(t));
                     pendingWrites.clear();
-                    failed = true;
+                    failed = t;
                 }
             }
 
@@ -64,6 +64,10 @@ public class WriteStreamWrapper {
     }
 
     public synchronized CompletableFuture<WriteResponse> send(WriteRequest request) {
+        if (failed != null) {
+            return CompletableFuture.failedFuture(failed);
+        }
+
         CompletableFuture<WriteResponse> future = new CompletableFuture<>();
 
         try {
@@ -80,6 +84,6 @@ public class WriteStreamWrapper {
     }
 
     public boolean isValid() {
-        return !failed;
+        return failed == null;
     }
 }
