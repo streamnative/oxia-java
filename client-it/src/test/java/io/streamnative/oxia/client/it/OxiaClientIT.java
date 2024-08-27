@@ -51,10 +51,12 @@ import io.streamnative.oxia.client.api.SyncOxiaClient;
 import io.streamnative.oxia.client.api.exceptions.KeyAlreadyExistsException;
 import io.streamnative.oxia.client.api.exceptions.UnexpectedVersionIdException;
 import io.streamnative.oxia.testcontainers.OxiaContainer;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -220,13 +222,13 @@ public class OxiaClientIT {
         var metrics = metricReader.collectAllMetrics();
         var metricsByName = metrics.stream().collect(Collectors.toMap(MetricData::getName, identity()));
 
-        System.out.println(metricsByName);
+        metricsByName.forEach((key, value) -> System.out.println(key + ": " + value));
 
         assertThat(
                         metricsByName.get("oxia.client.ops").getHistogramData().getPoints().stream()
                                 .map(HistogramPointData::getCount)
                                 .reduce(0L, Long::sum))
-                .isEqualTo(24);
+                .isEqualTo(124);
     }
 
     @Test
@@ -591,5 +593,30 @@ public class OxiaClientIT {
                         .sorted()
                         .toList();
         assertThat(list2).isEqualTo(list);
+    }
+
+    @Test
+    void testSequenceBatching() throws Exception {
+        int testNum = 50;
+
+        List<CompletableFuture<PutResult>> resultList = new ArrayList<>();
+        for (int i = 1; i <= testNum; i++) {
+            final byte[] value = ("message-" + i).getBytes();
+            resultList.add(
+                    client.put(
+                            "idx",
+                            value,
+                            Set.of(PutOption.PartitionKey("ids"), PutOption.SequenceKeysDeltas(List.of(1L)))));
+        }
+
+        CompletableFuture.allOf(resultList.toArray(new CompletableFuture[0])).join();
+
+        for (int i = 0; i < testNum; i++) {
+            PutResult result = resultList.get(i).join();
+            GetResult gr = client.get(result.key(), Set.of(GetOption.PartitionKey("ids"))).get();
+
+            assertThat(result.key()).isEqualTo(String.format("idx-%020d", (i + 1)));
+            assertThat(new String(gr.getValue())).isEqualTo("message-" + (i + 1));
+        }
     }
 }
