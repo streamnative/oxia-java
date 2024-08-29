@@ -434,7 +434,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         }
         return callback.whenComplete(
                 (putResult, throwable) -> {
-                    gaugePendingDeleteRequests.decrement();
+                    gaugePendingDeleteRangeRequests.decrement();
                     if (throwable == null) {
                         histogramDeleteRangeLatency.recordSuccess(System.nanoTime() - startTime);
                     } else {
