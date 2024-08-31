@@ -210,4 +210,6 @@ public interface AsyncOxiaClient extends AutoCloseable {
 
 
     LockManager getLockManager();
+
+    String getClientIdentifier();
 }

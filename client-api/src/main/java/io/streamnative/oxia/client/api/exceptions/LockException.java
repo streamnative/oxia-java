@@ -39,9 +39,19 @@ public sealed class LockException extends OxiaException {
         private final AsyncLock.LockStatus actual;
 
         public IllegalLockStatusException(AsyncLock.LockStatus expect,
-                                          AsyncLock.LockStatus actual, String message) {
-            super(message);
+                                          AsyncLock.LockStatus actual) {
+            super("illegal lock status. expect: " + expect.name() + ", actual: " + actual.name());
             this.expect = expect;
+            this.actual = actual;
+        }
+    }
+
+    @Getter
+    public static final class UnkonwnLockStatusException extends LockException {
+        private final AsyncLock.LockStatus actual;
+
+        public UnkonwnLockStatusException(AsyncLock.LockStatus actual) {
+            super("unkonwn lock status: " + actual.name());
             this.actual = actual;
         }
     }

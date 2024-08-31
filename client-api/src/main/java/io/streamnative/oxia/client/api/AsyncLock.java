@@ -10,6 +10,7 @@ public interface AsyncLock {
         INIT,
         WAIT,
         ACQUIRED,
+        RELEASING,
         RELEASED;
     }
 

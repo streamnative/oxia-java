@@ -34,7 +34,7 @@ final class LockManagerImpl implements LockManager, Consumer<Notification> {
         if (lock == null) {
             return;
         }
-        if (notification instanceof Notification.KeyDeleted) {
+        if (notification instanceof Notification.KeyModified || notification instanceof Notification.KeyDeleted) {
             lock.notifyStateChanged();
         }
     }

@@ -19,17 +19,7 @@ import io.grpc.netty.shaded.io.netty.util.concurrent.DefaultThreadFactory;
 import io.grpc.stub.StreamObserver;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.api.common.Attributes;
-import io.streamnative.oxia.client.api.AsyncOxiaClient;
-import io.streamnative.oxia.client.api.DeleteOption;
-import io.streamnative.oxia.client.api.DeleteRangeOption;
-import io.streamnative.oxia.client.api.GetOption;
-import io.streamnative.oxia.client.api.GetResult;
-import io.streamnative.oxia.client.api.ListOption;
-import io.streamnative.oxia.client.api.Notification;
-import io.streamnative.oxia.client.api.PutOption;
-import io.streamnative.oxia.client.api.PutResult;
-import io.streamnative.oxia.client.api.RangeScanConsumer;
-import io.streamnative.oxia.client.api.RangeScanOption;
+import io.streamnative.oxia.client.api.*;
 import io.streamnative.oxia.client.batch.BatchManager;
 import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
@@ -37,6 +27,7 @@ import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOpe
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
 import io.streamnative.oxia.client.grpc.OxiaStubManager;
 import io.streamnative.oxia.client.grpc.OxiaStubProvider;
+import io.streamnative.oxia.client.lock.LockManagers;
 import io.streamnative.oxia.client.metrics.Counter;
 import io.streamnative.oxia.client.metrics.InstrumentProvider;
 import io.streamnative.oxia.client.metrics.LatencyHistogram;
@@ -64,12 +55,12 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Slf4j
 class AsyncOxiaClientImpl implements AsyncOxiaClient {
-
-    private static final Logger log = LoggerFactory.getLogger(AsyncOxiaClientImpl.class);
 
     static @NonNull CompletableFuture<AsyncOxiaClient> newInstance(@NonNull ClientConfig config) {
         ScheduledExecutorService executor =
@@ -576,6 +567,16 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     public void notifications(@NonNull Consumer<Notification> notificationCallback) {
         checkIfClosed();
         notificationManager.registerCallback(notificationCallback);
+    }
+
+    @Override
+    public LockManager getLockManager() {
+        return LockManagers.createLockManager(this);
+    }
+
+    @Override
+    public String getClientIdentifier() {
+        return clientIdentifier;
     }
 
     private CompletableFuture<List<String>> internalListMultiShards(
