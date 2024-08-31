@@ -1,31 +1,31 @@
 package io.streamnative.oxia.client.lock;
 
-import io.streamnative.oxia.client.api.AsyncOxiaClient;
-import io.streamnative.oxia.client.api.Notification;
+import io.streamnative.oxia.client.api.*;
+import io.streamnative.oxia.client.util.Backoff;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Consumer;
 
 final class LockManagerImpl implements LockManager, Consumer<Notification> {
     private final AsyncOxiaClient client;
-    private final Map<String, ArcDsLock> locks;
+    private final Map<String, LightWeightLock> locks;
+    private final ScheduledExecutorService executor;
 
-    LockManagerImpl(AsyncOxiaClient client) {
+    LockManagerImpl(AsyncOxiaClient client, ScheduledExecutorService scheduledExecutorService) {
         this.client = client;
         this.locks = new ConcurrentHashMap<>();
+        this.executor = scheduledExecutorService;
         // register self as the notification receiver
         client.notifications(this);
     }
 
     @Override
-    public AsyncLock getLock(String key) {
-        return locks.compute(key, (k, v) -> {
-            if (v == null || v.getStatus().lockStatus() == AsyncLock.LockStatus.RELEASED) {
-                return new ArcDsLock(client, key);
-            }
-            return v;
-        });
+    public AsyncLock getLock(String key, OptionBackoff optionBackoff) {
+        return locks.computeIfAbsent(key, (k) -> new LightWeightLock(client, key, executor,
+                new Backoff(optionBackoff.initDelay(), optionBackoff.initDelayUnit(),
+                        optionBackoff.maxDelay(), optionBackoff.maxDelayUnit(), optionBackoff.clock())));
     }
 
     @Override
@@ -35,10 +35,6 @@ final class LockManagerImpl implements LockManager, Consumer<Notification> {
             return;
         }
         if (notification instanceof Notification.KeyDeleted) {
-            // someone's session is closed, notify lock to re-try
-            if (lock.getStatus().lockStatus() == AsyncLock.LockStatus.RELEASED) {
-                locks.remove(notification.key());
-            }
             lock.notifyStateChanged();
         }
     }
