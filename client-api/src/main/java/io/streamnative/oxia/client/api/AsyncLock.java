@@ -8,16 +8,11 @@ public interface AsyncLock {
 
     enum LockStatus {
         INIT,
-        WAIT,
+        ACQUIRING,
         ACQUIRED,
         RELEASING,
         RELEASED;
     }
-
-    record Status(LockStatus lockStatus, long timestamp) {
-    }
-
-    Status getStatus();
 
     CompletableFuture<Void> lock();
 

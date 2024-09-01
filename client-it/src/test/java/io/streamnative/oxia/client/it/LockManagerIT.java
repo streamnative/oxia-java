@@ -51,7 +51,7 @@ public class LockManagerIT {
             final Function<String, AsyncOxiaClient> compute = (threadName) -> OxiaClientBuilder.create(oxia.getServiceAddress())
                     .clientIdentifier(threadName)
                     .asyncClient().join();
-            final var counter = new Counter(0, 10);
+            final var counter = new Counter(0, 1000);
             final var latch = new CountDownLatch(counter.total);
 
             for (int i = 0; i < counter.total; i++) {
