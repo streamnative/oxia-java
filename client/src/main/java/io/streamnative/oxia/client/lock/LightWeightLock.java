@@ -11,22 +11,11 @@ import io.streamnative.oxia.client.util.Backoff;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.annotation.concurrent.ThreadSafe;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+
 import static io.streamnative.oxia.client.api.AsyncLock.LockStatus.ACQUIRED;
 import static io.streamnative.oxia.client.api.AsyncLock.LockStatus.ACQUIRING;
 import static io.streamnative.oxia.client.api.AsyncLock.LockStatus.INIT;
@@ -37,7 +26,8 @@ import static io.streamnative.oxia.client.api.exceptions.LockException.IllegalLo
 import static io.streamnative.oxia.client.api.exceptions.LockException.LockBusyException;
 import static io.streamnative.oxia.client.util.CompletableFutures.unwrap;
 import static io.streamnative.oxia.client.util.CompletableFutures.wrap;
-import static io.streamnative.oxia.client.util.Runs.*;
+import static io.streamnative.oxia.client.util.Runs.safeExecute;
+import static io.streamnative.oxia.client.util.Runs.safeRun;
 import static java.util.concurrent.CompletableFuture.*;
 
 @Slf4j
@@ -125,7 +115,7 @@ final class LightWeightLock implements AsyncLock {
                 if (retryableExceptions.contains(rc.getClass().getName())) {
                     final long ndm = backoff.nextDelayMillis();
                     if (log.isDebugEnabled()) {
-                        log.debug("Acquiring Lock failed, retrying... after {} million seconds. key={} session={} client_id={}",
+                        log.debug("Acquiring Lock failed, retry after {} million seconds. key={} session={} client_id={}",
                                 ndm, key, sessionId, clientIdentifier);
                     }
                     // retry later
@@ -160,26 +150,26 @@ final class LightWeightLock implements AsyncLock {
                         .thenAcceptAsync(__ -> {
                         }, callbackService);
             } else if (status == ACQUIRED) {
-                return supplyAsync(() -> {
+                return runAsync(() -> {
                     // switch to callback thread here
-                    throw new CompletionException(new IllegalLockStatusException(INIT, ACQUIRED));
+                    throw wrap(new IllegalLockStatusException(INIT, ACQUIRED));
                 }, callbackService);
             } else if (status == ACQUIRING) {
-                return supplyAsync(() -> {
+                return runAsync(() -> {
                     // switch to callback thread here
-                    throw new CompletionException(new IllegalLockStatusException(INIT, ACQUIRING));
+                    throw wrap(new IllegalLockStatusException(INIT, ACQUIRING));
                 }, callbackService);
             } else if (status == RELEASING) {
-                return supplyAsync(() -> {
+                return runAsync(() -> {
                     // switch to callback thread here
-                    throw new CompletionException(new IllegalLockStatusException(INIT, RELEASING));
+                    throw wrap(new IllegalLockStatusException(INIT, RELEASING));
                 }, callbackService);
             } else if (status == RELEASED) {
                 STATE_UPDATER.set(this, INIT);
             } else {
-                return supplyAsync(() -> {
+                return runAsync(() -> {
                     // switch to callback thread here
-                    throw new CompletionException(new LockException.UnkonwnLockStatusException(status));
+                    throw wrap(new LockException.UnknownLockStatusException(status));
                 }, callbackService);
             }
         }
@@ -229,16 +219,38 @@ final class LightWeightLock implements AsyncLock {
         while (true) {
             switch (STATE_UPDATER.get(this)) {
                 case INIT -> {
-                    return failedFuture(new IllegalLockStatusException(ACQUIRED, INIT));
+                    return runAsync(() -> {
+                        throw wrap(new IllegalLockStatusException(ACQUIRED, INIT));
+                    }, executorService);
                 }
                 case ACQUIRING -> {
-                    // busy wait here
-                    Thread.onSpinWait();
+                    if (log.isDebugEnabled()) {
+                        log.debug("busy wait for acquiring. it should be happened very rare.");
+                    }
+                    try {
+                        //noinspection BusyWait
+                        Thread.sleep(1);
+                    } catch (InterruptedException ex) {
+                        Thread.currentThread().interrupt();
+                        return runAsync(() -> {
+                            throw wrap(LockException.wrap(ex));
+                        });
+                    }
                 }
                 case ACQUIRED -> {
                     if (!STATE_UPDATER.compareAndSet(this, ACQUIRED, RELEASING)) {
-                        log.warn("busy wait. expect: acquired, actual: {}", STATE_UPDATER.get(this));
-                        Thread.onSpinWait();
+                        if (log.isDebugEnabled()) {
+                            log.debug("busy wait. expect: acquired, actual: {}", STATE_UPDATER.get(this));
+                        }
+                        try {
+                            //noinspection BusyWait
+                            Thread.sleep(1);
+                        } catch (InterruptedException ex) {
+                            Thread.currentThread().interrupt();
+                            return runAsync(() -> {
+                                throw wrap(LockException.wrap(ex));
+                            });
+                        }
                         continue;
                     }
                     if (log.isDebugEnabled()) {
@@ -251,7 +263,9 @@ final class LightWeightLock implements AsyncLock {
                     return completedFuture(null);
                 }
                 default -> {
-                    return failedFuture(new LockException.UnkonwnLockStatusException(state));
+                    return runAsync(() -> {
+                        throw wrap(new LockException.UnknownLockStatusException(state));
+                    });
                 }
             }
         }
@@ -306,13 +320,17 @@ final class LightWeightLock implements AsyncLock {
             return;
         }
 
-        log.info("Acquiring Lock by revalidation. key={} session={} client_id={}",
-                key, sessionId, clientIdentifier);
+        if (log.isDebugEnabled()) {
+            log.debug("Acquiring Lock by revalidation. key={} session={} client_id={}",
+                    key, sessionId, clientIdentifier);
+        }
         tryLock1(currentVersionId)
                 .thenAccept(__ -> {
-                    /* serial revalidation */
-                    log.info("Acquired Lock by revalidation. key={} session={} client_id={}",
-                            key, sessionId, clientIdentifier);
+                    if (log.isDebugEnabled()) {
+                        /* serial revalidation */
+                        log.debug("Acquired Lock by revalidation. key={} session={} client_id={}",
+                                key, sessionId, clientIdentifier);
+                    }
                 })
                 .exceptionally(ex -> {
                     if (log.isDebugEnabled()) {
@@ -345,13 +363,7 @@ final class LightWeightLock implements AsyncLock {
                 if (!STATE_UPDATER.compareAndSet(this, ACQUIRED, ACQUIRING)) {
                     return;
                 }
-                try {
-                    taskExecutor.execute(this::revalidate);
-                } catch (RejectedExecutionException ex) {
-                    log.warn("Task executor rejected validation signal,"
-                             + " using notification thread do be backup. please give enough queue size.", ex);
-                    revalidate();
-                }
+                safeExecute(log, taskExecutor, this::revalidate);
             }
         }
     }

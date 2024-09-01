@@ -47,11 +47,11 @@ public sealed class LockException extends OxiaException {
     }
 
     @Getter
-    public static final class UnkonwnLockStatusException extends LockException {
+    public static final class UnknownLockStatusException extends LockException {
         private final AsyncLock.LockStatus actual;
 
-        public UnkonwnLockStatusException(AsyncLock.LockStatus actual) {
-            super("unkonwn lock status: " + actual.name());
+        public UnknownLockStatusException(AsyncLock.LockStatus actual) {
+            super("unknown lock status: " + actual.name());
             this.actual = actual;
         }
     }
