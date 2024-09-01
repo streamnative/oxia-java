@@ -4,21 +4,23 @@ import io.streamnative.oxia.client.api.AsyncLock;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.LockManager;
 import io.streamnative.oxia.client.api.OxiaClientBuilder;
+import io.streamnative.oxia.client.lock.LockManagers;
 import io.streamnative.oxia.testcontainers.OxiaContainer;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 @Slf4j
@@ -43,24 +45,27 @@ public class LockManagerIT {
                 this.current += 1;
             }
         }
-        final String lockKey = UUID.randomUUID().toString();
+        final String lockKey = System.currentTimeMillis() + "";
 
-        final ExecutorService service = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        final ExecutorService service = Executors.newFixedThreadPool(3);
         final Map<String, AsyncOxiaClient> clients = new ConcurrentHashMap<>();
+        final Map<String, LockManager> lockManager = new ConcurrentHashMap<>();
         try {
             final Function<String, AsyncOxiaClient> compute = (threadName) -> OxiaClientBuilder.create(oxia.getServiceAddress())
                     .clientIdentifier(threadName)
                     .asyncClient().join();
             final var counter = new Counter(0, 1000);
             final var latch = new CountDownLatch(counter.total);
-
             for (int i = 0; i < counter.total; i++) {
                 service.execute(() -> {
-                    final AsyncOxiaClient client = clients.computeIfAbsent(Thread.currentThread().getName(), compute);
-                    final AsyncLock lock = client.getLockManager().getLock(lockKey);
+                    final String name = Thread.currentThread().getName();
+                    final AsyncOxiaClient client = clients.computeIfAbsent(name, compute);
+                    final LockManager lm = lockManager.computeIfAbsent(name, (n) -> LockManagers.createLockManager(client));
+                    final AsyncLock lock = lm.getLock(lockKey);
                     lock.lock().join();
                     counter.increment();
                     lock.unlock().join();
+                    log.info("counter : {}", counter.current);
                     latch.countDown();
                 });
             }

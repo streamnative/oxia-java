@@ -17,4 +17,12 @@ public final class CompletableFutures {
         }
         return rc;
     }
+
+    public static CompletionException wrap(Throwable ex) {
+        if (ex instanceof CompletionException) {
+            return (CompletionException) ex;
+        } else {
+            return new CompletionException(ex);
+        }
+    }
 }

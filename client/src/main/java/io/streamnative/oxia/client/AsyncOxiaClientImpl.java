@@ -570,11 +570,6 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     }
 
     @Override
-    public LockManager getLockManager() {
-        return LockManagers.createLockManager(this);
-    }
-
-    @Override
     public String getClientIdentifier() {
         return clientIdentifier;
     }

@@ -12,11 +12,14 @@ final class LockManagerImpl implements LockManager, Consumer<Notification> {
     private final AsyncOxiaClient client;
     private final Map<String, LightWeightLock> locks;
     private final ScheduledExecutorService executor;
+    private final OptionAutoRevalidate optionAutoRevalidate;
 
-    LockManagerImpl(AsyncOxiaClient client, ScheduledExecutorService scheduledExecutorService) {
+    LockManagerImpl(AsyncOxiaClient client, ScheduledExecutorService scheduledExecutorService,
+                    OptionAutoRevalidate optionAutoRevalidate) {
         this.client = client;
         this.locks = new ConcurrentHashMap<>();
         this.executor = scheduledExecutorService;
+        this.optionAutoRevalidate = optionAutoRevalidate;
         // register self as the notification receiver
         client.notifications(this);
     }
@@ -25,7 +28,8 @@ final class LockManagerImpl implements LockManager, Consumer<Notification> {
     public AsyncLock getLock(String key, OptionBackoff optionBackoff) {
         return locks.computeIfAbsent(key, (k) -> new LightWeightLock(client, key, executor,
                 new Backoff(optionBackoff.initDelay(), optionBackoff.initDelayUnit(),
-                        optionBackoff.maxDelay(), optionBackoff.maxDelayUnit(), optionBackoff.clock())));
+                        optionBackoff.maxDelay(), optionBackoff.maxDelayUnit(), optionBackoff.clock()),
+                optionAutoRevalidate));
     }
 
     @Override

@@ -209,7 +209,5 @@ public interface AsyncOxiaClient extends AutoCloseable {
     void notifications(@NonNull Consumer<Notification> notificationCallback);
 
 
-    LockManager getLockManager();
-
     String getClientIdentifier();
 }
