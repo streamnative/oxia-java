@@ -120,8 +120,6 @@ final class LightWeightLock implements AsyncLock {
     @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
     private volatile Optional<Long> sessionId;
 
-    private final AtomicLong operationCounter = new AtomicLong();
-
     @Override
     public CompletableFuture<Void> lock() {
         return lock(ForkJoinPool.commonPool());
@@ -184,11 +182,6 @@ final class LightWeightLock implements AsyncLock {
 
     @Override
     public CompletableFuture<Void> tryLock(ExecutorService callbackService) {
-        operationCounter.incrementAndGet();
-        return tryLock0(callbackService);
-    }
-
-    private CompletableFuture<Void> tryLock0(ExecutorService callbackService) {
         while (true) {
             final LockStatus status = STATE_UPDATER.get(this);
             if (status == INIT) {
@@ -351,7 +344,6 @@ final class LightWeightLock implements AsyncLock {
     }
 
     private CompletableFuture<Void> unlock0(ExecutorService executorService) {
-        final long stamp = operationCounter.incrementAndGet();
         return client
                 .delete(key, Set.of(DeleteOption.IfVersionIdEquals(versionId)))
                 .thenAcceptAsync(
@@ -373,14 +365,12 @@ final class LightWeightLock implements AsyncLock {
                             final var rc = unwrap(ex);
                             if (rc instanceof UnexpectedVersionIdException) {
                                 // (1) the lock has been grant by others
-                                if (stamp == operationCounter.get()) {
-                                    if (log.isDebugEnabled()) {
-                                        log.debug(
-                                                "Released Lock by session lost when unlock. key={} session={} client_id={}",
-                                                key,
-                                                sessionId,
-                                                clientIdentifier);
-                                    }
+                                if (log.isDebugEnabled()) {
+                                    log.debug(
+                                            "Released Lock by session lost when unlock. key={} session={} client_id={}",
+                                            key,
+                                            sessionId,
+                                            clientIdentifier);
                                 }
                                 STATE_UPDATER.set(this, RELEASED);
                                 return null;
