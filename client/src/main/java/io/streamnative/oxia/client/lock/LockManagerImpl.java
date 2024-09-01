@@ -25,7 +25,7 @@ final class LockManagerImpl implements LockManager, Consumer<Notification> {
     }
 
     @Override
-    public AsyncLock getLock(String key, OptionBackoff optionBackoff) {
+    public AsyncLock getLightWeightLock(String key, OptionBackoff optionBackoff) {
         return locks.computeIfAbsent(key, (k) -> new LightWeightLock(client, key, executor,
                 new Backoff(optionBackoff.initDelay(), optionBackoff.initDelayUnit(),
                         optionBackoff.maxDelay(), optionBackoff.maxDelayUnit(), optionBackoff.clock()),

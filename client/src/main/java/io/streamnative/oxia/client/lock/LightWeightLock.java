@@ -115,7 +115,7 @@ final class LightWeightLock implements AsyncLock {
                 if (retryableExceptions.contains(rc.getClass().getName())) {
                     final long ndm = backoff.nextDelayMillis();
                     if (log.isDebugEnabled()) {
-                        log.debug("Acquiring Lock failed, retry after {} million seconds. key={} session={} client_id={}",
+                        log.debug("Acquiring Lock failed, retrying... after {} million seconds. key={} session={} client_id={}",
                                 ndm, key, sessionId, clientIdentifier);
                     }
                     // retry later

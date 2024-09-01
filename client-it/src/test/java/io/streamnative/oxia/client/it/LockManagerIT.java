@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -60,7 +61,7 @@ public class LockManagerIT {
                     final String name = Thread.currentThread().getName();
                     final AsyncOxiaClient client = clients.computeIfAbsent(name, compute);
                     final LockManager lm = lockManager.computeIfAbsent(name, (n) -> LockManagers.createLockManager(client));
-                    final AsyncLock lock = lm.getLock(lockKey);
+                    final AsyncLock lock = lm.getLightWeightLock(lockKey);
                     lock.lock().join();
                     counter.increment();
                     lock.unlock().join();
@@ -97,7 +98,7 @@ public class LockManagerIT {
                 service.execute(() -> {
                     final String name = Thread.currentThread().getName();
                     final AsyncOxiaClient client = clients.computeIfAbsent(name, compute);
-                    final AsyncLock lm = LockManagers.createLockManager(client).getLock(lockKey);
+                    final AsyncLock lm = LockManagers.createLockManager(client).getLightWeightLock(lockKey);
                     lm.lock().thenAccept(__ -> {
                                 counter.increment();
                                 log.info("counter : {}", counter.current);
