@@ -17,7 +17,6 @@ package io.streamnative.oxia.client.lock;
 
 import io.streamnative.oxia.client.api.*;
 import io.streamnative.oxia.client.util.Backoff;
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
@@ -29,8 +28,10 @@ final class LockManagerImpl implements LockManager, Consumer<Notification> {
     private final ScheduledExecutorService executor;
     private final OptionAutoRevalidate optionAutoRevalidate;
 
-    LockManagerImpl(AsyncOxiaClient client, ScheduledExecutorService scheduledExecutorService,
-                    OptionAutoRevalidate optionAutoRevalidate) {
+    LockManagerImpl(
+            AsyncOxiaClient client,
+            ScheduledExecutorService scheduledExecutorService,
+            OptionAutoRevalidate optionAutoRevalidate) {
         this.client = client;
         this.locks = new ConcurrentHashMap<>();
         this.executor = scheduledExecutorService;
@@ -41,10 +42,20 @@ final class LockManagerImpl implements LockManager, Consumer<Notification> {
 
     @Override
     public AsyncLock getLightWeightLock(String key, OptionBackoff optionBackoff) {
-        return locks.computeIfAbsent(key, (k) -> new LightWeightLock(client, key, executor,
-                new Backoff(optionBackoff.initDelay(), optionBackoff.initDelayUnit(),
-                        optionBackoff.maxDelay(), optionBackoff.maxDelayUnit(), optionBackoff.clock()),
-                optionAutoRevalidate));
+        return locks.computeIfAbsent(
+                key,
+                (k) ->
+                        new LightWeightLock(
+                                client,
+                                key,
+                                executor,
+                                new Backoff(
+                                        optionBackoff.initDelay(),
+                                        optionBackoff.initDelayUnit(),
+                                        optionBackoff.maxDelay(),
+                                        optionBackoff.maxDelayUnit(),
+                                        optionBackoff.clock()),
+                                optionAutoRevalidate));
     }
 
     @Override

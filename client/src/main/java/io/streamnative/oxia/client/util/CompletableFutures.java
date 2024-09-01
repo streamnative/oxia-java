@@ -15,10 +15,9 @@
  */
 package io.streamnative.oxia.client.util;
 
-import lombok.experimental.UtilityClass;
-
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
+import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public final class CompletableFutures {

@@ -199,7 +199,6 @@ public interface AsyncOxiaClient extends AutoCloseable {
             @NonNull RangeScanConsumer consumer,
             @NonNull Set<RangeScanOption> options);
 
-
     /**
      * Registers a callback to receive Oxia {@link Notification record change notifications}. Multiple
      * callbacks can be registered.
@@ -207,7 +206,6 @@ public interface AsyncOxiaClient extends AutoCloseable {
      * @param notificationCallback A callback to receive notifications.
      */
     void notifications(@NonNull Consumer<Notification> notificationCallback);
-
 
     /**
      * Get the client identifier

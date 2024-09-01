@@ -47,14 +47,12 @@ public sealed class LockException extends OxiaException {
         }
     }
 
-
     @Getter
     public static final class IllegalLockStatusException extends LockException {
         private final AsyncLock.LockStatus expect;
         private final AsyncLock.LockStatus actual;
 
-        public IllegalLockStatusException(AsyncLock.LockStatus expect,
-                                          AsyncLock.LockStatus actual) {
+        public IllegalLockStatusException(AsyncLock.LockStatus expect, AsyncLock.LockStatus actual) {
             super("illegal lock status. expect: " + expect.name() + ", actual: " + actual.name());
             this.expect = expect;
             this.actual = actual;

@@ -21,9 +21,7 @@ import java.util.concurrent.TimeUnit;
 
 public interface AsyncLock {
 
-    /**
-     * Represents the different status of a lock.
-     */
+    /** Represents the different status of a lock. */
     enum LockStatus {
         INIT,
         ACQUIRING,
@@ -51,7 +49,8 @@ public interface AsyncLock {
      *
      * @param time the time to wait
      * @param unit the time unit of the time parameter
-     * @return a CompletableFuture that completes when the lock is acquired or not within the specified time
+     * @return a CompletableFuture that completes when the lock is acquired or not within the
+     *     specified time
      */
     CompletableFuture<Void> tryLock(long time, TimeUnit unit);
 
@@ -79,12 +78,14 @@ public interface AsyncLock {
     CompletableFuture<Void> tryLock(ExecutorService executorService);
 
     /**
-     * Tries to acquire the lock asynchronously within a specified time using a specified ExecutorService.
+     * Tries to acquire the lock asynchronously within a specified time using a specified
+     * ExecutorService.
      *
      * @param time the time to wait
      * @param unit the time unit of the time parameter
      * @param executorService the ExecutorService to use for acquiring the lock
-     * @return a CompletableFuture that completes when the lock is acquired or not within the specified time
+     * @return a CompletableFuture that completes when the lock is acquired or not within the
+     *     specified time
      */
     CompletableFuture<Void> tryLock(long time, TimeUnit unit, ExecutorService executorService);
 
