@@ -120,6 +120,11 @@ final class LightWeightLock implements AsyncLock {
     private volatile Optional<Long> sessionId;
 
     @Override
+    public LockStatus getStatus() {
+        return STATE_UPDATER.get(this);
+    }
+
+    @Override
     public CompletableFuture<Void> lock() {
         return lock(ForkJoinPool.commonPool());
     }

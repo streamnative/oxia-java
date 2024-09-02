@@ -16,6 +16,8 @@
 package io.streamnative.oxia.client.lock;
 
 import io.grpc.netty.shaded.io.netty.util.concurrent.DefaultThreadFactory;
+import io.opentelemetry.api.GlobalOpenTelemetry;
+import io.opentelemetry.api.OpenTelemetry;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.LockManager;
 import io.streamnative.oxia.client.api.OptionAutoRevalidate;
@@ -36,8 +38,11 @@ public final class LockManagers {
      */
     public static LockManager createLockManager(AsyncOxiaClient client) {
         Objects.requireNonNull(client);
+        final OpenTelemetry openTelemetry = GlobalOpenTelemetry.get();
+        final var meter = openTelemetry.getMeter("io.streamnative.oxia.client");
         return new LockManagerImpl(
                 client,
+                meter,
                 Executors.newSingleThreadScheduledExecutor(new DefaultThreadFactory("oxia-lock-manager")),
                 OptionAutoRevalidate.DEFAULT);
     }
@@ -52,9 +57,11 @@ public final class LockManagers {
      */
     public static LockManager createLockManager(
             AsyncOxiaClient client,
+            OpenTelemetry openTelemetry,
             ScheduledExecutorService service,
             OptionAutoRevalidate optionAutoRevalidate) {
         Objects.requireNonNull(client);
-        return new LockManagerImpl(client, service, optionAutoRevalidate);
+        final var meter = openTelemetry.getMeter("io.streamnative.oxia.client");
+        return new LockManagerImpl(client, meter, service, optionAutoRevalidate);
     }
 }

@@ -30,6 +30,8 @@ public interface AsyncLock {
         RELEASED;
     }
 
+    LockStatus getStatus();
+
     /**
      * Asynchronously acquires the lock.
      *

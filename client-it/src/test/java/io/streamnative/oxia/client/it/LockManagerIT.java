@@ -15,9 +15,21 @@
  */
 package io.streamnative.oxia.client.it;
 
+import static java.util.function.Function.identity;
+
+import io.grpc.netty.shaded.io.netty.util.concurrent.DefaultThreadFactory;
+import io.opentelemetry.api.OpenTelemetry;
+import io.opentelemetry.api.common.Attributes;
+import io.opentelemetry.sdk.OpenTelemetrySdk;
+import io.opentelemetry.sdk.metrics.SdkMeterProvider;
+import io.opentelemetry.sdk.metrics.data.MetricData;
+import io.opentelemetry.sdk.resources.Resource;
+import io.opentelemetry.sdk.testing.exporter.InMemoryMetricReader;
+import io.opentelemetry.semconv.resource.attributes.ResourceAttributes;
 import io.streamnative.oxia.client.api.AsyncLock;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.LockManager;
+import io.streamnative.oxia.client.api.OptionAutoRevalidate;
 import io.streamnative.oxia.client.api.OxiaClientBuilder;
 import io.streamnative.oxia.client.lock.LockManagers;
 import io.streamnative.oxia.testcontainers.OxiaContainer;
@@ -28,6 +40,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import lombok.Cleanup;
 import lombok.Getter;
@@ -46,6 +59,21 @@ public class LockManagerIT {
             new OxiaContainer(OxiaContainer.DEFAULT_IMAGE_NAME)
                     .withShards(10)
                     .withLogConsumer(new Slf4jLogConsumer(log));
+
+    private final OpenTelemetry openTelemetry;
+    private final InMemoryMetricReader metricReader;
+
+    {
+        final Resource resource =
+                Resource.getDefault()
+                        .merge(
+                                Resource.create(
+                                        Attributes.of(ResourceAttributes.SERVICE_NAME, "logical-service-name")));
+        metricReader = InMemoryMetricReader.create();
+        final SdkMeterProvider sdkMeterProvider =
+                SdkMeterProvider.builder().registerMetricReader(metricReader).setResource(resource).build();
+        openTelemetry = OpenTelemetrySdk.builder().setMeterProvider(sdkMeterProvider).build();
+    }
 
     @Getter
     @AllArgsConstructor
@@ -71,6 +99,7 @@ public class LockManagerIT {
                     (threadName) ->
                             OxiaClientBuilder.create(oxia.getServiceAddress())
                                     .clientIdentifier(threadName)
+                                    .openTelemetry(openTelemetry)
                                     .asyncClient()
                                     .join();
             final var counter = new Counter(0, 3000);
@@ -81,7 +110,15 @@ public class LockManagerIT {
                             final String name = Thread.currentThread().getName();
                             final AsyncOxiaClient client = clients.computeIfAbsent(name, compute);
                             final LockManager lm =
-                                    lockManager.computeIfAbsent(name, (n) -> LockManagers.createLockManager(client));
+                                    lockManager.computeIfAbsent(
+                                            name,
+                                            (n) ->
+                                                    LockManagers.createLockManager(
+                                                            client,
+                                                            openTelemetry,
+                                                            Executors.newSingleThreadScheduledExecutor(
+                                                                    new DefaultThreadFactory("oxia-lock-manager")),
+                                                            OptionAutoRevalidate.DEFAULT));
                             final AsyncLock lock = lm.getLightWeightLock(lockKey);
                             lock.lock().join();
                             counter.increment();
@@ -93,6 +130,12 @@ public class LockManagerIT {
 
             latch.await();
             Assertions.assertEquals(counter.current, counter.total);
+            metricReader.forceFlush();
+            var metrics = metricReader.collectAllMetrics();
+            var metricsByName =
+                    metrics.stream().collect(Collectors.toMap(MetricData::getName, identity()));
+            System.out.println(metricsByName);
+            Assertions.assertTrue(metricsByName.containsKey("oxia.locks.status"));
         } finally {
             clients.forEach(
                     (s, c) -> {
@@ -117,6 +160,7 @@ public class LockManagerIT {
                     (threadName) ->
                             OxiaClientBuilder.create(oxia.getServiceAddress())
                                     .clientIdentifier(threadName)
+                                    .openTelemetry(openTelemetry)
                                     .asyncClient()
                                     .join();
             final var counter = new Counter(0, 3000);
@@ -127,7 +171,13 @@ public class LockManagerIT {
                             final String name = Thread.currentThread().getName();
                             final AsyncOxiaClient client = clients.computeIfAbsent(name, compute);
                             final AsyncLock lm =
-                                    LockManagers.createLockManager(client).getLightWeightLock(lockKey);
+                                    LockManagers.createLockManager(
+                                                    client,
+                                                    openTelemetry,
+                                                    Executors.newSingleThreadScheduledExecutor(
+                                                            new DefaultThreadFactory("oxia-lock-manager")),
+                                                    OptionAutoRevalidate.DEFAULT)
+                                            .getLightWeightLock(lockKey);
                             lm.lock()
                                     .thenAccept(
                                             __ -> {
@@ -145,6 +195,12 @@ public class LockManagerIT {
             }
             latch.await();
             Assertions.assertEquals(counter.current, counter.total);
+            metricReader.forceFlush();
+            var metrics = metricReader.collectAllMetrics();
+            var metricsByName =
+                    metrics.stream().collect(Collectors.toMap(MetricData::getName, identity()));
+            System.out.println(metricsByName);
+            Assertions.assertTrue(metricsByName.containsKey("oxia.locks.status"));
         } finally {
             clients.forEach(
                     (s, c) -> {
