@@ -20,7 +20,6 @@ import static io.streamnative.oxia.client.api.AsyncLock.LockStatus.ACQUIRING;
 import static io.streamnative.oxia.client.api.AsyncLock.LockStatus.INIT;
 import static io.streamnative.oxia.client.api.AsyncLock.LockStatus.RELEASED;
 import static io.streamnative.oxia.client.api.AsyncLock.LockStatus.RELEASING;
-import static io.streamnative.oxia.client.api.exceptions.LockException.AcquireTimeoutException;
 import static io.streamnative.oxia.client.api.exceptions.LockException.IllegalLockStatusException;
 import static io.streamnative.oxia.client.api.exceptions.LockException.LockBusyException;
 import static io.streamnative.oxia.client.util.CompletableFutures.unwrap;
@@ -28,6 +27,7 @@ import static io.streamnative.oxia.client.util.CompletableFutures.wrap;
 import static io.streamnative.oxia.client.util.Runs.safeExecute;
 import static io.streamnative.oxia.client.util.Runs.safeRun;
 import static java.util.concurrent.CompletableFuture.completedFuture;
+import static java.util.concurrent.CompletableFuture.failedFuture;
 import static java.util.concurrent.CompletableFuture.runAsync;
 
 import com.google.common.base.Throwables;
@@ -50,7 +50,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
@@ -132,11 +131,6 @@ final class LightWeightLock implements AsyncLock {
     @Override
     public CompletableFuture<Void> tryLock() {
         return tryLock(ForkJoinPool.commonPool());
-    }
-
-    @Override
-    public CompletableFuture<Void> tryLock(long time, TimeUnit unit) {
-        return tryLock(time, unit, ForkJoinPool.commonPool());
     }
 
     @Override
@@ -267,21 +261,6 @@ final class LightWeightLock implements AsyncLock {
     }
 
     @Override
-    public CompletableFuture<Void> tryLock(
-            long time, TimeUnit unit, ExecutorService callbackService) {
-        return lock(callbackService)
-                .orTimeout(time, unit)
-                .exceptionally(
-                        ex -> {
-                            final Throwable rc = unwrap(ex);
-                            if (rc instanceof CancellationException) {
-                                throw new CompletionException(new AcquireTimeoutException());
-                            }
-                            throw new CompletionException(LockException.wrap(rc));
-                        });
-    }
-
-    @Override
     public CompletableFuture<Void> unlock(ExecutorService executorService) {
         while (true) {
             switch (STATE_UPDATER.get(this)) {
@@ -296,15 +275,11 @@ final class LightWeightLock implements AsyncLock {
                     if (log.isDebugEnabled()) {
                         log.debug("busy wait for acquiring. it should be happened very rare.");
                     }
+                    final CompletableFuture<Void> r;
                     try {
-                        //noinspection BusyWait
-                        Thread.sleep(1);
-                    } catch (InterruptedException ex) {
-                        Thread.currentThread().interrupt();
-                        return runAsync(
-                                () -> {
-                                    throw wrap(LockException.wrap(ex));
-                                });
+                        waitForAWhile();
+                    } catch (Throwable ex) {
+                        return failedFuture(ex);
                     }
                 }
                 case ACQUIRED -> {
@@ -313,14 +288,9 @@ final class LightWeightLock implements AsyncLock {
                             log.debug("busy wait. expect: acquired, actual: {}", STATE_UPDATER.get(this));
                         }
                         try {
-                            //noinspection BusyWait
-                            Thread.sleep(1);
-                        } catch (InterruptedException ex) {
-                            Thread.currentThread().interrupt();
-                            return runAsync(
-                                    () -> {
-                                        throw wrap(LockException.wrap(ex));
-                                    });
+                            waitForAWhile();
+                        } catch (Throwable ex) {
+                            return failedFuture(ex);
                         }
                         continue;
                     }
@@ -344,6 +314,15 @@ final class LightWeightLock implements AsyncLock {
                             });
                 }
             }
+        }
+    }
+
+    private static void waitForAWhile() {
+        try {
+            Thread.sleep(1);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw wrap(LockException.wrap(ex));
         }
     }
 

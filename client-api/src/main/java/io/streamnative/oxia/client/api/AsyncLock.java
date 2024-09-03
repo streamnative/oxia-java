@@ -17,7 +17,6 @@ package io.streamnative.oxia.client.api;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
 
 public interface AsyncLock {
 
@@ -54,22 +53,6 @@ public interface AsyncLock {
     CompletableFuture<Void> tryLock();
 
     /**
-     * Tries to acquire the lock asynchronously within a specified time.
-     *
-     * @param time the time to wait
-     * @param unit the time unit of the time parameter
-     * @return a CompletableFuture that completes when the lock is acquired or not. The future will
-     *     complete exceptionally with a {@link
-     *     io.streamnative.oxia.client.api.exceptions.LockException.LockBusyException} if the lock is
-     *     acquired by others, or with an {@link
-     *     io.streamnative.oxia.client.api.exceptions.LockException.IllegalLockStatusException} if the
-     *     current lock status is not {@link LockStatus#INIT} or {@link LockStatus#RELEASED}.
-     *     Additionally, the future will complete exceptionally with an {@link
-     *     io.streamnative.oxia.client.api.exceptions.LockException} in case of an unknown error.
-     */
-    CompletableFuture<Void> tryLock(long time, TimeUnit unit);
-
-    /**
      * Asynchronously releases the lock.
      *
      * @return a CompletableFuture that completes when the lock is acquired or not. The future will
@@ -103,24 +86,6 @@ public interface AsyncLock {
      *     io.streamnative.oxia.client.api.exceptions.LockException} in case of an unknown error.
      */
     CompletableFuture<Void> tryLock(ExecutorService executorService);
-
-    /**
-     * Tries to acquire the lock asynchronously within a specified time using a specified
-     * ExecutorService.
-     *
-     * @param time the time to wait
-     * @param unit the time unit of the time parameter
-     * @param executorService the ExecutorService to use for acquiring the lock
-     * @return a CompletableFuture that completes when the lock is acquired or not. The future will
-     *     complete exceptionally with a {@link
-     *     io.streamnative.oxia.client.api.exceptions.LockException.LockBusyException} if the lock is
-     *     acquired by others, or with an {@link
-     *     io.streamnative.oxia.client.api.exceptions.LockException.IllegalLockStatusException} if the
-     *     current lock status is not {@link LockStatus#INIT} or {@link LockStatus#RELEASED}.
-     *     Additionally, the future will complete exceptionally with an {@link
-     *     io.streamnative.oxia.client.api.exceptions.LockException} in case of an unknown error.
-     */
-    CompletableFuture<Void> tryLock(long time, TimeUnit unit, ExecutorService executorService);
 
     /**
      * Asynchronously releases the lock using a specified ExecutorService.

@@ -89,8 +89,7 @@ public class LockManagerIT {
     @Test
     public void testCounterWithSyncLock() throws InterruptedException {
         final String lockKey = UUID.randomUUID().toString();
-        @Cleanup("shutdown")
-        final ExecutorService service =
+        @Cleanup("shutdown") final ExecutorService service =
                 Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         final Map<String, AsyncOxiaClient> clients = new ConcurrentHashMap<>();
         final Map<String, LockManager> lockManager = new ConcurrentHashMap<>();
@@ -151,8 +150,7 @@ public class LockManagerIT {
     @Test
     public void testCounterWithAsyncLock() throws InterruptedException {
         final String lockKey = UUID.randomUUID().toString();
-        @Cleanup("shutdown")
-        final ExecutorService service =
+        @Cleanup("shutdown") final ExecutorService service =
                 Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         final Map<String, AsyncOxiaClient> clients = new ConcurrentHashMap<>();
         try {

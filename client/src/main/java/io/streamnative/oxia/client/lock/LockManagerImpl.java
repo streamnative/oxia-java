@@ -27,7 +27,7 @@ import io.streamnative.oxia.client.api.OptionBackoff;
 import io.streamnative.oxia.client.metrics.Unit;
 import io.streamnative.oxia.client.util.Backoff;
 import java.io.Closeable;
-import java.io.IOException;
+import java.time.Clock;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -87,7 +87,7 @@ final class LockManagerImpl implements LockManager, Consumer<Notification>, Clos
                                         optionBackoff.initDelayUnit(),
                                         optionBackoff.maxDelay(),
                                         optionBackoff.maxDelayUnit(),
-                                        optionBackoff.clock()),
+                                        Clock.systemUTC()),
                                 optionAutoRevalidate));
     }
 
@@ -101,5 +101,5 @@ final class LockManagerImpl implements LockManager, Consumer<Notification>, Clos
     }
 
     @Override
-    public void close() throws IOException {}
+    public void close() {}
 }
