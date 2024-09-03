@@ -16,10 +16,10 @@
 package io.streamnative.oxia.client.api;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+
 import java.util.concurrent.TimeUnit;
 
 public record OptionBackoff(
         long initDelay, TimeUnit initDelayUnit, long maxDelay, TimeUnit maxDelayUnit) {
-    public static OptionBackoff DEFAULT =
-            new OptionBackoff(10, MILLISECONDS, 500, MILLISECONDS);
+    public static OptionBackoff DEFAULT = new OptionBackoff(10, MILLISECONDS, 500, MILLISECONDS);
 }
