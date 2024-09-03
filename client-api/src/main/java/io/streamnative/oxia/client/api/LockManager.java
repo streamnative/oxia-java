@@ -15,7 +15,9 @@
  */
 package io.streamnative.oxia.client.api;
 
-public interface LockManager {
+import java.io.Closeable;
+
+public interface LockManager extends Closeable {
 
     /**
      * Gets a lightweight asynchronous lock for the specified key with default backoff options.

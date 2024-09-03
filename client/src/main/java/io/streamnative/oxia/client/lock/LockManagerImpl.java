@@ -26,7 +26,6 @@ import io.streamnative.oxia.client.api.OptionAutoRevalidate;
 import io.streamnative.oxia.client.api.OptionBackoff;
 import io.streamnative.oxia.client.metrics.Unit;
 import io.streamnative.oxia.client.util.Backoff;
-import java.io.Closeable;
 import java.time.Clock;
 import java.util.Map;
 import java.util.Set;
@@ -34,12 +33,12 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Consumer;
 
-final class LockManagerImpl implements LockManager, Consumer<Notification>, Closeable {
+final class LockManagerImpl implements LockManager, Consumer<Notification> {
     private final AsyncOxiaClient client;
     private final Map<String, LightWeightLock> locks;
     private final ScheduledExecutorService executor;
     private final OptionAutoRevalidate optionAutoRevalidate;
-    private final ObservableLongGauge oxiaLocksStatus;
+    private final ObservableLongGauge gaugeOxiaLocksStatus;
 
     LockManagerImpl(
             AsyncOxiaClient client,
@@ -52,7 +51,7 @@ final class LockManagerImpl implements LockManager, Consumer<Notification>, Clos
         this.optionAutoRevalidate = optionAutoRevalidate;
         // register self as the notification receiver
         client.notifications(this);
-        oxiaLocksStatus =
+        gaugeOxiaLocksStatus =
                 meter
                         .gaugeBuilder("oxia.locks.status")
                         .setDescription("Current lock status")
@@ -101,5 +100,7 @@ final class LockManagerImpl implements LockManager, Consumer<Notification>, Clos
     }
 
     @Override
-    public void close() {}
+    public void close() {
+        gaugeOxiaLocksStatus.close();
+    }
 }
