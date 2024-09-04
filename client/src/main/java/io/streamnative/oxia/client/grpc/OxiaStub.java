@@ -53,7 +53,6 @@ public class OxiaStub implements AutoCloseable {
                                         ? TlsChannelCredentials.newBuilder().build()
                                         : InsecureChannelCredentials.create())
                         .directExecutor()
-                        .disableRetry()
                         .build(),
                 namespace,
                 authentication);
