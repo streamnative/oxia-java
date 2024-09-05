@@ -26,7 +26,7 @@ import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public final class WriteStreamWrapper implements StreamObserver<WriteResponse>  {
+public final class WriteStreamWrapper implements StreamObserver<WriteResponse> {
 
     private final StreamObserver<WriteRequest> clientStream;
     private final Deque<CompletableFuture<WriteResponse>> pendingWrites = new ArrayDeque<>();
@@ -63,9 +63,7 @@ public final class WriteStreamWrapper implements StreamObserver<WriteResponse>  
     }
 
     @Override
-    public void onCompleted() {
-
-    }
+    public void onCompleted() {}
 
     public CompletableFuture<WriteResponse> send(WriteRequest request) {
         synchronized (WriteStreamWrapper.this) {

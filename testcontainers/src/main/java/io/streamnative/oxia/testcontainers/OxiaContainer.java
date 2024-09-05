@@ -20,7 +20,6 @@ import static lombok.AccessLevel.PRIVATE;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.time.Duration;
-
 import lombok.NonNull;
 import lombok.SneakyThrows;
 import lombok.With;
@@ -36,8 +35,7 @@ public class OxiaContainer extends GenericContainer<OxiaContainer> {
     @With(PRIVATE)
     private final @NonNull DockerImageName imageName;
 
-    @With
-    private final int shards;
+    @With private final int shards;
 
     public static final DockerImageName DEFAULT_IMAGE_NAME =
             DockerImageName.parse("streamnative/oxia:main");
@@ -49,7 +47,6 @@ public class OxiaContainer extends GenericContainer<OxiaContainer> {
     public OxiaContainer(@NonNull DockerImageName imageName, int shards) {
         this(imageName, shards, false);
     }
-
 
     @SneakyThrows
     @SuppressWarnings("resource")
