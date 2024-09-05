@@ -98,16 +98,19 @@ public class OxiaStub implements AutoCloseable {
             Metadata.Key.of("shard-id", Metadata.ASCII_STRING_MARSHALLER);
 
     public WriteStreamWrapper writeStream(long streamId) {
-        return writeStreams.computeIfAbsent(
+        return writeStreams.compute(
                 streamId,
-                key -> {
-                    Metadata headers = new Metadata();
-                    headers.put(NAMESPACE_KEY, namespace);
-                    headers.put(SHARD_ID_KEY, String.format("%d", streamId));
+                (key, stream) -> {
+                    if (stream == null || !stream.isValid()) {
+                        Metadata headers = new Metadata();
+                        headers.put(NAMESPACE_KEY, namespace);
+                        headers.put(SHARD_ID_KEY, String.format("%d", streamId));
 
-                    OxiaClientGrpc.OxiaClientStub stub =
-                            asyncStub.withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
-                    return new WriteStreamWrapper(stub);
+                        OxiaClientGrpc.OxiaClientStub stub =
+                                asyncStub.withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
+                        return new WriteStreamWrapper(stub);
+                    }
+                    return stream;
                 });
     }
 
