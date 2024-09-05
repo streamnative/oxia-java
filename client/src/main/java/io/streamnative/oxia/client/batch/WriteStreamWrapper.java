@@ -21,70 +21,66 @@ import io.streamnative.oxia.proto.OxiaClientGrpc;
 import io.streamnative.oxia.proto.WriteRequest;
 import io.streamnative.oxia.proto.WriteResponse;
 import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class WriteStreamWrapper {
+public final class WriteStreamWrapper implements StreamObserver<WriteResponse> {
 
     private final StreamObserver<WriteRequest> clientStream;
-
-    private final ArrayDeque<CompletableFuture<WriteResponse>> pendingWrites = new ArrayDeque<>();
-
+    private final Deque<CompletableFuture<WriteResponse>> pendingWrites = new ArrayDeque<>();
     private volatile Throwable failed = null;
 
     public WriteStreamWrapper(OxiaClientGrpc.OxiaClientStub stub) {
-        this.clientStream =
-                stub.writeStream(
-                        new StreamObserver<>() {
-                            @Override
-                            public void onNext(WriteResponse value) {
-                                synchronized (WriteStreamWrapper.this) {
-                                    var future = pendingWrites.poll();
-                                    if (future != null) {
-                                        future.complete(value);
-                                    }
-                                }
-                            }
-
-                            @Override
-                            public void onError(Throwable t) {
-                                synchronized (WriteStreamWrapper.this) {
-                                    if (!pendingWrites.isEmpty()) {
-                                        log.warn("Got Error", t);
-                                    }
-                                    pendingWrites.forEach(f -> f.completeExceptionally(t));
-                                    pendingWrites.clear();
-                                    failed = t;
-                                }
-                            }
-
-                            @Override
-                            public void onCompleted() {}
-                        });
-    }
-
-    public synchronized CompletableFuture<WriteResponse> send(WriteRequest request) {
-        if (failed != null) {
-            return CompletableFuture.failedFuture(failed);
-        }
-
-        CompletableFuture<WriteResponse> future = new CompletableFuture<>();
-
-        try {
-            if (log.isDebugEnabled()) {
-                log.debug("Sending request {}", request);
-            }
-            clientStream.onNext(request);
-            pendingWrites.add(future);
-        } catch (Exception e) {
-            future.completeExceptionally(e);
-        }
-
-        return future;
+        this.clientStream = stub.writeStream(this);
     }
 
     public boolean isValid() {
         return failed == null;
+    }
+
+    @Override
+    public void onNext(WriteResponse value) {
+        synchronized (WriteStreamWrapper.this) {
+            final var future = pendingWrites.poll();
+            if (future != null) {
+                future.complete(value);
+            }
+        }
+    }
+
+    @Override
+    public void onError(Throwable t) {
+        synchronized (WriteStreamWrapper.this) {
+            if (!pendingWrites.isEmpty()) {
+                log.warn("Got Error", t);
+            }
+            pendingWrites.forEach(f -> f.completeExceptionally(t));
+            pendingWrites.clear();
+            failed = t;
+        }
+    }
+
+    @Override
+    public void onCompleted() {}
+
+    public CompletableFuture<WriteResponse> send(WriteRequest request) {
+        synchronized (WriteStreamWrapper.this) {
+            if (failed != null) {
+                return CompletableFuture.failedFuture(failed);
+            }
+            final CompletableFuture<WriteResponse> future = new CompletableFuture<>();
+            try {
+                if (log.isDebugEnabled()) {
+                    log.debug("Sending request {}", request);
+                }
+                clientStream.onNext(request);
+                pendingWrites.add(future);
+            } catch (Exception e) {
+                future.completeExceptionally(e);
+            }
+            return future;
+        }
     }
 }

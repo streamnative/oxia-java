@@ -17,8 +17,11 @@ package io.streamnative.oxia.testcontainers;
 
 import static lombok.AccessLevel.PRIVATE;
 
+import java.io.IOException;
+import java.net.ServerSocket;
 import java.time.Duration;
 import lombok.NonNull;
+import lombok.SneakyThrows;
 import lombok.With;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -38,24 +41,46 @@ public class OxiaContainer extends GenericContainer<OxiaContainer> {
             DockerImageName.parse("streamnative/oxia:main");
 
     public OxiaContainer(@NonNull DockerImageName imageName) {
-        this(imageName, DEFAULT_SHARDS);
+        this(imageName, DEFAULT_SHARDS, false);
     }
 
+    public OxiaContainer(@NonNull DockerImageName imageName, int shards) {
+        this(imageName, shards, false);
+    }
+
+    @SneakyThrows
     @SuppressWarnings("resource")
-    OxiaContainer(@NonNull DockerImageName imageName, int shards) {
+    public OxiaContainer(@NonNull DockerImageName imageName, int shards, boolean fixedServicePort) {
         super(imageName);
         this.imageName = imageName;
         this.shards = shards;
         if (shards <= 0) {
             throw new IllegalArgumentException("shards must be greater than zero");
         }
-        addExposedPorts(OXIA_PORT, METRICS_PORT);
+        if (fixedServicePort) {
+            int freePort = findFreePort();
+            addFixedExposedPort(freePort, OXIA_PORT);
+            addExposedPorts(METRICS_PORT);
+        } else {
+            addExposedPorts(OXIA_PORT, METRICS_PORT);
+        }
         setCommand("oxia", "standalone", "--shards=" + shards);
         waitingFor(
                 Wait.forHttp("/metrics")
                         .forPort(METRICS_PORT)
                         .forStatusCode(200)
                         .withStartupTimeout(Duration.ofSeconds(30)));
+    }
+
+    private static int findFreePort() throws IOException {
+        for (int i = 10000; i <= 20000; i++) {
+            try (ServerSocket socket = new ServerSocket(i)) {
+                return i;
+            } catch (Throwable ignore) {
+
+            }
+        }
+        throw new IOException("No free port found in the specified range");
     }
 
     public String getServiceAddress() {
