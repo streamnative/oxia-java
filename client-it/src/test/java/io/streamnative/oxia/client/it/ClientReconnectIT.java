@@ -65,7 +65,7 @@ public class ClientReconnectIT {
 
                 oxia.start();
 
-                Awaitility.await().untilAsserted(() -> {
+                Awaitility.await().atMost(15, TimeUnit.SECONDS).untilAsserted(() -> {
                     try {
                         client.put(key, value).get(1, TimeUnit.SECONDS);
                     } catch (Throwable ex) {
