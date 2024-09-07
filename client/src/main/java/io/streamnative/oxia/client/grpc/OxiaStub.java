@@ -17,37 +17,42 @@ package io.streamnative.oxia.client.grpc;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
+import com.google.common.base.Throwables;
 import io.grpc.CallCredentials;
+import io.grpc.Grpc;
 import io.grpc.InsecureChannelCredentials;
 import io.grpc.ManagedChannel;
 import io.grpc.Metadata;
 import io.grpc.TlsChannelCredentials;
-import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
+import io.grpc.internal.BackoffPolicy;
 import io.grpc.stub.MetadataUtils;
 import io.streamnative.oxia.client.api.Authentication;
 import io.streamnative.oxia.client.batch.WriteStreamWrapper;
 import io.streamnative.oxia.proto.OxiaClientGrpc;
+
+import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import javax.annotation.Nullable;
-import lombok.NonNull;
 
+import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 public class OxiaStub implements AutoCloseable {
     private final ManagedChannel channel;
     private final String namespace;
-
     private final @NonNull OxiaClientGrpc.OxiaClientStub asyncStub;
-
     private final Map<Long, WriteStreamWrapper> writeStreams = new ConcurrentHashMap<>();
 
     public OxiaStub(
             String address,
             String namespace,
             @Nullable Authentication authentication,
-            boolean enableTls) {
-        this(
-                NettyChannelBuilder.forTarget(
+            boolean enableTls,
+            @Nullable BackoffPolicy.Provider backoffProvider) {
+        this(Grpc.newChannelBuilder(
                                 address,
                                 enableTls
                                         ? TlsChannelCredentials.newBuilder().build()
@@ -55,15 +60,25 @@ public class OxiaStub implements AutoCloseable {
                         .directExecutor()
                         .build(),
                 namespace,
-                authentication);
+                authentication, backoffProvider);
     }
 
     public OxiaStub(ManagedChannel channel, String namespace) {
-        this(channel, namespace, null);
+        this(channel, namespace, null, OxiaBackoffProvider.DEFAULT);
     }
 
-    public OxiaStub(
-            ManagedChannel channel, String namespace, @Nullable final Authentication authentication) {
+    public OxiaStub(ManagedChannel channel, String namespace,
+                    @Nullable final Authentication authentication,
+                    @Nullable BackoffPolicy.Provider oxiaBackoffPolicyProvider) {
+        /*
+            The GRPC default backoff is from 2s to 120s, which is very long for time sensitive usage.
+
+            Using reflection to replace the existing backoff here due to that is not configurable.
+            FYI: https://github.com/grpc/grpc-java/issues/10932#issuecomment-1954913671
+         */
+        if (oxiaBackoffPolicyProvider != null) {
+            configureBackoffPolicyIfPossible(channel, oxiaBackoffPolicyProvider);
+        }
         this.namespace = namespace;
         this.channel = channel;
         if (authentication != null) {
@@ -85,6 +100,22 @@ public class OxiaStub implements AutoCloseable {
                                     });
         } else {
             this.asyncStub = OxiaClientGrpc.newStub(channel);
+        }
+    }
+
+    private void configureBackoffPolicyIfPossible(ManagedChannel channel, BackoffPolicy.Provider oxiaBackoffPolicyProvider) {
+        try {
+            final Class<?> mcl = Class.forName("io.grpc.internal.ForwardingManagedChannel");
+            final Field delegate = mcl.getDeclaredField("delegate");
+            delegate.setAccessible(true);
+            final Object mclInstance = delegate.get(channel);
+            final Class<?> mclInstanceKlass = Class.forName("io.grpc.internal.ManagedChannelImpl");
+            final Field backOffField = mclInstanceKlass.getDeclaredField("backoffPolicyProvider");
+            backOffField.setAccessible(true);
+            backOffField.set(mclInstance, oxiaBackoffPolicyProvider);
+        } catch (ClassNotFoundException | NoSuchFieldException | IllegalAccessException ex) {
+            log.warn("Auto replace GRPC default backoff policy failed. fallback to the GRPC default implementation.",
+                    Throwables.getRootCause(ex));
         }
     }
 

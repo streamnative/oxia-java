@@ -67,6 +67,10 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
     @Nullable protected Authentication authentication;
     protected boolean enableTls = DefaultEnableTls;
 
+    @NonNull protected Duration connectionBackoffMinDelay = Duration.ofMillis(100);
+    @NonNull protected Duration connectionBackoffMaxDelay = Duration.ofSeconds(30);
+
+
     @Override
     public @NonNull OxiaClientBuilder requestTimeout(@NonNull Duration requestTimeout) {
         if (requestTimeout.isNegative() || requestTimeout.equals(ZERO)) {
@@ -138,6 +142,13 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
     @Override
     public OxiaClientBuilder authentication(Authentication authentication) {
         this.authentication = authentication;
+        return this;
+    }
+
+    @Override
+    public OxiaClientBuilder connectionBackoff(Duration minDelay, Duration maxDelay) {
+        this.connectionBackoffMinDelay = minDelay;
+        this.connectionBackoffMaxDelay = maxDelay;
         return this;
     }
 
@@ -227,7 +238,9 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
                         openTelemetry,
                         namespace,
                         authentication,
-                        enableTls);
+                        enableTls,
+                        connectionBackoffMinDelay,
+                        connectionBackoffMaxDelay);
         return AsyncOxiaClientImpl.newInstance(config);
     }
 

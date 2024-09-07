@@ -53,6 +53,8 @@ public interface OxiaClientBuilder {
 
     OxiaClientBuilder authentication(Authentication authentication);
 
+    OxiaClientBuilder connectionBackoff(Duration minDelay, Duration maxDelay);
+
     /**
      * Configure the authentication plugin and its parameters.
      *

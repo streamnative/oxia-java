@@ -45,6 +45,7 @@ import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
+import io.streamnative.oxia.client.grpc.OxiaBackoffProvider;
 import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.grpc.OxiaStubProvider;
 import io.streamnative.oxia.client.metrics.InstrumentProvider;
@@ -101,7 +102,9 @@ class BatchTest {
                     null,
                     OxiaClientBuilderImpl.DefaultNamespace,
                     authentication,
-                    authentication != null);
+                    authentication != null,
+                    Duration.ofMillis(100),
+                    Duration.ofSeconds(30));
 
     private final OxiaClientImplBase serviceImpl =
             mock(
@@ -167,7 +170,7 @@ class BatchTest {
                 new OxiaStub(
                         InProcessChannelBuilder.forName(serverName).directExecutor().build(),
                         "default",
-                        authentication);
+                        authentication, OxiaBackoffProvider.DEFAULT);
         clientByShardId = mock(OxiaStubProvider.class);
         lenient().when(clientByShardId.getStubForShard(anyLong())).thenReturn(stub);
     }
@@ -485,7 +488,9 @@ class BatchTest {
                         null,
                         DefaultNamespace,
                         null,
-                        false);
+                        false,
+                        Duration.ofMillis(100),
+                        Duration.ofSeconds(30));
 
         @Nested
         @DisplayName("Tests of write batch factory")
