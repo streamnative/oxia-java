@@ -75,10 +75,12 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     static @NonNull CompletableFuture<AsyncOxiaClient> newInstance(@NonNull ClientConfig config) {
         ScheduledExecutorService executor =
                 Executors.newSingleThreadScheduledExecutor(new DefaultThreadFactory("oxia-client"));
-        final var oxiaBackoffProvider = OxiaBackoffProvider
-                .create(config.connectionBackoffMinDelay(), config.connectionBackoffMaxDelay());
+        final var oxiaBackoffProvider =
+                OxiaBackoffProvider.create(
+                        config.connectionBackoffMinDelay(), config.connectionBackoffMaxDelay());
         var stubManager =
-                new OxiaStubManager(config.namespace(), config.authentication(), config.enableTls(), oxiaBackoffProvider);
+                new OxiaStubManager(
+                        config.namespace(), config.authentication(), config.enableTls(), oxiaBackoffProvider);
 
         var instrumentProvider = new InstrumentProvider(config.openTelemetry(), config.namespace());
         var serviceAddrStub = stubManager.getStub(config.serviceAddress());

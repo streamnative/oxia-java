@@ -30,7 +30,9 @@ public class OxiaStubManager implements AutoCloseable {
     @Nullable private final BackoffPolicy.Provider backoffProvider;
 
     public OxiaStubManager(
-            String namespace, @Nullable Authentication authentication, boolean enableTls,
+            String namespace,
+            @Nullable Authentication authentication,
+            boolean enableTls,
             @Nullable BackoffPolicy.Provider backoffProvider) {
         this.namespace = namespace;
         this.authentication = authentication;

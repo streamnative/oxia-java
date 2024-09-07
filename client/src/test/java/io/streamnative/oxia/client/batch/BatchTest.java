@@ -170,7 +170,8 @@ class BatchTest {
                 new OxiaStub(
                         InProcessChannelBuilder.forName(serverName).directExecutor().build(),
                         "default",
-                        authentication, OxiaBackoffProvider.DEFAULT);
+                        authentication,
+                        OxiaBackoffProvider.DEFAULT);
         clientByShardId = mock(OxiaStubProvider.class);
         lenient().when(clientByShardId.getStubForShard(anyLong())).thenReturn(stub);
     }

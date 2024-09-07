@@ -19,7 +19,6 @@ import io.opentelemetry.api.OpenTelemetry;
 import io.streamnative.oxia.client.api.Authentication;
 import java.time.Duration;
 import javax.annotation.Nullable;
-
 import lombok.NonNull;
 
 public record ClientConfig(
@@ -35,5 +34,4 @@ public record ClientConfig(
         @Nullable Authentication authentication,
         boolean enableTls,
         @NonNull Duration connectionBackoffMinDelay,
-        @NonNull Duration connectionBackoffMaxDelay
-) {}
+        @NonNull Duration connectionBackoffMaxDelay) {}

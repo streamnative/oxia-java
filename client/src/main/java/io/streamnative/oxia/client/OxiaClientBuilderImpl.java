@@ -70,7 +70,6 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
     @NonNull protected Duration connectionBackoffMinDelay = Duration.ofMillis(100);
     @NonNull protected Duration connectionBackoffMaxDelay = Duration.ofSeconds(30);
 
-
     @Override
     public @NonNull OxiaClientBuilder requestTimeout(@NonNull Duration requestTimeout) {
         if (requestTimeout.isNegative() || requestTimeout.equals(ZERO)) {
