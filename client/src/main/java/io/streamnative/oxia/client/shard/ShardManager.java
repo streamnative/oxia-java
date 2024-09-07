@@ -143,7 +143,7 @@ public class ShardManager implements AutoCloseable, StreamObserver<ShardAssignme
                 }
             }
         }
-        log.warn("Failed receiving shard assignments: {}", getRootCause(error).getMessage());
+        log.warn("Failed receiving shard assignments.", getRootCause(error));
         executor.schedule(
                 () -> {
                     if (!closed) {
