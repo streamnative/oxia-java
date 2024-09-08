@@ -15,6 +15,8 @@
  */
 package io.streamnative.oxia.client.lock;
 
+import static io.streamnative.oxia.client.lock.SharedSimpleLock.DEFAULT_RETRYABLE_EXCEPTIONS;
+
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.metrics.Meter;
 import io.opentelemetry.api.metrics.ObservableLongGauge;
@@ -26,7 +28,6 @@ import io.streamnative.oxia.client.api.OptionAutoRevalidate;
 import io.streamnative.oxia.client.api.OptionBackoff;
 import io.streamnative.oxia.client.metrics.Unit;
 import io.streamnative.oxia.client.util.Backoff;
-import java.time.Clock;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,7 +36,7 @@ import java.util.function.Consumer;
 
 final class LockManagerImpl implements LockManager, Consumer<Notification> {
     private final AsyncOxiaClient client;
-    private final Map<String, LightWeightLock> locks;
+    private final Map<String, AsyncLock> locks;
     private final ScheduledExecutorService executor;
     private final OptionAutoRevalidate optionAutoRevalidate;
     private final ObservableLongGauge gaugeOxiaLocksStatus;
@@ -59,8 +60,8 @@ final class LockManagerImpl implements LockManager, Consumer<Notification> {
                         .ofLongs()
                         .buildWithCallback(
                                 (ob) -> {
-                                    final Set<Map.Entry<String, LightWeightLock>> entries = locks.entrySet();
-                                    for (Map.Entry<String, LightWeightLock> entry : entries) {
+                                    final Set<Map.Entry<String, AsyncLock>> entries = locks.entrySet();
+                                    for (Map.Entry<String, AsyncLock> entry : entries) {
                                         ob.record(
                                                 1,
                                                 Attributes.builder()
@@ -73,11 +74,11 @@ final class LockManagerImpl implements LockManager, Consumer<Notification> {
     }
 
     @Override
-    public AsyncLock getLightWeightLock(String key, OptionBackoff optionBackoff) {
+    public AsyncLock getSharedLock(String key, OptionBackoff optionBackoff) {
         return locks.computeIfAbsent(
                 key,
                 (k) ->
-                        new LightWeightLock(
+                        new SharedSimpleLock(
                                 client,
                                 key,
                                 executor,
@@ -86,8 +87,28 @@ final class LockManagerImpl implements LockManager, Consumer<Notification> {
                                         optionBackoff.initDelayUnit(),
                                         optionBackoff.maxDelay(),
                                         optionBackoff.maxDelayUnit(),
-                                        Clock.systemUTC()),
-                                optionAutoRevalidate));
+                                        null),
+                                optionAutoRevalidate,
+                                DEFAULT_RETRYABLE_EXCEPTIONS));
+    }
+
+    @Override
+    public AsyncLock getThreadSimpleLock(String key, OptionBackoff optionBackoff) {
+        return locks.computeIfAbsent(
+                key,
+                (k) ->
+                        new ThreadSimpleLock(
+                                client,
+                                key,
+                                executor,
+                                new Backoff(
+                                        optionBackoff.initDelay(),
+                                        optionBackoff.initDelayUnit(),
+                                        optionBackoff.maxDelay(),
+                                        optionBackoff.maxDelayUnit(),
+                                        null),
+                                optionAutoRevalidate,
+                                DEFAULT_RETRYABLE_EXCEPTIONS));
     }
 
     @Override
@@ -96,7 +117,9 @@ final class LockManagerImpl implements LockManager, Consumer<Notification> {
         if (lock == null) {
             return;
         }
-        lock.notifyStateChanged(notification);
+        if (lock instanceof NotificationReceiver receiver) {
+            receiver.notifyStateChanged(notification);
+        }
     }
 
     @Override

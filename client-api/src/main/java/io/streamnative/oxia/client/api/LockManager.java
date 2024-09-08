@@ -24,7 +24,9 @@ public interface LockManager extends Closeable {
      *
      * @param key the key associated with the lock
      * @return an AsyncLock instance for the specified key
+     * @deprecated use {@link LockManager#getSharedLock(String)}
      */
+    @Deprecated
     default AsyncLock getLightWeightLock(String key) {
         return getLightWeightLock(key, OptionBackoff.DEFAULT);
     }
@@ -35,6 +37,58 @@ public interface LockManager extends Closeable {
      * @param key the key associated with the lock
      * @param optionBackoff the backoff options to be used for lock acquisition retries
      * @return an AsyncLock instance for the specified key
+     * @deprecated use {@link LockManager#getSharedLock(String, OptionBackoff)}
      */
-    AsyncLock getLightWeightLock(String key, OptionBackoff optionBackoff);
+    @Deprecated
+    default AsyncLock getLightWeightLock(String key, OptionBackoff optionBackoff) {
+        return getSharedLock(key, optionBackoff);
+    }
+
+    /**
+     * Gets a shared asynchronous lock for the specified key with default backoff options. Note:
+     * "Shared" implies that a single lock key is shared among all threads. If different threads
+     * attempt to acquire a lock that has already been acquired by another thread, a
+     * IllegalLockStatusException from {@link
+     * io.streamnative.oxia.client.api.exceptions.LockException.IllegalLockStatusException} will be
+     * raised.
+     *
+     * @param key the key associated with the lock
+     * @return an AsyncLock instance for the specified key
+     */
+    default AsyncLock getSharedLock(String key) {
+        return getLightWeightLock(key, OptionBackoff.DEFAULT);
+    }
+
+    /**
+     * Gets a shared asynchronous lock for the specified key with custom backoff options. Note:
+     * "Shared" implies that a single lock key is shared among all threads. If different threads
+     * attempt to acquire a lock that has already been acquired by another thread, a
+     * IllegalLockStatusException from {@link
+     * io.streamnative.oxia.client.api.exceptions.LockException.IllegalLockStatusException} will be
+     * raised.
+     *
+     * @param key the key associated with the lock
+     * @param optionBackoff the backoff options to be used for lock acquisition retries
+     * @return an AsyncLock instance for the specified key
+     */
+    AsyncLock getSharedLock(String key, OptionBackoff optionBackoff);
+
+    /**
+     * Gets a thread simple asynchronous lock for the specified key with default backoff options.
+     *
+     * @param key the key associated with the lock
+     * @return an AsyncLock instance for the specified key
+     */
+    default AsyncLock getThreadSimpleLock(String key) {
+        return getThreadSimpleLock(key, OptionBackoff.DEFAULT);
+    }
+
+    /**
+     * Gets a thread simple asynchronous lock for the specified key with custom backoff options.
+     *
+     * @param key the key associated with the lock
+     * @param optionBackoff the backoff options to be used for lock acquisition retries
+     * @return an AsyncLock instance for the specified key
+     */
+    AsyncLock getThreadSimpleLock(String key, OptionBackoff optionBackoff);
 }

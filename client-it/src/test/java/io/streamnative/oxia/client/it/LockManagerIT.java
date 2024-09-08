@@ -212,4 +212,137 @@ public class LockManagerIT {
                     });
         }
     }
+
+    @Test
+    public void testCounterWithReentrantSyncLock() throws InterruptedException {
+        final String lockKey = UUID.randomUUID().toString();
+        // 3 nodes with 10 threads.
+        @Cleanup("shutdown")
+        final ExecutorService service = Executors.newFixedThreadPool(10);
+        final Map<Integer, AsyncOxiaClient> clients = new ConcurrentHashMap<>();
+        final Map<Integer, LockManager> lockManager = new ConcurrentHashMap<>();
+        try {
+            final Function<Integer, AsyncOxiaClient> compute =
+                    (threadName) ->
+                            OxiaClientBuilder.create(oxia.getServiceAddress())
+                                    .clientIdentifier(threadName + "")
+                                    .openTelemetry(openTelemetry)
+                                    .asyncClient()
+                                    .join();
+            final var counter = new Counter(0, 3000);
+            final var latch = new CountDownLatch(counter.total);
+            for (int i = 0; i < counter.total; i++) {
+                service.execute(
+                        () -> {
+                            final String name = Thread.currentThread().getName();
+                            int nodeId = name.hashCode() % 3;
+                            final AsyncOxiaClient client = clients.computeIfAbsent(nodeId, compute);
+                            final LockManager lm =
+                                    lockManager.computeIfAbsent(
+                                            nodeId,
+                                            (n) ->
+                                                    LockManagers.createLockManager(
+                                                            client,
+                                                            openTelemetry,
+                                                            Executors.newSingleThreadScheduledExecutor(
+                                                                    new DefaultThreadFactory("oxia-lock-manager")),
+                                                            OptionAutoRevalidate.DEFAULT));
+                            final AsyncLock lock = lm.getThreadSimpleLock(lockKey);
+                            lock.lock().join();
+                            counter.increment();
+                            lock.unlock().join();
+                            log.info("counter : {}", counter.current);
+                            latch.countDown();
+                        });
+            }
+
+            latch.await();
+            Assertions.assertEquals(counter.current, counter.total);
+            metricReader.forceFlush();
+            var metrics = metricReader.collectAllMetrics();
+            var metricsByName =
+                    metrics.stream().collect(Collectors.toMap(MetricData::getName, identity()));
+            System.out.println(metricsByName);
+            Assertions.assertTrue(metricsByName.containsKey("oxia.locks.status"));
+        } finally {
+            clients.forEach(
+                    (s, c) -> {
+                        try {
+                            c.close();
+                        } catch (Exception e) {
+                            log.error("close oxia client failed", e);
+                        }
+                    });
+        }
+    }
+
+    @Test
+    public void testCounterWithReentrantAsyncLock() throws InterruptedException {
+        final String lockKey = UUID.randomUUID().toString();
+        // 3 nodes with 10 threads
+        @Cleanup("shutdown")
+        final ExecutorService service = Executors.newFixedThreadPool(10);
+        final Map<Integer, AsyncOxiaClient> clients = new ConcurrentHashMap<>();
+        final Map<Integer, LockManager> lockManager = new ConcurrentHashMap<>();
+        try {
+            final Function<Integer, AsyncOxiaClient> compute =
+                    (nodeId) ->
+                            OxiaClientBuilder.create(oxia.getServiceAddress())
+                                    .clientIdentifier(nodeId + "")
+                                    .openTelemetry(openTelemetry)
+                                    .asyncClient()
+                                    .join();
+            final var counter = new Counter(0, 3000);
+            final var latch = new CountDownLatch(counter.total);
+            for (int i = 0; i < counter.total; i++) {
+                service.execute(
+                        () -> {
+                            final String name = Thread.currentThread().getName();
+                            final int nodeId = name.hashCode() % 3;
+                            final AsyncOxiaClient client = clients.computeIfAbsent(nodeId, compute);
+                            final LockManager lm =
+                                    lockManager.computeIfAbsent(
+                                            nodeId,
+                                            (id) ->
+                                                    LockManagers.createLockManager(
+                                                            client,
+                                                            openTelemetry,
+                                                            Executors.newSingleThreadScheduledExecutor(
+                                                                    new DefaultThreadFactory("oxia-lock-manager")),
+                                                            OptionAutoRevalidate.DEFAULT));
+                            final AsyncLock lock = lm.getThreadSimpleLock(lockKey);
+                            lock.lock()
+                                    .thenAccept(
+                                            __ -> {
+                                                counter.increment();
+                                                log.info("counter : {}", counter.current);
+                                            })
+                                    .thenCompose(__ -> lock.unlock())
+                                    .thenAccept(__ -> latch.countDown())
+                                    .exceptionally(
+                                            ex -> {
+                                                Assertions.fail("unexpected exception", ex);
+                                                return null;
+                                            });
+                        });
+            }
+            latch.await();
+            Assertions.assertEquals(counter.current, counter.total);
+            metricReader.forceFlush();
+            var metrics = metricReader.collectAllMetrics();
+            var metricsByName =
+                    metrics.stream().collect(Collectors.toMap(MetricData::getName, identity()));
+            System.out.println(metricsByName);
+            Assertions.assertTrue(metricsByName.containsKey("oxia.locks.status"));
+        } finally {
+            clients.forEach(
+                    (s, c) -> {
+                        try {
+                            c.close();
+                        } catch (Exception e) {
+                            log.error("close oxia client failed", e);
+                        }
+                    });
+        }
+    }
 }

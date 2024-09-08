@@ -62,13 +62,13 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @ThreadSafe
-final class LightWeightLock implements AsyncLock {
+final class SharedSimpleLock implements AsyncLock, NotificationReceiver {
 
-    private static final Class<? extends Throwable>[] DEFAULT_RETRYABLE_EXCEPTIONS =
+    public static final Class<? extends Throwable>[] DEFAULT_RETRYABLE_EXCEPTIONS =
             new Class[] {LockBusyException.class};
     private static final byte[] DEFAULT_VALUE = new byte[0];
-    private static final AtomicReferenceFieldUpdater<LightWeightLock, LockStatus> STATE_UPDATER =
-            AtomicReferenceFieldUpdater.newUpdater(LightWeightLock.class, LockStatus.class, "state");
+    private static final AtomicReferenceFieldUpdater<SharedSimpleLock, LockStatus> STATE_UPDATER =
+            AtomicReferenceFieldUpdater.newUpdater(SharedSimpleLock.class, LockStatus.class, "state");
 
     private final AsyncOxiaClient client;
     private final String key;
@@ -77,17 +77,8 @@ final class LightWeightLock implements AsyncLock {
     private final ScheduledExecutorService taskExecutor;
     private final String clientIdentifier;
 
-    LightWeightLock(
-            AsyncOxiaClient client,
-            String key,
-            ScheduledExecutorService executorService,
-            Backoff backoff,
-            OptionAutoRevalidate revalidate) {
-        this(client, key, executorService, backoff, revalidate, DEFAULT_RETRYABLE_EXCEPTIONS);
-    }
-
     @SafeVarargs
-    LightWeightLock(
+    SharedSimpleLock(
             AsyncOxiaClient client,
             String key,
             ScheduledExecutorService executorService,
@@ -233,8 +224,8 @@ final class LightWeightLock implements AsyncLock {
                 .put(key, DEFAULT_VALUE, Set.of(PutOption.AsEphemeralRecord, versionOption))
                 .thenAccept(
                         result -> {
-                            LightWeightLock.this.versionId = result.version().versionId();
-                            LightWeightLock.this.sessionId = result.version().sessionId();
+                            SharedSimpleLock.this.versionId = result.version().versionId();
+                            SharedSimpleLock.this.sessionId = result.version().sessionId();
                             if (log.isDebugEnabled()) {
                                 log.debug(
                                         "Acquired Lock. key={} session={} client_id={}",
@@ -338,8 +329,8 @@ final class LightWeightLock implements AsyncLock {
                                         sessionId,
                                         clientIdentifier);
                             }
-                            LightWeightLock.this.versionId = Version.KeyNotExists;
-                            LightWeightLock.this.sessionId = Optional.empty();
+                            SharedSimpleLock.this.versionId = Version.KeyNotExists;
+                            SharedSimpleLock.this.sessionId = Optional.empty();
                             STATE_UPDATER.set(this, RELEASED);
                         },
                         executorService)
@@ -430,7 +421,7 @@ final class LightWeightLock implements AsyncLock {
     private final MessagePassingQueue<Notification> revalidateQueue =
             (MessagePassingQueue<Notification>) PlatformDependent.newMpscQueue();
 
-    void notifyStateChanged(Notification notification) {
+    public void notifyStateChanged(Notification notification) {
         switch (STATE_UPDATER.get(this)) {
             case INIT, RELEASING, RELEASED -> {
                 // no-op
