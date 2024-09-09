@@ -64,10 +64,12 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import lombok.NonNull;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-@Slf4j
 class AsyncOxiaClientImpl implements AsyncOxiaClient {
+
+    private static final Logger log = LoggerFactory.getLogger(AsyncOxiaClientImpl.class);
 
     static @NonNull CompletableFuture<AsyncOxiaClient> newInstance(@NonNull ClientConfig config) {
         ScheduledExecutorService executor =
@@ -575,11 +577,6 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     public void notifications(@NonNull Consumer<Notification> notificationCallback) {
         checkIfClosed();
         notificationManager.registerCallback(notificationCallback);
-    }
-
-    @Override
-    public String getClientIdentifier() {
-        return clientIdentifier;
     }
 
     private CompletableFuture<List<String>> internalListMultiShards(

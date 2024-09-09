@@ -206,11 +206,4 @@ public interface AsyncOxiaClient extends AutoCloseable {
      * @param notificationCallback A callback to receive notifications.
      */
     void notifications(@NonNull Consumer<Notification> notificationCallback);
-
-    /**
-     * Get the client identifier
-     *
-     * @return The client identifier
-     */
-    String getClientIdentifier();
 }
