@@ -15,6 +15,7 @@
  */
 package io.streamnative.oxia.client.grpc;
 
+import io.grpc.internal.BackoffPolicy;
 import io.streamnative.oxia.client.api.Authentication;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,17 +27,22 @@ public class OxiaStubManager implements AutoCloseable {
     private final String namespace;
     @Nullable private final Authentication authentication;
     private final boolean enableTls;
+    @Nullable private final BackoffPolicy.Provider backoffProvider;
 
     public OxiaStubManager(
-            String namespace, @Nullable Authentication authentication, boolean enableTls) {
+            String namespace,
+            @Nullable Authentication authentication,
+            boolean enableTls,
+            @Nullable BackoffPolicy.Provider backoffProvider) {
         this.namespace = namespace;
         this.authentication = authentication;
         this.enableTls = enableTls;
+        this.backoffProvider = backoffProvider;
     }
 
     public OxiaStub getStub(String address) {
         return stubs.computeIfAbsent(
-                address, addr -> new OxiaStub(addr, namespace, authentication, enableTls));
+                address, addr -> new OxiaStub(addr, namespace, authentication, enableTls, backoffProvider));
     }
 
     @Override

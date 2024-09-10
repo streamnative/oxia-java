@@ -35,6 +35,7 @@ import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
+import io.streamnative.oxia.client.grpc.OxiaBackoffProvider;
 import io.streamnative.oxia.client.grpc.OxiaStubManager;
 import io.streamnative.oxia.client.grpc.OxiaStubProvider;
 import io.streamnative.oxia.client.metrics.Counter;
@@ -74,8 +75,12 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     static @NonNull CompletableFuture<AsyncOxiaClient> newInstance(@NonNull ClientConfig config) {
         ScheduledExecutorService executor =
                 Executors.newSingleThreadScheduledExecutor(new DefaultThreadFactory("oxia-client"));
+        final var oxiaBackoffProvider =
+                OxiaBackoffProvider.create(
+                        config.connectionBackoffMinDelay(), config.connectionBackoffMaxDelay());
         var stubManager =
-                new OxiaStubManager(config.namespace(), config.authentication(), config.enableTls());
+                new OxiaStubManager(
+                        config.namespace(), config.authentication(), config.enableTls(), oxiaBackoffProvider);
 
         var instrumentProvider = new InstrumentProvider(config.openTelemetry(), config.namespace());
         var serviceAddrStub = stubManager.getStub(config.serviceAddress());

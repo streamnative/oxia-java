@@ -32,4 +32,6 @@ public record ClientConfig(
         OpenTelemetry openTelemetry,
         @NonNull String namespace,
         @Nullable Authentication authentication,
-        boolean enableTls) {}
+        boolean enableTls,
+        @NonNull Duration connectionBackoffMinDelay,
+        @NonNull Duration connectionBackoffMaxDelay) {}

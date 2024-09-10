@@ -15,37 +15,30 @@
  */
 package io.streamnative.oxia.client.util;
 
-import java.time.Clock;
+import io.grpc.internal.BackoffPolicy;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
-public class Backoff {
+public final class Backoff implements BackoffPolicy {
     private final long initialDelayMillis;
     private long nextDelayMillis;
     private final long maxDelayMillis;
-    private final Clock clock;
 
-    private static final long DEFAULT_INITIAL_DELAY_MILLIS = 100;
-    private static final long DEFAULT_MAX_DELAY_SECONDS = 60;
+    public static final long DEFAULT_INITIAL_DELAY_MILLIS = 100;
+    public static final long DEFAULT_MAX_DELAY_SECONDS = 60;
 
     public Backoff() {
         this(
                 DEFAULT_INITIAL_DELAY_MILLIS,
                 TimeUnit.MILLISECONDS,
                 DEFAULT_MAX_DELAY_SECONDS,
-                TimeUnit.SECONDS,
-                Clock.systemUTC());
+                TimeUnit.SECONDS);
     }
 
     public Backoff(
-            long initialDelay,
-            TimeUnit unitInitialDelay,
-            long maxDelay,
-            TimeUnit unitMaxDelay,
-            Clock clock) {
+            long initialDelay, TimeUnit unitInitialDelay, long maxDelay, TimeUnit unitMaxDelay) {
         this.initialDelayMillis = unitInitialDelay.toMillis(initialDelay);
         this.maxDelayMillis = unitMaxDelay.toMillis(maxDelay);
-        this.clock = clock;
         this.nextDelayMillis = initialDelayMillis;
     }
 
@@ -62,5 +55,10 @@ public class Backoff {
 
     public void reset() {
         this.nextDelayMillis = initialDelayMillis;
+    }
+
+    @Override
+    public long nextBackoffNanos() {
+        return TimeUnit.MILLISECONDS.toNanos(nextDelayMillis());
     }
 }
