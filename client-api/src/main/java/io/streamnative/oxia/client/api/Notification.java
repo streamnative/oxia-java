@@ -19,7 +19,10 @@ import lombok.NonNull;
 
 /** A notification from an Oxia server indicating a change to a record associated with a key. */
 public sealed interface Notification
-        permits Notification.KeyCreated, Notification.KeyModified, Notification.KeyDeleted {
+        permits Notification.KeyCreated,
+                Notification.KeyDeleted,
+                Notification.KeyModified,
+                Notification.KeyRangeDelete {
 
     /**
      * @return The key of the record.
@@ -56,4 +59,18 @@ public sealed interface Notification
      * @param key The key of the deleted record.
      */
     record KeyDeleted(@NonNull String key) implements Notification {}
+
+    /**
+     * The record associated with the key range has been deleted.
+     *
+     * @param startKeyInclusive The range deletion start key. (inclusive)
+     * @param endKeyExclusive The range deletion end key. (exclusive)
+     */
+    record KeyRangeDelete(@NonNull String startKeyInclusive, @NonNull String endKeyExclusive)
+            implements Notification {
+        @Override
+        public String key() {
+            return startKeyInclusive;
+        }
+    }
 }
