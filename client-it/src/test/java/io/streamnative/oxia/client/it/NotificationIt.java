@@ -36,6 +36,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
+import org.testcontainers.images.PullPolicy;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
@@ -45,6 +46,7 @@ public class NotificationIt {
     @Container
     private static final OxiaContainer oxia =
             new OxiaContainer(OxiaContainer.DEFAULT_IMAGE_NAME)
+                    .withImagePullPolicy(PullPolicy.alwaysPull())
                     .withShards(10)
                     .withLogConsumer(new Slf4jLogConsumer(log));
 
@@ -100,12 +102,13 @@ public class NotificationIt {
         Awaitility.await()
                 .untilAsserted(
                         () -> {
-                            Assertions.assertEquals(notifications.size(), 1);
-                            final Notification notification = notifications.poll();
-                            Assertions.assertInstanceOf(Notification.KeyRangeDelete.class, notification);
-                            final Notification.KeyRangeDelete krd = (Notification.KeyRangeDelete) notification;
-                            Assertions.assertEquals(krd.startKeyInclusive(), "0");
-                            Assertions.assertEquals(krd.endKeyExclusive(), "10");
+                            Assertions.assertEquals(notifications.size(), 10); // 10 shards
+                            for (Notification notification : notifications) {
+                                Assertions.assertInstanceOf(Notification.KeyRangeDelete.class, notification);
+                                final Notification.KeyRangeDelete krd = (Notification.KeyRangeDelete) notification;
+                                Assertions.assertEquals(krd.startKeyInclusive(), "0");
+                                Assertions.assertEquals(krd.endKeyExclusive(), "100");
+                            }
                         });
     }
 }
