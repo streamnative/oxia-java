@@ -63,6 +63,7 @@ import io.streamnative.oxia.proto.WriteRequest;
 import io.streamnative.oxia.proto.WriteResponse;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -200,7 +201,8 @@ class BatchTest {
                         new byte[0],
                         OptionalLong.of(1),
                         OptionalLong.empty(),
-                        Optional.empty());
+                        Optional.empty(),
+                        Collections.emptyList());
         PutOperation putEphemeral =
                 new PutOperation(
                         putEphemeralCallable,
@@ -210,7 +212,8 @@ class BatchTest {
                         new byte[0],
                         OptionalLong.of(1),
                         OptionalLong.of(1),
-                        Optional.of("client-id"));
+                        Optional.of("client-id"),
+                        Collections.emptyList());
         DeleteOperation delete = new DeleteOperation(deleteCallable, "", OptionalLong.of(1));
         DeleteRangeOperation deleteRange = new DeleteRangeOperation(deleteRangeCallable, "a", "b");
 

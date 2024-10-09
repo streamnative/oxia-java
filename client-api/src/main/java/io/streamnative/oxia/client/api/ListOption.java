@@ -17,7 +17,7 @@ package io.streamnative.oxia.client.api;
 
 import lombok.NonNull;
 
-public sealed interface ListOption permits OptionPartitionKey {
+public sealed interface ListOption permits OptionPartitionKey, OptionSecondaryIndexName {
 
     /**
      * PartitionKey overrides the partition routing with the specified `partitionKey` instead of the
@@ -30,5 +30,16 @@ public sealed interface ListOption permits OptionPartitionKey {
      */
     static ListOption PartitionKey(@NonNull String partitionKey) {
         return new OptionPartitionKey(partitionKey);
+    }
+
+    /**
+     * UseIndex let the users specify a different index to follow for the list operation
+     *
+     * <p>Note: The returned list will contain they primary keys of the records
+     *
+     * @param secondaryIndexName the name of the secondary index to use for the list operation
+     */
+    static ListOption UseIndex(@NonNull String secondaryIndexName) {
+        return new OptionSecondaryIndexName(secondaryIndexName);
     }
 }

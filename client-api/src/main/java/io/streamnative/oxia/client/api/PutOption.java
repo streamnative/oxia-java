@@ -16,10 +16,15 @@
 package io.streamnative.oxia.client.api;
 
 import java.util.List;
+import java.util.Set;
 import lombok.NonNull;
 
 public sealed interface PutOption
-        permits OptionEphemeral, OptionPartitionKey, OptionSequenceKeysDeltas, OptionVersionId {
+        permits OptionEphemeral,
+                OptionPartitionKey,
+                OptionSecondaryIndex,
+                OptionSequenceKeysDeltas,
+                OptionVersionId {
 
     PutOption IfRecordDoesNotExist = new OptionVersionId.OptionRecordDoesNotExist();
     PutOption AsEphemeralRecord = new OptionEphemeral();
@@ -54,5 +59,23 @@ public sealed interface PutOption
      */
     static PutOption SequenceKeysDeltas(@NonNull List<Long> sequenceKeysDeltas) {
         return new OptionSequenceKeysDeltas(sequenceKeysDeltas);
+    }
+
+    /**
+     * SecondaryIndex let the users specify additional keys to index the record Index names are
+     * arbitrary strings and can be used in {@link SyncOxiaClient#list(String, String, Set)} and
+     * {@link SyncOxiaClient#rangeScan(String, String, Set)} requests.
+     *
+     * <p>Secondary keys are not required to be unique.
+     *
+     * <p>Multiple secondary indexes can be passed on the same record, even reusing multiple times the
+     * same indexName.
+     *
+     * @param indexName the name of the secondary index
+     * @param secondaryKey the secondary key for this record
+     * @return
+     */
+    static PutOption SecondaryIndex(@NonNull String indexName, String secondaryKey) {
+        return new OptionSecondaryIndex(indexName, secondaryKey);
     }
 }

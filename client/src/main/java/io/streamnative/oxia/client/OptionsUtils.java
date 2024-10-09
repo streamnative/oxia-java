@@ -20,9 +20,13 @@ import io.streamnative.oxia.client.api.GetOption;
 import io.streamnative.oxia.client.api.OptionComparisonType;
 import io.streamnative.oxia.client.api.OptionEphemeral;
 import io.streamnative.oxia.client.api.OptionPartitionKey;
+import io.streamnative.oxia.client.api.OptionSecondaryIndex;
+import io.streamnative.oxia.client.api.OptionSecondaryIndexName;
 import io.streamnative.oxia.client.api.OptionSequenceKeysDeltas;
 import io.streamnative.oxia.client.api.OptionVersionId;
 import io.streamnative.oxia.proto.KeyComparisonType;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.OptionalLong;
@@ -133,5 +137,44 @@ public class OptionsUtils {
         }
 
         return comparisonType;
+    }
+
+    public static List<OptionSecondaryIndex> getSecondaryIndexes(Set<?> options) {
+        if (options == null || options.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<OptionSecondaryIndex> res = null;
+        for (var o : options) {
+            if (o instanceof OptionSecondaryIndex si) {
+                if (res == null) {
+                    res = new ArrayList<>();
+                }
+
+                res.add(si);
+            }
+        }
+
+        return res != null ? res : Collections.emptyList();
+    }
+
+    public static Optional<String> getSecondaryIndexName(Set<?> options) {
+        if (options == null || options.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Optional<String> secondaryIndexName = Optional.empty();
+        for (var o : options) {
+            if (o instanceof OptionSecondaryIndexName sin) {
+                if (secondaryIndexName.isPresent()) {
+                    throw new IllegalArgumentException(
+                            "Secondary index can only specified once:  " + options);
+                }
+
+                secondaryIndexName = Optional.of(sin.secondaryIndexName());
+            }
+        }
+
+        return secondaryIndexName;
     }
 }

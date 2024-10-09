@@ -17,7 +17,7 @@ package io.streamnative.oxia.client.api;
 
 import lombok.NonNull;
 
-public sealed interface RangeScanOption permits OptionPartitionKey {
+public sealed interface RangeScanOption permits OptionPartitionKey, OptionSecondaryIndexName {
 
     /**
      * PartitionKey overrides the partition routing with the specified `partitionKey` instead of the
@@ -30,5 +30,15 @@ public sealed interface RangeScanOption permits OptionPartitionKey {
      */
     static RangeScanOption PartitionKey(@NonNull String partitionKey) {
         return new OptionPartitionKey(partitionKey);
+    }
+
+    /**
+     * UseIndex let the users specify a different index to follow for the range scan operation
+     *
+     * @param secondaryIndexName the name of the secondary index to use
+     * @return
+     */
+    static RangeScanOption UseIndex(@NonNull String secondaryIndexName) {
+        return new OptionSecondaryIndexName(secondaryIndexName);
     }
 }
