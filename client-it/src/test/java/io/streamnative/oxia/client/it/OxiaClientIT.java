@@ -625,28 +625,19 @@ public class OxiaClientIT {
         @Cleanup
         SyncOxiaClient client = OxiaClientBuilder.create(oxia.getServiceAddress()).syncClient();
 
-        client.put("si-a", "0".getBytes(),
-                Set.of(PutOption.SecondaryIndex("val", "0")));
-        client.put("si-b", "1".getBytes(),
-                Set.of(PutOption.SecondaryIndex("val", "1")));
-        client.put("si-c", "2".getBytes(),
-                Set.of(PutOption.SecondaryIndex("val", "2")));
-        client.put("si-d", "3".getBytes(),
-                Set.of(PutOption.SecondaryIndex("val", "3")));
-        client.put("si-e", "4".getBytes(),
-                Set.of(PutOption.SecondaryIndex("val", "4")));
-        client.put("si-f", "5".getBytes(),
-                Set.of(PutOption.SecondaryIndex("val", "5")));
-        client.put("si-g", "6".getBytes(),
-                Set.of(PutOption.SecondaryIndex("val", "6")));
+        client.put("si-a", "0".getBytes(), Set.of(PutOption.SecondaryIndex("val", "0")));
+        client.put("si-b", "1".getBytes(), Set.of(PutOption.SecondaryIndex("val", "1")));
+        client.put("si-c", "2".getBytes(), Set.of(PutOption.SecondaryIndex("val", "2")));
+        client.put("si-d", "3".getBytes(), Set.of(PutOption.SecondaryIndex("val", "3")));
+        client.put("si-e", "4".getBytes(), Set.of(PutOption.SecondaryIndex("val", "4")));
+        client.put("si-f", "5".getBytes(), Set.of(PutOption.SecondaryIndex("val", "5")));
+        client.put("si-g", "6".getBytes(), Set.of(PutOption.SecondaryIndex("val", "6")));
 
-        List<String> list =
-                client.list("1", "4", Set.of(ListOption.UseIndex("val")));
+        List<String> list = client.list("1", "4", Set.of(ListOption.UseIndex("val")));
         assertThat(list).containsExactly("si-b", "si-c", "si-d");
 
         Iterable<GetResult> iterable =
-                client.rangeScan(
-                        "2", "5", Set.of(RangeScanOption.UseIndex("val")));
+                client.rangeScan("2", "5", Set.of(RangeScanOption.UseIndex("val")));
         list =
                 StreamSupport.stream(iterable.spliterator(), false)
                         .map(GetResult::getKey)
@@ -660,9 +651,7 @@ public class OxiaClientIT {
         list = client.list("0", "3", Set.of(ListOption.UseIndex("val")));
         assertThat(list).containsExactly("si-a", "si-c");
 
-        iterable =
-                client.rangeScan(
-                        "0", "3", Set.of(RangeScanOption.UseIndex("val")));
+        iterable = client.rangeScan("0", "3", Set.of(RangeScanOption.UseIndex("val")));
         list =
                 StreamSupport.stream(iterable.spliterator(), false)
                         .map(GetResult::getKey)
