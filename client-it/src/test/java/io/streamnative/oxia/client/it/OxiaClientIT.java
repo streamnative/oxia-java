@@ -619,4 +619,53 @@ public class OxiaClientIT {
             assertThat(new String(gr.getValue())).isEqualTo("message-" + (i + 1));
         }
     }
+
+    @Test
+    void testSecondaryIndex() throws Exception {
+        @Cleanup
+        SyncOxiaClient client = OxiaClientBuilder.create(oxia.getServiceAddress()).syncClient();
+
+        client.put(
+                "si-a",
+                "0".getBytes(),
+                Set.of(PutOption.PartitionKey("x"), PutOption.SecondaryIndex("val", "0")));
+        client.put(
+                "si-b",
+                "1".getBytes(),
+                Set.of(PutOption.PartitionKey("x"), PutOption.SecondaryIndex("val", "1")));
+        client.put(
+                "si-c",
+                "2".getBytes(),
+                Set.of(PutOption.PartitionKey("x"), PutOption.SecondaryIndex("val", "2")));
+        client.put(
+                "si-d",
+                "3".getBytes(),
+                Set.of(PutOption.PartitionKey("x"), PutOption.SecondaryIndex("val", "3")));
+        client.put(
+                "si-e",
+                "4".getBytes(),
+                Set.of(PutOption.PartitionKey("x"), PutOption.SecondaryIndex("val", "4")));
+        client.put(
+                "si-f",
+                "5".getBytes(),
+                Set.of(PutOption.PartitionKey("x"), PutOption.SecondaryIndex("val", "5")));
+        client.put(
+                "si-g",
+                "6".getBytes(),
+                Set.of(PutOption.PartitionKey("x"), PutOption.SecondaryIndex("val", "6")));
+
+        List<String> list =
+                client.list("1", "4", Set.of(ListOption.PartitionKey("x"), ListOption.UseIndex("val")));
+        assertThat(list).isEqualTo(List.of("si-b", "si-c", "si-d"));
+
+        Iterable<GetResult> iterable =
+                client.rangeScan(
+                        "2", "5", Set.of(RangeScanOption.PartitionKey("x"), RangeScanOption.UseIndex("val")));
+        list =
+                StreamSupport.stream(iterable.spliterator(), false)
+                        .map(GetResult::getKey)
+                        .sorted()
+                        .toList();
+        assertThat(list).containsExactly("si-c", "si-d", "si-e");
+    }
 }

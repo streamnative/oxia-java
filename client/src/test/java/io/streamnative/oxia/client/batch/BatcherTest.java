@@ -34,6 +34,7 @@ import io.streamnative.oxia.client.util.BatchedArrayBlockingQueue;
 import io.streamnative.oxia.proto.KeyComparisonType;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.CompletableFuture;
@@ -115,7 +116,8 @@ class BatcherTest {
                         "value".getBytes(StandardCharsets.UTF_8),
                         OptionalLong.empty(),
                         OptionalLong.empty(),
-                        Optional.empty());
+                        Optional.empty(),
+                        Collections.emptyList());
         when(batchFactory.getBatch(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(config.maxRequestsPerBatch(), 1);
         when(batch.canAdd(any())).thenReturn(false);

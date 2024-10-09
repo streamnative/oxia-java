@@ -315,6 +315,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         var shardId = shardManager.getShardForKey(partitionKey.orElse(key));
         var versionId = OptionsUtils.getVersionId(options);
         var sequenceKeysDeltas = OptionsUtils.getSequenceKeysDeltas(options);
+        var secondaryIndexes = OptionsUtils.getSecondaryIndexes(options);
 
         CompletableFuture<PutResult> future = new CompletableFuture<>();
 
@@ -328,7 +329,8 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                             value,
                             versionId,
                             OptionalLong.empty(),
-                            Optional.empty());
+                            Optional.empty(),
+                            secondaryIndexes);
             writeBatchManager.getBatcher(shardId).add(op);
         } else {
             // The put operation is trying to write an ephemeral record. We need to have a valid session
@@ -346,7 +348,8 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                                                 value,
                                                 versionId,
                                                 OptionalLong.of(session.getSessionId()),
-                                                Optional.of(clientIdentifier));
+                                                Optional.of(clientIdentifier),
+                                                secondaryIndexes);
                                 writeBatchManager.getBatcher(shardId).add(op);
                             })
                     .exceptionally(
@@ -557,11 +560,12 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
             Objects.requireNonNull(endKeyExclusive);
 
             Optional<String> partitionKey = OptionsUtils.getPartitionKey(options);
+            Optional<String> secondaryIndex = OptionsUtils.getSecondaryIndexName(options);
             if (partitionKey.isPresent()) {
                 long shardId = shardManager.getShardForKey(partitionKey.get());
-                callback = internalShardlist(shardId, startKeyInclusive, endKeyExclusive);
+                callback = internalShardlist(shardId, startKeyInclusive, endKeyExclusive, secondaryIndex);
             } else {
-                callback = internalListMultiShards(startKeyInclusive, endKeyExclusive);
+                callback = internalListMultiShards(startKeyInclusive, endKeyExclusive, secondaryIndex);
             }
         } catch (Exception e) {
             callback = CompletableFuture.failedFuture(e);
@@ -585,10 +589,10 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     }
 
     private CompletableFuture<List<String>> internalListMultiShards(
-            String startKeyInclusive, String endKeyExclusive) {
+            String startKeyInclusive, String endKeyExclusive, Optional<String> secondaryIndex) {
         List<CompletableFuture<List<String>>> futures = new ArrayList<>();
         for (long shardId : shardManager.allShardIds()) {
-            futures.add(internalShardlist(shardId, startKeyInclusive, endKeyExclusive));
+            futures.add(internalShardlist(shardId, startKeyInclusive, endKeyExclusive, secondaryIndex));
         }
 
         CompletableFuture<List<String>> result = new CompletableFuture<>();
@@ -613,15 +617,19 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     }
 
     private CompletableFuture<List<String>> internalShardlist(
-            long shardId, String startKeyInclusive, String endKeyExclusive) {
+            long shardId,
+            String startKeyInclusive,
+            String endKeyExclusive,
+            Optional<String> secondaryIndexName) {
         var leader = shardManager.leader(shardId);
         var stub = stubManager.getStub(leader);
-        var request =
+        var requestBuilder =
                 ListRequest.newBuilder()
                         .setShardId(shardId)
                         .setStartInclusive(startKeyInclusive)
-                        .setEndExclusive(endKeyExclusive)
-                        .build();
+                        .setEndExclusive(endKeyExclusive);
+        secondaryIndexName.ifPresent(requestBuilder::setSecondaryIndexName);
+        var request = requestBuilder.build();
 
         CompletableFuture<List<String>> future = new CompletableFuture<>();
         List<String> result = new ArrayList<>();
@@ -698,11 +706,14 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
             Objects.requireNonNull(endKeyExclusive);
 
             Optional<String> partitionKey = OptionsUtils.getPartitionKey(options);
+            Optional<String> secondaryIndexName = OptionsUtils.getSecondaryIndexName(options);
             if (partitionKey.isPresent()) {
                 long shardId = shardManager.getShardForKey(partitionKey.get());
-                internalShardRangeScan(shardId, startKeyInclusive, endKeyExclusive, timedConsumer);
+                internalShardRangeScan(
+                        shardId, startKeyInclusive, endKeyExclusive, secondaryIndexName, timedConsumer);
             } else {
-                internalRangeScanMultiShards(startKeyInclusive, endKeyExclusive, timedConsumer);
+                internalRangeScanMultiShards(
+                        startKeyInclusive, endKeyExclusive, secondaryIndexName, timedConsumer);
             }
         } catch (Exception e) {
             consumer.onError(e);
@@ -721,15 +732,18 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
             long shardId,
             String startKeyInclusive,
             String endKeyExclusive,
+            Optional<String> secondaryIndexName,
             RangeScanConsumerWithShard consumer) {
         var leader = shardManager.leader(shardId);
         var stub = stubManager.getStub(leader);
-        var request =
+        var requestBuilder =
                 RangeScanRequest.newBuilder()
                         .setShardId(shardId)
                         .setStartInclusive(startKeyInclusive)
-                        .setEndExclusive(endKeyExclusive)
-                        .build();
+                        .setEndExclusive(endKeyExclusive);
+
+        secondaryIndexName.ifPresent(requestBuilder::setSecondaryIndexName);
+        var request = requestBuilder.build();
 
         stub.async()
                 .rangeScan(
@@ -756,7 +770,10 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     }
 
     private void internalRangeScanMultiShards(
-            String startKeyInclusive, String endKeyExclusive, RangeScanConsumerWithShard consumer) {
+            String startKeyInclusive,
+            String endKeyExclusive,
+            Optional<String> secondaryIndexName,
+            RangeScanConsumerWithShard consumer) {
         Set<Long> shardIds = shardManager.allShardIds();
 
         RangeScanConsumerWithShard multiShardConsumer =
@@ -789,7 +806,8 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                 };
 
         for (long shardId : shardIds) {
-            internalShardRangeScan(shardId, startKeyInclusive, endKeyExclusive, multiShardConsumer);
+            internalShardRangeScan(
+                    shardId, startKeyInclusive, endKeyExclusive, secondaryIndexName, multiShardConsumer);
         }
     }
 

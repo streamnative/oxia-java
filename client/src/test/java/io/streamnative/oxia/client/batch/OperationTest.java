@@ -41,6 +41,7 @@ import io.streamnative.oxia.proto.GetResponse;
 import io.streamnative.oxia.proto.KeyComparisonType;
 import io.streamnative.oxia.proto.PutResponse;
 import io.streamnative.oxia.proto.Version;
+import java.util.Collections;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.OptionalLong;
@@ -159,7 +160,8 @@ class OperationTest {
                         payload,
                         OptionalLong.of(10),
                         OptionalLong.empty(),
-                        Optional.empty());
+                        Optional.empty(),
+                        Collections.emptyList());
         long sessionId = 0L;
 
         @Test
@@ -175,7 +177,8 @@ class OperationTest {
                                             payload,
                                             OptionalLong.of(KeyNotExists),
                                             OptionalLong.empty(),
-                                            Optional.empty()));
+                                            Optional.empty(),
+                                            Collections.emptyList()));
             assertThatNoException()
                     .isThrownBy(
                             () ->
@@ -187,7 +190,8 @@ class OperationTest {
                                             payload,
                                             OptionalLong.of(0L),
                                             OptionalLong.empty(),
-                                            Optional.empty()));
+                                            Optional.empty(),
+                                            Collections.emptyList()));
             assertThatThrownBy(
                             () ->
                                     new PutOperation(
@@ -198,7 +202,8 @@ class OperationTest {
                                             payload,
                                             OptionalLong.of(-2L),
                                             OptionalLong.empty(),
-                                            Optional.empty()))
+                                            Optional.empty(),
+                                            Collections.emptyList()))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
@@ -213,7 +218,8 @@ class OperationTest {
                             payload,
                             OptionalLong.empty(),
                             OptionalLong.empty(),
-                            Optional.empty());
+                            Optional.empty(),
+                            Collections.emptyList());
             var request = op.toProto();
             assertThat(request)
                     .satisfies(
@@ -237,7 +243,8 @@ class OperationTest {
                             payload,
                             OptionalLong.of(1L),
                             OptionalLong.empty(),
-                            Optional.empty());
+                            Optional.empty(),
+                            Collections.emptyList());
             var request = op.toProto();
             assertThat(request)
                     .satisfies(
@@ -261,7 +268,8 @@ class OperationTest {
                             payload,
                             OptionalLong.empty(),
                             OptionalLong.empty(),
-                            Optional.empty());
+                            Optional.empty(),
+                            Collections.emptyList());
             var request = op.toProto();
             assertThat(request)
                     .satisfies(
@@ -285,7 +293,8 @@ class OperationTest {
                             payload,
                             OptionalLong.of(KeyNotExists),
                             OptionalLong.empty(),
-                            Optional.empty());
+                            Optional.empty(),
+                            Collections.emptyList());
             var request = op.toProto();
             assertThat(request)
                     .satisfies(
@@ -309,7 +318,8 @@ class OperationTest {
                             payload,
                             OptionalLong.empty(),
                             OptionalLong.of(sessionId),
-                            Optional.of("client-id"));
+                            Optional.of("client-id"),
+                            Collections.emptyList());
             var request = op.toProto();
             assertThat(request)
                     .satisfies(
@@ -348,7 +358,8 @@ class OperationTest {
                             payload,
                             OptionalLong.of(KeyNotExists),
                             OptionalLong.empty(),
-                            Optional.empty());
+                            Optional.empty(),
+                            Collections.emptyList());
             var response = PutResponse.newBuilder().setStatus(UNEXPECTED_VERSION_ID).build();
             op.complete(response);
             assertThat(callback).isCompletedExceptionally();
@@ -373,7 +384,8 @@ class OperationTest {
                             payload,
                             OptionalLong.empty(),
                             OptionalLong.of(5),
-                            Optional.of("client-id"));
+                            Optional.of("client-id"),
+                            Collections.emptyList());
             var response = PutResponse.newBuilder().setStatus(SESSION_DOES_NOT_EXIST).build();
             op.complete(response);
             assertThat(callback).isCompletedExceptionally();

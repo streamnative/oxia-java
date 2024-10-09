@@ -26,6 +26,7 @@ import static io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOper
 import com.google.protobuf.ByteString;
 import io.streamnative.oxia.client.ProtoUtil;
 import io.streamnative.oxia.client.api.GetResult;
+import io.streamnative.oxia.client.api.OptionSecondaryIndex;
 import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.exceptions.KeyAlreadyExistsException;
 import io.streamnative.oxia.client.api.exceptions.SessionDoesNotExistException;
@@ -90,7 +91,8 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 byte @NonNull [] value,
                 @NonNull OptionalLong expectedVersionId,
                 OptionalLong sessionId,
-                Optional<String> clientIdentifier)
+                Optional<String> clientIdentifier,
+                List<OptionSecondaryIndex> secondaryIndexes)
                 implements WriteOperation<PutResult> {
 
             public PutOperation {
@@ -120,6 +122,16 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 sessionId.ifPresent(builder::setSessionId);
                 clientIdentifier.ifPresent(builder::setClientIdentity);
                 sequenceKeysDeltas.ifPresent(builder::addAllSequenceKeyDelta);
+                if (!secondaryIndexes.isEmpty()) {
+                    secondaryIndexes.forEach(
+                            si -> {
+                                builder
+                                        .addSecondaryIndexesBuilder()
+                                        .setIndexName(si.indexName())
+                                        .setSecondaryKey(si.secondaryKey())
+                                        .build();
+                            });
+                }
                 return builder.build();
             }
 
