@@ -95,7 +95,7 @@ class SessionManagerTest {
         assertThat(session2).isCompletedWithValue(session);
         verify(factory, times(2)).create(shardId);
 
-        // third should be success
+        // third should be cache
         var session3 = manager.getSession(shardId);
         assertThat(session3).isSameAs(session2);
         verify(factory, times(2)).create(shardId);
