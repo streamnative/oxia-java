@@ -79,12 +79,12 @@ class SessionManagerTest {
         verifyNoMoreInteractions(factory, session);
     }
 
-
     @Test
     void existingSessionWithFailure() {
         var shardId = 1L;
         // first failed
-        when(factory.create(shardId)).thenReturn(CompletableFuture.failedFuture(new IllegalStateException("failed")));
+        when(factory.create(shardId))
+                .thenReturn(CompletableFuture.failedFuture(new IllegalStateException("failed")));
         var session1 = manager.getSession(shardId);
         assertThat(session1).isCompletedExceptionally();
         verify(factory, times(1)).create(shardId);
