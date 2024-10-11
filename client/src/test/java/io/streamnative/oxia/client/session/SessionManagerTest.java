@@ -79,6 +79,29 @@ class SessionManagerTest {
         verifyNoMoreInteractions(factory, session);
     }
 
+
+    @Test
+    void existingSessionWithFailure() {
+        var shardId = 1L;
+        // first failed
+        when(factory.create(shardId)).thenReturn(CompletableFuture.failedFuture(new IllegalStateException("failed")));
+        var session1 = manager.getSession(shardId);
+        assertThat(session1).isCompletedExceptionally();
+        verify(factory, times(1)).create(shardId);
+
+        // second should be success
+        when(factory.create(shardId)).thenReturn(CompletableFuture.completedFuture(session));
+        var session2 = manager.getSession(shardId);
+        assertThat(session2).isCompletedWithValue(session);
+        verify(factory, times(2)).create(shardId);
+
+        // third should be success
+        var session3 = manager.getSession(shardId);
+        assertThat(session3).isSameAs(session2);
+        verify(factory, times(2)).create(shardId);
+        verifyNoMoreInteractions(factory, session);
+    }
+
     @Test
     void close() throws Exception {
         var shardId = 5L;

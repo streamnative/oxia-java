@@ -58,7 +58,12 @@ public class SessionManager
                     new IllegalStateException("session manager has been closed"));
         }
 
-        return sessionsByShardId.computeIfAbsent(shardId, s -> factory.create(shardId));
+        return sessionsByShardId.compute(shardId, (key, existing) -> {
+            if (existing != null && !existing.isCompletedExceptionally()) {
+                return existing;
+            }
+            return factory.create(shardId);
+        });
     }
 
     @Override
