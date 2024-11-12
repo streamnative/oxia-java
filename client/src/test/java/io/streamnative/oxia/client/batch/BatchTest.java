@@ -105,7 +105,8 @@ class BatchTest {
                     authentication,
                     authentication != null,
                     Duration.ofMillis(100),
-                    Duration.ofSeconds(30));
+                    Duration.ofSeconds(30),
+                    1);
 
     private final OxiaClientImplBase serviceImpl =
             mock(
@@ -170,7 +171,6 @@ class BatchTest {
         stub =
                 new OxiaStub(
                         InProcessChannelBuilder.forName(serverName).directExecutor().build(),
-                        "default",
                         authentication,
                         OxiaBackoffProvider.DEFAULT);
         clientByShardId = mock(OxiaStubProvider.class);
@@ -494,7 +494,8 @@ class BatchTest {
                         null,
                         false,
                         Duration.ofMillis(100),
-                        Duration.ofSeconds(30));
+                        Duration.ofSeconds(30),
+                        1);
 
         @Nested
         @DisplayName("Tests of write batch factory")

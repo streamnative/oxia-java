@@ -27,7 +27,6 @@ import io.grpc.TlsChannelCredentials;
 import io.grpc.internal.BackoffPolicy;
 import io.grpc.stub.MetadataUtils;
 import io.streamnative.oxia.client.api.Authentication;
-import io.streamnative.oxia.client.batch.WriteStreamWrapper;
 import io.streamnative.oxia.proto.OxiaClientGrpc;
 
 import java.lang.reflect.Field;
@@ -42,13 +41,10 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class OxiaStub implements AutoCloseable {
     private final ManagedChannel channel;
-    private final String namespace;
     private final @NonNull OxiaClientGrpc.OxiaClientStub asyncStub;
-    private final Map<Long, WriteStreamWrapper> writeStreams = new ConcurrentHashMap<>();
 
     public OxiaStub(
             String address,
-            String namespace,
             @Nullable Authentication authentication,
             boolean enableTls,
             @Nullable BackoffPolicy.Provider backoffProvider) {
@@ -59,16 +55,14 @@ public class OxiaStub implements AutoCloseable {
                                         : InsecureChannelCredentials.create())
                         .directExecutor()
                         .build(),
-                namespace,
                 authentication, backoffProvider);
     }
 
-    public OxiaStub(ManagedChannel channel, String namespace) {
-        this(channel, namespace, null, OxiaBackoffProvider.DEFAULT);
+    public OxiaStub(ManagedChannel channel) {
+        this(channel, null, OxiaBackoffProvider.DEFAULT);
     }
 
-    public OxiaStub(ManagedChannel channel, String namespace,
-                    @Nullable final Authentication authentication,
+    public OxiaStub(ManagedChannel channel, @Nullable final Authentication authentication,
                     @Nullable BackoffPolicy.Provider oxiaBackoffPolicyProvider) {
         /*
             The GRPC default backoff is from 2s to 120s, which is very long for time sensitive usage.
@@ -79,7 +73,6 @@ public class OxiaStub implements AutoCloseable {
         if (oxiaBackoffPolicyProvider != null) {
             configureBackoffPolicyIfPossible(channel, oxiaBackoffPolicyProvider);
         }
-        this.namespace = namespace;
         this.channel = channel;
         if (authentication != null) {
             this.asyncStub =
@@ -121,28 +114,6 @@ public class OxiaStub implements AutoCloseable {
 
     public OxiaClientGrpc.OxiaClientStub async() {
         return asyncStub;
-    }
-
-    private static final Metadata.Key<String> NAMESPACE_KEY =
-            Metadata.Key.of("namespace", Metadata.ASCII_STRING_MARSHALLER);
-    private static final Metadata.Key<String> SHARD_ID_KEY =
-            Metadata.Key.of("shard-id", Metadata.ASCII_STRING_MARSHALLER);
-
-    public WriteStreamWrapper writeStream(long streamId) {
-        return writeStreams.compute(
-                streamId,
-                (key, stream) -> {
-                    if (stream == null || !stream.isValid()) {
-                        Metadata headers = new Metadata();
-                        headers.put(NAMESPACE_KEY, namespace);
-                        headers.put(SHARD_ID_KEY, String.format("%d", streamId));
-
-                        OxiaClientGrpc.OxiaClientStub stub =
-                                asyncStub.withInterceptors(MetadataUtils.newAttachHeadersInterceptor(headers));
-                        return new WriteStreamWrapper(stub);
-                    }
-                    return stream;
-                });
     }
 
     @Override

@@ -97,8 +97,7 @@ final class WriteBatch extends BatchBase implements Batch {
     public void send() {
         startSendTimeNanos = System.nanoTime();
         try {
-            getStub()
-                    .writeStream(getShardId())
+            getWriteStream()
                     .send(toProto())
                     .thenAccept(
                             response -> {

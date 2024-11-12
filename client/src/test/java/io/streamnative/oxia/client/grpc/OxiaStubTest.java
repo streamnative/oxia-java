@@ -21,8 +21,12 @@ import io.streamnative.oxia.proto.ReadRequest;
 import io.streamnative.oxia.proto.ReadResponse;
 import io.streamnative.oxia.testcontainers.OxiaContainer;
 import java.util.concurrent.CompletableFuture;
+
+import lombok.Cleanup;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
@@ -47,9 +51,9 @@ public class OxiaStubTest {
     public void testOxiaReconnectBackoff(BackoffType type) throws Exception {
         final OxiaStubManager stubManager;
         if (type == BackoffType.Oxia) {
-            stubManager = new OxiaStubManager("default", null, false, OxiaBackoffProvider.DEFAULT);
+            stubManager = new OxiaStubManager(null, false, OxiaBackoffProvider.DEFAULT, 1);
         } else {
-            stubManager = new OxiaStubManager("default", null, false, null);
+            stubManager = new OxiaStubManager(null, false, null, 1);
         }
 
         final OxiaStub stub = stubManager.getStub(oxia.getServiceAddress());
@@ -120,5 +124,18 @@ public class OxiaStubTest {
                             }
                         });
         return f;
+    }
+
+    @Test
+    @SneakyThrows
+    public void testMaxConnectionPerNode() {
+        final var maxConnectionPerNode =10;
+        @Cleanup
+        var stubManager = new OxiaStubManager(null, false,
+                OxiaBackoffProvider.DEFAULT, maxConnectionPerNode);
+        for (int i = 0; i < 1000; i++) {
+            stubManager.getStub(oxia.getServiceAddress());
+        }
+        Assertions.assertEquals(maxConnectionPerNode, stubManager.stubs.size());
     }
 }

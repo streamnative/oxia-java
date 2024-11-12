@@ -79,8 +79,8 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                 OxiaBackoffProvider.create(
                         config.connectionBackoffMinDelay(), config.connectionBackoffMaxDelay());
         var stubManager =
-                new OxiaStubManager(
-                        config.namespace(), config.authentication(), config.enableTls(), oxiaBackoffProvider);
+                new OxiaStubManager(config.authentication(), config.enableTls(), oxiaBackoffProvider,
+                        config.maxConnectionPerNode());
 
         var instrumentProvider = new InstrumentProvider(config.openTelemetry(), config.namespace());
         var serviceAddrStub = stubManager.getStub(config.serviceAddress());
@@ -89,7 +89,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         var notificationManager =
                 new NotificationManager(executor, stubManager, shardManager, instrumentProvider);
 
-        OxiaStubProvider stubProvider = new OxiaStubProvider(stubManager, shardManager);
+        OxiaStubProvider stubProvider = new OxiaStubProvider(config.namespace(), stubManager, shardManager);
 
         shardManager.addCallback(notificationManager);
         var readBatchManager =

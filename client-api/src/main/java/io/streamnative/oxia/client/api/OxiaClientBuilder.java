@@ -55,6 +55,8 @@ public interface OxiaClientBuilder {
 
     OxiaClientBuilder connectionBackoff(Duration minDelay, Duration maxDelay);
 
+    OxiaClientBuilder maxConnectionPerNode(int connections);
+
     /**
      * Configure the authentication plugin and its parameters.
      *

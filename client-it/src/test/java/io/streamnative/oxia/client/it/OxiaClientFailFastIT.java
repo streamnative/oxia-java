@@ -19,6 +19,8 @@ import io.streamnative.oxia.client.api.OxiaClientBuilder;
 import io.streamnative.oxia.client.shard.NamespaceNotFoundException;
 import io.streamnative.oxia.testcontainers.OxiaContainer;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ThreadLocalRandom;
+
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -41,6 +43,7 @@ public class OxiaClientFailFastIT {
         try {
             OxiaClientBuilder.create(oxia.getServiceAddress())
                     .namespace("my-ns-does-not-exist")
+                    .maxConnectionPerNode(ThreadLocalRandom.current().nextInt(10) + 1)
                     .asyncClient()
                     .join();
             Assertions.fail("Unexpected behaviour!");

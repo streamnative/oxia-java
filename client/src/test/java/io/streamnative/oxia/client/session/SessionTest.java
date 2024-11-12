@@ -81,7 +81,8 @@ class SessionTest {
                         null,
                         false,
                         Duration.ofMillis(100),
-                        Duration.ofSeconds(30));
+                        Duration.ofSeconds(30),
+                1);
 
         String serverName = InProcessServerBuilder.generateName();
         service = new TestService();
@@ -92,8 +93,7 @@ class SessionTest {
                         .build()
                         .start();
         stub =
-                new OxiaStub(
-                        InProcessChannelBuilder.forName(serverName).directExecutor().build(), "default");
+                new OxiaStub(InProcessChannelBuilder.forName(serverName).directExecutor().build());
 
         stubProvider = mock(OxiaStubProvider.class);
         lenient().when(stubProvider.getStubForShard(anyLong())).thenReturn(stub);

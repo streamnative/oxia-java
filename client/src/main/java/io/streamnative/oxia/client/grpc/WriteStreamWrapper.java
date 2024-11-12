@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package io.streamnative.oxia.client.batch;
+package io.streamnative.oxia.client.grpc;
 
 import io.grpc.stub.StreamObserver;
 import io.streamnative.oxia.proto.OxiaClientGrpc;

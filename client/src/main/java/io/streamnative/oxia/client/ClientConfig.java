@@ -34,4 +34,6 @@ public record ClientConfig(
         @Nullable Authentication authentication,
         boolean enableTls,
         @NonNull Duration connectionBackoffMinDelay,
-        @NonNull Duration connectionBackoffMaxDelay) {}
+        @NonNull Duration connectionBackoffMaxDelay,
+        int maxConnectionPerNode
+) {}

@@ -105,7 +105,7 @@ class ShardNotificationReceiverTest {
                         .start();
         stub =
                 new OxiaStub(
-                        InProcessChannelBuilder.forName(serverName).directExecutor().build(), "default");
+                        InProcessChannelBuilder.forName(serverName).directExecutor().build());
     }
 
     @AfterEach
