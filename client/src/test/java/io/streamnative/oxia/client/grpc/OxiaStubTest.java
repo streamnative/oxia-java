@@ -21,7 +21,6 @@ import io.streamnative.oxia.proto.ReadRequest;
 import io.streamnative.oxia.proto.ReadResponse;
 import io.streamnative.oxia.testcontainers.OxiaContainer;
 import java.util.concurrent.CompletableFuture;
-
 import lombok.Cleanup;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -129,10 +128,10 @@ public class OxiaStubTest {
     @Test
     @SneakyThrows
     public void testMaxConnectionPerNode() {
-        final var maxConnectionPerNode =10;
+        final var maxConnectionPerNode = 10;
         @Cleanup
-        var stubManager = new OxiaStubManager(null, false,
-                OxiaBackoffProvider.DEFAULT, maxConnectionPerNode);
+        var stubManager =
+                new OxiaStubManager(null, false, OxiaBackoffProvider.DEFAULT, maxConnectionPerNode);
         for (int i = 0; i < 1000; i++) {
             stubManager.getStub(oxia.getServiceAddress());
         }

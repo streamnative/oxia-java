@@ -19,13 +19,13 @@ import io.streamnative.oxia.client.shard.ShardManager;
 import lombok.Getter;
 
 public class OxiaStubProvider {
-    @Getter
-    private final String namespace;
+    @Getter private final String namespace;
     private final OxiaStubManager stubManager;
     private final ShardManager shardManager;
     private final OxiaWriteStreamManager writeStreamManager;
 
-    public OxiaStubProvider(String namespace, OxiaStubManager stubManager, ShardManager shardManager) {
+    public OxiaStubProvider(
+            String namespace, OxiaStubManager stubManager, ShardManager shardManager) {
         this.namespace = namespace;
         this.stubManager = stubManager;
         this.shardManager = shardManager;

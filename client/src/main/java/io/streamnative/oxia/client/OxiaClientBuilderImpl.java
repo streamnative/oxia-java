@@ -50,7 +50,7 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
     public static final Duration DefaultSessionTimeout = Duration.ofSeconds(15);
     public static final String DefaultNamespace = "default";
     public static final boolean DefaultEnableTls = false;
-    public static final int DefaultMaxConnectionPerNode =1;
+    public static final int DefaultMaxConnectionPerNode = 1;
 
     @NonNull protected final String serviceAddress;
     @NonNull protected Duration requestTimeout = DefaultRequestTimeout;
