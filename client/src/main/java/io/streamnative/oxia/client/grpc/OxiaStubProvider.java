@@ -38,6 +38,6 @@ public class OxiaStubProvider {
     }
 
     public WriteStreamWrapper getWriteStreamForShard(long shardId) {
-        return writeStreamManager.writeStream(shardId);
+        return writeStreamManager.getWriteStream(shardId);
     }
 }

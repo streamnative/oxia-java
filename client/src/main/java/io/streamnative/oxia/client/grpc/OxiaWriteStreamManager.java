@@ -24,7 +24,7 @@ public final class OxiaWriteStreamManager {
     private final Map<Long, WriteStreamWrapper> writeStreams = new ConcurrentHashMap<>();
     private final OxiaStubProvider provider;
 
-    OxiaWriteStreamManager(OxiaStubProvider provider) {
+    public OxiaWriteStreamManager(OxiaStubProvider provider) {
         this.provider = provider;
     }
 
@@ -33,7 +33,7 @@ public final class OxiaWriteStreamManager {
     private static final Metadata.Key<String> SHARD_ID_KEY =
             Metadata.Key.of("shard-id", Metadata.ASCII_STRING_MARSHALLER);
 
-    public WriteStreamWrapper writeStream(long shardId) {
+    public WriteStreamWrapper getWriteStream(long shardId) {
         return writeStreams.compute(
                 shardId,
                 (key, stream) -> {
