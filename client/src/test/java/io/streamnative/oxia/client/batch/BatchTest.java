@@ -174,7 +174,9 @@ class BatchTest {
         final WriteStreamWrapper writeStreamWrapper = new WriteStreamWrapper(stub.async());
         clientByShardId = mock(OxiaStubProvider.class);
         lenient().when(clientByShardId.getStubForShard(anyLong())).thenReturn(stub);
-        lenient().when(clientByShardId.getWriteStreamForShard(anyLong())).thenReturn(writeStreamWrapper);
+        lenient()
+                .when(clientByShardId.getWriteStreamForShard(anyLong()))
+                .thenReturn(writeStreamWrapper);
     }
 
     @AfterEach
@@ -328,7 +330,8 @@ class BatchTest {
         @Test
         public void sendFailNoClient() {
             var stubProvider = mock(OxiaStubProvider.class);
-            when(stubProvider.getWriteStreamForShard(anyLong())).thenThrow(new NoShardAvailableException(1));
+            when(stubProvider.getWriteStreamForShard(anyLong()))
+                    .thenThrow(new NoShardAvailableException(1));
 
             batch =
                     new WriteBatch(
