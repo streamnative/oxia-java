@@ -104,9 +104,7 @@ class ShardManagerGrpcTest {
                         .build()
                         .start();
 
-        stub =
-                new OxiaStub(
-                        InProcessChannelBuilder.forName(serverName).directExecutor().build(), "default");
+        stub = new OxiaStub(InProcessChannelBuilder.forName(serverName).directExecutor().build());
     }
 
     @AfterEach

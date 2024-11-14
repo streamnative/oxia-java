@@ -50,6 +50,7 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
     public static final Duration DefaultSessionTimeout = Duration.ofSeconds(15);
     public static final String DefaultNamespace = "default";
     public static final boolean DefaultEnableTls = false;
+    public static final int DefaultMaxConnectionPerNode = 1;
 
     @NonNull protected final String serviceAddress;
     @NonNull protected Duration requestTimeout = DefaultRequestTimeout;
@@ -69,6 +70,8 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
 
     @NonNull protected Duration connectionBackoffMinDelay = Duration.ofMillis(100);
     @NonNull protected Duration connectionBackoffMaxDelay = Duration.ofSeconds(30);
+
+    protected int maxConnectionsPerNode = DefaultMaxConnectionPerNode;
 
     @Override
     public @NonNull OxiaClientBuilder requestTimeout(@NonNull Duration requestTimeout) {
@@ -148,6 +151,16 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
     public OxiaClientBuilder connectionBackoff(Duration minDelay, Duration maxDelay) {
         this.connectionBackoffMinDelay = minDelay;
         this.connectionBackoffMaxDelay = maxDelay;
+        return this;
+    }
+
+    @Override
+    public OxiaClientBuilder maxConnectionPerNode(int connections) {
+        if (connections <= 0) {
+            throw new IllegalArgumentException(
+                    "maxConnectionPerNode must be greater than zero: " + connections);
+        }
+        this.maxConnectionsPerNode = connections;
         return this;
     }
 
@@ -239,7 +252,8 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
                         authentication,
                         enableTls,
                         connectionBackoffMinDelay,
-                        connectionBackoffMaxDelay);
+                        connectionBackoffMaxDelay,
+                        maxConnectionsPerNode);
         return AsyncOxiaClientImpl.newInstance(config);
     }
 

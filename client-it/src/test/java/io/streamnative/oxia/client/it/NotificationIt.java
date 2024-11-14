@@ -29,6 +29,7 @@ import io.streamnative.oxia.testcontainers.OxiaContainer;
 import java.nio.charset.StandardCharsets;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadLocalRandom;
 import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
@@ -73,6 +74,7 @@ public class NotificationIt {
 
         client =
                 OxiaClientBuilder.create(oxia.getServiceAddress())
+                        .maxConnectionPerNode(ThreadLocalRandom.current().nextInt(10) + 1)
                         .openTelemetry(openTelemetry)
                         .asyncClient()
                         .join();

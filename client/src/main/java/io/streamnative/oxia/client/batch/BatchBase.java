@@ -17,6 +17,7 @@ package io.streamnative.oxia.client.batch;
 
 import io.streamnative.oxia.client.grpc.OxiaStub;
 import io.streamnative.oxia.client.grpc.OxiaStubProvider;
+import io.streamnative.oxia.client.grpc.WriteStreamWrapper;
 import lombok.Getter;
 import lombok.NonNull;
 
@@ -33,5 +34,9 @@ abstract class BatchBase {
 
     protected OxiaStub getStub() {
         return stubProvider.getStubForShard(shardId);
+    }
+
+    protected WriteStreamWrapper getWriteStream() {
+        return stubProvider.getWriteStreamForShard(shardId);
     }
 }

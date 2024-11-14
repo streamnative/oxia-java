@@ -102,6 +102,7 @@ public class OxiaClientIT {
         client =
                 OxiaClientBuilder.create(oxia.getServiceAddress())
                         .openTelemetry(openTelemetry)
+                        .maxConnectionPerNode(10)
                         .asyncClient()
                         .join();
         client.notifications(notifications::add);

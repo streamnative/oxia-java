@@ -16,19 +16,28 @@
 package io.streamnative.oxia.client.grpc;
 
 import io.streamnative.oxia.client.shard.ShardManager;
+import lombok.Getter;
 
 public class OxiaStubProvider {
-
+    @Getter private final String namespace;
     private final OxiaStubManager stubManager;
     private final ShardManager shardManager;
+    private final OxiaWriteStreamManager writeStreamManager;
 
-    public OxiaStubProvider(OxiaStubManager stubManager, ShardManager shardManager) {
+    public OxiaStubProvider(
+            String namespace, OxiaStubManager stubManager, ShardManager shardManager) {
+        this.namespace = namespace;
         this.stubManager = stubManager;
         this.shardManager = shardManager;
+        this.writeStreamManager = new OxiaWriteStreamManager(this);
     }
 
     public OxiaStub getStubForShard(long shardId) {
         String leader = shardManager.leader(shardId);
         return stubManager.getStub(leader);
+    }
+
+    public WriteStreamWrapper getWriteStreamForShard(long shardId) {
+        return writeStreamManager.getWriteStream(shardId);
     }
 }

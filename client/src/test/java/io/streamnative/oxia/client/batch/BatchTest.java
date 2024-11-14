@@ -45,9 +45,7 @@ import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
-import io.streamnative.oxia.client.grpc.OxiaBackoffProvider;
-import io.streamnative.oxia.client.grpc.OxiaStub;
-import io.streamnative.oxia.client.grpc.OxiaStubProvider;
+import io.streamnative.oxia.client.grpc.*;
 import io.streamnative.oxia.client.metrics.InstrumentProvider;
 import io.streamnative.oxia.client.session.Session;
 import io.streamnative.oxia.client.session.SessionManager;
@@ -105,7 +103,8 @@ class BatchTest {
                     authentication,
                     authentication != null,
                     Duration.ofMillis(100),
-                    Duration.ofSeconds(30));
+                    Duration.ofSeconds(30),
+                    1);
 
     private final OxiaClientImplBase serviceImpl =
             mock(
@@ -170,11 +169,14 @@ class BatchTest {
         stub =
                 new OxiaStub(
                         InProcessChannelBuilder.forName(serverName).directExecutor().build(),
-                        "default",
                         authentication,
                         OxiaBackoffProvider.DEFAULT);
+        final WriteStreamWrapper writeStreamWrapper = new WriteStreamWrapper(stub.async());
         clientByShardId = mock(OxiaStubProvider.class);
         lenient().when(clientByShardId.getStubForShard(anyLong())).thenReturn(stub);
+        lenient()
+                .when(clientByShardId.getWriteStreamForShard(anyLong()))
+                .thenReturn(writeStreamWrapper);
     }
 
     @AfterEach
@@ -328,7 +330,8 @@ class BatchTest {
         @Test
         public void sendFailNoClient() {
             var stubProvider = mock(OxiaStubProvider.class);
-            when(stubProvider.getStubForShard(anyLong())).thenThrow(new NoShardAvailableException(1));
+            when(stubProvider.getWriteStreamForShard(anyLong()))
+                    .thenThrow(new NoShardAvailableException(1));
 
             batch =
                     new WriteBatch(
@@ -494,7 +497,8 @@ class BatchTest {
                         null,
                         false,
                         Duration.ofMillis(100),
-                        Duration.ofSeconds(30));
+                        Duration.ofSeconds(30),
+                        1);
 
         @Nested
         @DisplayName("Tests of write batch factory")

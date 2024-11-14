@@ -15,34 +15,43 @@
  */
 package io.streamnative.oxia.client.grpc;
 
+import com.google.common.annotations.VisibleForTesting;
 import io.grpc.internal.BackoffPolicy;
 import io.streamnative.oxia.client.api.Authentication;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 import javax.annotation.Nullable;
 
 public class OxiaStubManager implements AutoCloseable {
-    private final Map<String, OxiaStub> stubs = new ConcurrentHashMap<>();
+    @VisibleForTesting final Map<Key, OxiaStub> stubs = new ConcurrentHashMap<>();
 
-    private final String namespace;
     @Nullable private final Authentication authentication;
     private final boolean enableTls;
     @Nullable private final BackoffPolicy.Provider backoffProvider;
 
+    private final int maxConnectionPerNode;
+
     public OxiaStubManager(
-            String namespace,
             @Nullable Authentication authentication,
             boolean enableTls,
-            @Nullable BackoffPolicy.Provider backoffProvider) {
-        this.namespace = namespace;
+            @Nullable BackoffPolicy.Provider backoffProvider,
+            int maxConnectionPerNode) {
         this.authentication = authentication;
         this.enableTls = enableTls;
         this.backoffProvider = backoffProvider;
+        this.maxConnectionPerNode = maxConnectionPerNode;
     }
 
     public OxiaStub getStub(String address) {
+        final var random = ThreadLocalRandom.current().nextInt();
+        var modKey = random % maxConnectionPerNode;
+        if (modKey < 0) {
+            modKey += maxConnectionPerNode;
+        }
         return stubs.computeIfAbsent(
-                address, addr -> new OxiaStub(addr, namespace, authentication, enableTls, backoffProvider));
+                new Key(address, modKey),
+                key -> new OxiaStub(key.address, authentication, enableTls, backoffProvider));
     }
 
     @Override
@@ -51,4 +60,6 @@ public class OxiaStubManager implements AutoCloseable {
             stub.close();
         }
     }
+
+    record Key(String address, int random) {}
 }
