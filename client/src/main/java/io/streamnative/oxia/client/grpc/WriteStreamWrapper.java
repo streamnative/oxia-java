@@ -67,11 +67,12 @@ public final class WriteStreamWrapper implements StreamObserver<WriteResponse> {
     public void onCompleted() {
         synchronized (WriteStreamWrapper.this) {
             // complete pending request if the server close stream without any response
-            pendingWrites.forEach(f -> {
-                if (!f.isDone()) {
-                    f.completeExceptionally(new CancellationException());
-                }
-            });
+            pendingWrites.forEach(
+                    f -> {
+                        if (!f.isDone()) {
+                            f.completeExceptionally(new CancellationException());
+                        }
+                    });
         }
     }
 
