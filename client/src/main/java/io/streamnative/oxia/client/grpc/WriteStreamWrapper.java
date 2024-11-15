@@ -22,6 +22,7 @@ import io.streamnative.oxia.proto.WriteRequest;
 import io.streamnative.oxia.proto.WriteResponse;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
 
@@ -63,7 +64,16 @@ public final class WriteStreamWrapper implements StreamObserver<WriteResponse> {
     }
 
     @Override
-    public void onCompleted() {}
+    public void onCompleted() {
+        synchronized (WriteStreamWrapper.this) {
+            // complete pending request if the server close stream without any response
+            pendingWrites.forEach(f -> {
+                if (!f.isDone()) {
+                    f.completeExceptionally(new CancellationException());
+                }
+            });
+        }
+    }
 
     public CompletableFuture<WriteResponse> send(WriteRequest request) {
         synchronized (WriteStreamWrapper.this) {
