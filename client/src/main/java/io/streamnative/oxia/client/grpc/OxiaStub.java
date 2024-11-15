@@ -40,6 +40,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class OxiaStub implements AutoCloseable {
+    public static String TLS_SCHEMA = "tls://";
     private final ManagedChannel channel;
     private final @NonNull OxiaClientGrpc.OxiaClientStub asyncStub;
 
@@ -50,7 +51,7 @@ public class OxiaStub implements AutoCloseable {
             @Nullable BackoffPolicy.Provider backoffProvider) {
         this(Grpc.newChannelBuilder(
                                 address,
-                                enableTls
+                                enableTls || address.startsWith(TLS_SCHEMA)
                                         ? TlsChannelCredentials.newBuilder().build()
                                         : InsecureChannelCredentials.create())
                         .directExecutor()
