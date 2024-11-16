@@ -15,6 +15,8 @@
  */
 package io.streamnative.oxia.client.grpc;
 
+import io.grpc.InsecureChannelCredentials;
+import io.grpc.TlsChannelCredentials;
 import io.grpc.stub.StreamObserver;
 import io.streamnative.oxia.proto.GetRequest;
 import io.streamnative.oxia.proto.ReadRequest;
@@ -136,5 +138,31 @@ public class OxiaStubTest {
             stubManager.getStub(oxia.getServiceAddress());
         }
         Assertions.assertEquals(maxConnectionPerNode, stubManager.stubs.size());
+    }
+
+    @Test
+    public void testAddressTrim() {
+        final var tlsAddress = "tls://localhost:6648";
+        Assertions.assertEquals("localhost:6648", OxiaStub.getAddress(tlsAddress));
+
+        final var planTxtAddress = "localhost:6648";
+        Assertions.assertEquals("localhost:6648", OxiaStub.getAddress(planTxtAddress));
+    }
+
+    @Test
+    public void testTlsCredential() {
+        final var tlsAddress = "tls://localhost:6648";
+        var channelCredential = OxiaStub.getChannelCredential(tlsAddress, false);
+        Assertions.assertInstanceOf(TlsChannelCredentials.class, channelCredential);
+
+        channelCredential = OxiaStub.getChannelCredential(tlsAddress, true);
+        Assertions.assertInstanceOf(TlsChannelCredentials.class, channelCredential);
+
+        final var planTxtAddress = "localhost:6648";
+        channelCredential = OxiaStub.getChannelCredential(planTxtAddress, false);
+        Assertions.assertInstanceOf(InsecureChannelCredentials.class, channelCredential);
+
+        channelCredential = OxiaStub.getChannelCredential(planTxtAddress, true);
+        Assertions.assertInstanceOf(TlsChannelCredentials.class, channelCredential);
     }
 }
