@@ -140,13 +140,12 @@ public class OxiaStubTest {
         Assertions.assertEquals(maxConnectionPerNode, stubManager.stubs.size());
     }
 
-
     @Test
     public void testAddressTrim() {
         final var tlsAddress = "tls://localhost:6648";
         Assertions.assertEquals("localhost:6648", OxiaStub.getAddress(tlsAddress));
 
-        final var planTxtAddress  = "localhost:6648";
+        final var planTxtAddress = "localhost:6648";
         Assertions.assertEquals("localhost:6648", OxiaStub.getAddress(planTxtAddress));
     }
 
@@ -159,7 +158,6 @@ public class OxiaStubTest {
         channelCredential = OxiaStub.getChannelCredential(tlsAddress, true);
         Assertions.assertInstanceOf(TlsChannelCredentials.class, channelCredential);
 
-
         final var planTxtAddress = "localhost:6648";
         channelCredential = OxiaStub.getChannelCredential(planTxtAddress, false);
         Assertions.assertInstanceOf(InsecureChannelCredentials.class, channelCredential);
@@ -167,5 +165,4 @@ public class OxiaStubTest {
         channelCredential = OxiaStub.getChannelCredential(planTxtAddress, true);
         Assertions.assertInstanceOf(TlsChannelCredentials.class, channelCredential);
     }
-
 }
