@@ -19,19 +19,16 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import com.google.common.base.Throwables;
 import io.grpc.CallCredentials;
+import io.grpc.ChannelCredentials;
 import io.grpc.Grpc;
 import io.grpc.InsecureChannelCredentials;
 import io.grpc.ManagedChannel;
-import io.grpc.Metadata;
 import io.grpc.TlsChannelCredentials;
 import io.grpc.internal.BackoffPolicy;
-import io.grpc.stub.MetadataUtils;
 import io.streamnative.oxia.client.api.Authentication;
 import io.streamnative.oxia.proto.OxiaClientGrpc;
 
 import java.lang.reflect.Field;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import javax.annotation.Nullable;
 
@@ -44,16 +41,26 @@ public class OxiaStub implements AutoCloseable {
     private final ManagedChannel channel;
     private final @NonNull OxiaClientGrpc.OxiaClientStub asyncStub;
 
+    static String getAddress(String address) {
+        if (address.startsWith(TLS_SCHEMA)) {
+            return address.substring(TLS_SCHEMA.length());
+        }
+        return address;
+    }
+
+    static ChannelCredentials getChannelCredential(String address, boolean tlsEnabled) {
+        return tlsEnabled || address.startsWith(TLS_SCHEMA)
+                ? TlsChannelCredentials.newBuilder().build()
+                : InsecureChannelCredentials.create();
+    }
+
     public OxiaStub(
             String address,
             @Nullable Authentication authentication,
             boolean enableTls,
             @Nullable BackoffPolicy.Provider backoffProvider) {
-        this(Grpc.newChannelBuilder(
-                                address,
-                                enableTls || address.startsWith(TLS_SCHEMA)
-                                        ? TlsChannelCredentials.newBuilder().build()
-                                        : InsecureChannelCredentials.create())
+
+        this(Grpc.newChannelBuilder(getAddress(address), getChannelCredential(address, enableTls))
                         .directExecutor()
                         .build(),
                 authentication, backoffProvider);
