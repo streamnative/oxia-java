@@ -23,6 +23,7 @@ import io.streamnative.oxia.proto.ReadRequest;
 import io.streamnative.oxia.proto.ReadResponse;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CancellationException;
 import lombok.NonNull;
 
 final class ReadBatch extends BatchBase implements Batch, StreamObserver<ReadResponse> {
@@ -83,6 +84,13 @@ final class ReadBatch extends BatchBase implements Batch, StreamObserver<ReadRes
 
     @Override
     public void onCompleted() {
+        // complete pending request if the server close stream without any response
+        gets.forEach(
+                g -> {
+                    if (!g.callback().isDone()) {
+                        g.fail(new CancellationException());
+                    }
+                });
         factory.getReadRequestLatencyHistogram().recordSuccess(System.nanoTime() - startSendTimeNanos);
     }
 
