@@ -44,7 +44,5 @@ public class OxiaLedgerUnderreplicationManagerTest extends LedgerUnderreplicatio
 
     @Ignore
     @Override
-    public void testZkMetasStoreMarkReplicatedDeleteEmptyParentNodes() throws Exception {
-
-    }
+    public void testZkMetasStoreMarkReplicatedDeleteEmptyParentNodes() throws Exception {}
 }

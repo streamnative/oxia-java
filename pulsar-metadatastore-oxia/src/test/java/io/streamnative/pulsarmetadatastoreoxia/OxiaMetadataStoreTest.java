@@ -71,7 +71,8 @@ public class OxiaMetadataStoreTest extends MetadataStoreTest implements OxiaTest
     @Ignore
     @Test(dataProvider = "conditionOfSwitchThread")
     @Override
-    public void testThreadSwitchOfZkMetadataStore(boolean hasSynchronizer, boolean enabledBatch) throws Exception {
+    public void testThreadSwitchOfZkMetadataStore(boolean hasSynchronizer, boolean enabledBatch)
+            throws Exception {
         super.testThreadSwitchOfZkMetadataStore(hasSynchronizer, enabledBatch);
     }
 }
