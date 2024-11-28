@@ -61,6 +61,10 @@
                     <groupId>io.grpc</groupId>
                     <artifactId>grpc-core</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>javax.annotation</groupId>
+                    <artifactId>javax.annotation-api</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
@@ -97,6 +101,10 @@
                 <exclusion>
                     <groupId>io.grpc</groupId>
                     <artifactId>grpc-core</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>javax.annotation</groupId>
+                    <artifactId>javax.annotation-api</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
