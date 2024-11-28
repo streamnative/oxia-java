@@ -23,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.metadata.bookkeeper.LedgerUnderreplicationManagerTest;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
+import org.testng.annotations.Ignore;
 
 /** Test the zookeeper implementation of the ledger replication manager. */
 @Slf4j
@@ -40,4 +41,8 @@ public class OxiaLedgerUnderreplicationManagerTest extends LedgerUnderreplicatio
     public Object[][] implementations() {
         return impl();
     }
+
+    @Ignore
+    @Override
+    public void testZkMetasStoreMarkReplicatedDeleteEmptyParentNodes() throws Exception {}
 }

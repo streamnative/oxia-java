@@ -67,4 +67,12 @@ public class OxiaMetadataStoreTest extends MetadataStoreTest implements OxiaTest
     @Test(dataProvider = "impl")
     public void testDeleteUnusedDirectories(String provider, Supplier<String> urlSupplier)
             throws Exception {}
+
+    @Ignore
+    @Test(dataProvider = "conditionOfSwitchThread")
+    @Override
+    public void testThreadSwitchOfZkMetadataStore(boolean hasSynchronizer, boolean enabledBatch)
+            throws Exception {
+        super.testThreadSwitchOfZkMetadataStore(hasSynchronizer, enabledBatch);
+    }
 }
