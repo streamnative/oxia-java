@@ -23,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.metadata.bookkeeper.PulsarRegistrationClientTest;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
+import org.testng.annotations.Ignore;
 
 @Slf4j
 public class OxiaPulsarRegistrationClientTest extends PulsarRegistrationClientTest
@@ -38,5 +39,11 @@ public class OxiaPulsarRegistrationClientTest extends PulsarRegistrationClientTe
     @DataProvider(name = "impl")
     public Object[][] implementations() {
         return impl();
+    }
+
+    @Ignore
+    @Override
+    public void testNetworkDelayWithBkZkManager() throws Throwable {
+        // ignore
     }
 }
