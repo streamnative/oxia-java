@@ -30,23 +30,17 @@
     <name>Oxia Metadatastore implementation for Apache Pulsar</name>
 
     <properties>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <shade.relocation.package>io.streamnative.pulsarmetadatastoreoxia.shaded</shade.relocation.package>
 
+        <!-- Breaks for 3.0.5 to 3.0.7 due to missing https://github.com/apache/pulsar/pull/21950 -->
         <pulsar.version>3.0.2</pulsar.version>
 
-        <testng.version>7.7.0</testng.version>
+        <testng.version>7.7.1</testng.version>
         <dropwizard.version>4.1.12.1</dropwizard.version>
         <snappy.version>1.1.10.4</snappy.version>
 
-        <license.plugin.version>4.1</license.plugin.version>
-        <maven.compiler.plugin.version>3.10.1</maven.compiler.plugin.version>
-        <maven.enforcer.plugin.version>3.1.0</maven.enforcer.plugin.version>
-        <maven.shade.plugin.version>3.4.1</maven.shade.plugin.version>
-        <maven.surefire.plugin.version>3.0.0-M7</maven.surefire.plugin.version>
         <spotbugs.plugin.version>4.8.1.0</spotbugs.plugin.version>
         <spotless.plugin.version>2.39.0</spotless.plugin.version>
     </properties>
@@ -86,6 +80,12 @@
             <artifactId>buildtools</artifactId>
             <version>${pulsar.version}</version>
             <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.pulsar</groupId>
@@ -388,6 +388,17 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>${maven.surefire.plugin.version}</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.apache.maven.surefire</groupId>
+                        <artifactId>surefire-testng</artifactId>
+                        <version>${maven.surefire.plugin.version}</version>
+                    </dependency>
+                </dependencies>
             </plugin>
         </plugins>
     </build>
