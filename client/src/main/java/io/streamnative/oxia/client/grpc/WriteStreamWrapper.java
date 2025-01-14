@@ -123,16 +123,16 @@ public final class WriteStreamWrapper implements StreamObserver<WriteResponse> {
                     Optional.ofNullable(completedException).orElseGet(CancellationException::new));
         }
         final var future = new CompletableFuture<WriteResponse>();
-        if (log.isDebugEnabled()) {
-            log.debug("Sending request {}", request);
-        }
         final long stamp = statusLock.writeLock();
         try {
             if (completed) {
                 return CompletableFuture.failedFuture(
                         Optional.ofNullable(completedException).orElseGet(CancellationException::new));
             }
-            clientStream.onNext(request);
+            if (log.isDebugEnabled()) {
+                log.debug("Sending request {}", request);
+            }
+                clientStream.onNext(request);
             pendingWrites.add(future);
             return future;
         } catch (Exception ex) {
