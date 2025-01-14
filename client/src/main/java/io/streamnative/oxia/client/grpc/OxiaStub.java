@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022-2024 StreamNative Inc.
+ * Copyright © 2022-2025 StreamNative Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,11 +25,13 @@ import io.grpc.InsecureChannelCredentials;
 import io.grpc.ManagedChannel;
 import io.grpc.TlsChannelCredentials;
 import io.grpc.internal.BackoffPolicy;
+import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.api.Authentication;
 import io.streamnative.oxia.proto.OxiaClientGrpc;
 
 import java.lang.reflect.Field;
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 
 import lombok.NonNull;
@@ -56,14 +58,15 @@ public class OxiaStub implements AutoCloseable {
 
     public OxiaStub(
             String address,
-            @Nullable Authentication authentication,
-            boolean enableTls,
+            ClientConfig clientConfig,
             @Nullable BackoffPolicy.Provider backoffProvider) {
 
-        this(Grpc.newChannelBuilder(getAddress(address), getChannelCredential(address, enableTls))
+        this(Grpc.newChannelBuilder(getAddress(address), getChannelCredential(address, clientConfig.enableTls()))
+                        .keepAliveTime(clientConfig.connectionKeepAliveTime().toMillis(), MILLISECONDS)
+                        .keepAliveTimeout(clientConfig.connectionKeepAliveTimeout().toMillis(), MILLISECONDS)
+                        .keepAliveWithoutCalls(true)
                         .directExecutor()
-                        .build(),
-                authentication, backoffProvider);
+                        .build(), clientConfig.authentication(), backoffProvider);
     }
 
     public OxiaStub(ManagedChannel channel) {

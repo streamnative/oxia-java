@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022-2024 StreamNative Inc.
+ * Copyright © 2022-2025 StreamNative Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,4 +35,6 @@ public record ClientConfig(
         boolean enableTls,
         @NonNull Duration connectionBackoffMinDelay,
         @NonNull Duration connectionBackoffMaxDelay,
+        Duration connectionKeepAliveTime,
+        Duration connectionKeepAliveTimeout,
         int maxConnectionPerNode) {}

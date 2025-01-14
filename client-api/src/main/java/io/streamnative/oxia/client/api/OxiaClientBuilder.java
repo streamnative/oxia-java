@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022-2024 StreamNative Inc.
+ * Copyright © 2022-2025 StreamNative Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,6 +56,10 @@ public interface OxiaClientBuilder {
     OxiaClientBuilder connectionBackoff(Duration minDelay, Duration maxDelay);
 
     OxiaClientBuilder maxConnectionPerNode(int connections);
+
+    OxiaClientBuilder connectionKeepAliveTimeout(Duration connectionKeepAliveTimeout);
+
+    OxiaClientBuilder connectionKeepAliveTime(Duration connectionKeepAlive);
 
     /**
      * Configure the authentication plugin and its parameters.

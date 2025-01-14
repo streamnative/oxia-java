@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022-2024 StreamNative Inc.
+ * Copyright © 2022-2025 StreamNative Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,12 +78,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         final var oxiaBackoffProvider =
                 OxiaBackoffProvider.create(
                         config.connectionBackoffMinDelay(), config.connectionBackoffMaxDelay());
-        var stubManager =
-                new OxiaStubManager(
-                        config.authentication(),
-                        config.enableTls(),
-                        oxiaBackoffProvider,
-                        config.maxConnectionPerNode());
+        var stubManager = new OxiaStubManager(config, oxiaBackoffProvider);
 
         var instrumentProvider = new InstrumentProvider(config.openTelemetry(), config.namespace());
         var serviceAddrStub = stubManager.getStub(config.serviceAddress());
@@ -91,10 +86,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                 new ShardManager(executor, serviceAddrStub, instrumentProvider, config.namespace());
         var notificationManager =
                 new NotificationManager(executor, stubManager, shardManager, instrumentProvider);
-
-        OxiaStubProvider stubProvider =
-                new OxiaStubProvider(config.namespace(), stubManager, shardManager);
-
+        final var stubProvider = new OxiaStubProvider(config.namespace(), stubManager, shardManager);
         shardManager.addCallback(notificationManager);
         var readBatchManager =
                 BatchManager.newReadBatchManager(config, stubProvider, instrumentProvider);

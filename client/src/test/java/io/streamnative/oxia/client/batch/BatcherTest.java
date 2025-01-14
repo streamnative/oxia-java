@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022-2024 StreamNative Inc.
+ * Copyright © 2022-2025 StreamNative Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -66,6 +66,8 @@ class BatcherTest {
                     false,
                     Duration.ofMillis(100),
                     Duration.ofSeconds(30),
+                    Duration.ofSeconds(10),
+                    Duration.ofSeconds(5),
                     1);
 
     BatchedArrayBlockingQueue<Operation<?>> queue;

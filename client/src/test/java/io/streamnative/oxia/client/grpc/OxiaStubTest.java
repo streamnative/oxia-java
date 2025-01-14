@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022-2024 StreamNative Inc.
+ * Copyright © 2022-2025 StreamNative Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 package io.streamnative.oxia.client.grpc;
+
+import static io.streamnative.oxia.client.util.ConfigUtils.*;
 
 import io.grpc.InsecureChannelCredentials;
 import io.grpc.TlsChannelCredentials;
@@ -52,9 +54,9 @@ public class OxiaStubTest {
     public void testOxiaReconnectBackoff(BackoffType type) throws Exception {
         final OxiaStubManager stubManager;
         if (type == BackoffType.Oxia) {
-            stubManager = new OxiaStubManager(null, false, OxiaBackoffProvider.DEFAULT, 1);
+            stubManager = new OxiaStubManager(getDefaultClientConfig(), OxiaBackoffProvider.DEFAULT);
         } else {
-            stubManager = new OxiaStubManager(null, false, null, 1);
+            stubManager = new OxiaStubManager(getDefaultClientConfig(), null);
         }
 
         final OxiaStub stub = stubManager.getStub(oxia.getServiceAddress());
@@ -131,9 +133,12 @@ public class OxiaStubTest {
     @SneakyThrows
     public void testMaxConnectionPerNode() {
         final var maxConnectionPerNode = 10;
-        @Cleanup
-        var stubManager =
-                new OxiaStubManager(null, false, OxiaBackoffProvider.DEFAULT, maxConnectionPerNode);
+        final var clientConfig =
+                getDefaultClientConfig(
+                        builder -> {
+                            builder.maxConnectionPerNode(maxConnectionPerNode);
+                        });
+        @Cleanup var stubManager = new OxiaStubManager(clientConfig, OxiaBackoffProvider.DEFAULT);
         for (int i = 0; i < 1000; i++) {
             stubManager.getStub(oxia.getServiceAddress());
         }

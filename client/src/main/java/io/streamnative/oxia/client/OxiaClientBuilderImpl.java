@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022-2024 StreamNative Inc.
+ * Copyright © 2022-2025 StreamNative Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -70,6 +70,9 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
 
     @NonNull protected Duration connectionBackoffMinDelay = Duration.ofMillis(100);
     @NonNull protected Duration connectionBackoffMaxDelay = Duration.ofSeconds(30);
+
+    protected Duration connectionKeepAliveTime = Duration.ofSeconds(10);
+    protected Duration connectionKeepAliveTimeout = Duration.ofSeconds(5);
 
     protected int maxConnectionsPerNode = DefaultMaxConnectionPerNode;
 
@@ -165,6 +168,18 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
     }
 
     @Override
+    public OxiaClientBuilder connectionKeepAliveTimeout(Duration connectionKeepAliveTimeout) {
+        this.connectionKeepAliveTimeout = connectionKeepAliveTimeout;
+        return this;
+    }
+
+    @Override
+    public OxiaClientBuilder connectionKeepAliveTime(Duration keepAliveTime) {
+        this.connectionKeepAliveTime = keepAliveTime;
+        return this;
+    }
+
+    @Override
     public OxiaClientBuilder authentication(String authPluginClassName, String authParamsString)
             throws UnsupportedAuthenticationException {
         this.authPluginClassName = authPluginClassName;
@@ -238,23 +253,27 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
 
     @Override
     public @NonNull CompletableFuture<AsyncOxiaClient> asyncClient() {
-        var config =
-                new ClientConfig(
-                        serviceAddress,
-                        requestTimeout,
-                        batchLinger,
-                        maxRequestsPerBatch,
-                        DefaultMaxBatchSize,
-                        sessionTimeout,
-                        clientIdentifierSupplier.get(),
-                        openTelemetry,
-                        namespace,
-                        authentication,
-                        enableTls,
-                        connectionBackoffMinDelay,
-                        connectionBackoffMaxDelay,
-                        maxConnectionsPerNode);
-        return AsyncOxiaClientImpl.newInstance(config);
+        return AsyncOxiaClientImpl.newInstance(getClientConfig());
+    }
+
+    public ClientConfig getClientConfig() {
+        return new ClientConfig(
+                serviceAddress,
+                requestTimeout,
+                batchLinger,
+                maxRequestsPerBatch,
+                DefaultMaxBatchSize,
+                sessionTimeout,
+                clientIdentifierSupplier.get(),
+                openTelemetry,
+                namespace,
+                authentication,
+                enableTls,
+                connectionBackoffMinDelay,
+                connectionBackoffMaxDelay,
+                connectionKeepAliveTime,
+                connectionKeepAliveTimeout,
+                maxConnectionsPerNode);
     }
 
     @Override

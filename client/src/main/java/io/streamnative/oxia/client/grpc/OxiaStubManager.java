@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022-2024 StreamNative Inc.
+ * Copyright © 2022-2025 StreamNative Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,30 +17,22 @@ package io.streamnative.oxia.client.grpc;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.grpc.internal.BackoffPolicy;
-import io.streamnative.oxia.client.api.Authentication;
+import io.streamnative.oxia.client.ClientConfig;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
-import javax.annotation.Nullable;
 
 public class OxiaStubManager implements AutoCloseable {
     @VisibleForTesting final Map<Key, OxiaStub> stubs = new ConcurrentHashMap<>();
 
-    @Nullable private final Authentication authentication;
-    private final boolean enableTls;
-    @Nullable private final BackoffPolicy.Provider backoffProvider;
-
+    private final BackoffPolicy.Provider backoffProvider;
     private final int maxConnectionPerNode;
+    private final ClientConfig clientConfig;
 
-    public OxiaStubManager(
-            @Nullable Authentication authentication,
-            boolean enableTls,
-            @Nullable BackoffPolicy.Provider backoffProvider,
-            int maxConnectionPerNode) {
-        this.authentication = authentication;
-        this.enableTls = enableTls;
+    public OxiaStubManager(ClientConfig clientConfig, BackoffPolicy.Provider backoffProvider) {
         this.backoffProvider = backoffProvider;
-        this.maxConnectionPerNode = maxConnectionPerNode;
+        this.clientConfig = clientConfig;
+        this.maxConnectionPerNode = clientConfig.maxConnectionPerNode();
     }
 
     public OxiaStub getStub(String address) {
@@ -50,8 +42,7 @@ public class OxiaStubManager implements AutoCloseable {
             modKey += maxConnectionPerNode;
         }
         return stubs.computeIfAbsent(
-                new Key(address, modKey),
-                key -> new OxiaStub(key.address, authentication, enableTls, backoffProvider));
+                new Key(address, modKey), key -> new OxiaStub(key.address, clientConfig, backoffProvider));
     }
 
     @Override
