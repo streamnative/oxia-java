@@ -57,6 +57,10 @@ public interface OxiaClientBuilder {
 
     OxiaClientBuilder maxConnectionPerNode(int connections);
 
+    OxiaClientBuilder connectionKeepAliveTimeout(Duration connectionKeepAliveTimeout);
+
+    OxiaClientBuilder connectionKeepAliveTime(Duration connectionKeepAlive);
+
     /**
      * Configure the authentication plugin and its parameters.
      *

@@ -18,6 +18,7 @@ package io.streamnative.oxia.client;
 import static java.time.Duration.ZERO;
 
 import com.google.common.base.Strings;
+import com.google.protobuf.DurationOrBuilder;
 import io.opentelemetry.api.GlobalOpenTelemetry;
 import io.opentelemetry.api.OpenTelemetry;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
@@ -70,6 +71,9 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
 
     @NonNull protected Duration connectionBackoffMinDelay = Duration.ofMillis(100);
     @NonNull protected Duration connectionBackoffMaxDelay = Duration.ofSeconds(30);
+
+    protected Duration connectionKeepAliveTime = Duration.ofSeconds(10);
+    protected Duration connectionKeepAliveTimeout = Duration.ofSeconds(5);
 
     protected int maxConnectionsPerNode = DefaultMaxConnectionPerNode;
 
@@ -165,6 +169,18 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
     }
 
     @Override
+    public OxiaClientBuilder connectionKeepAliveTimeout(Duration connectionKeepAliveTimeout) {
+        this.connectionKeepAliveTimeout = connectionKeepAliveTimeout;
+        return this;
+    }
+
+    @Override
+    public OxiaClientBuilder connectionKeepAliveTime(Duration keepAliveTime) {
+        this.connectionKeepAliveTime = keepAliveTime;
+        return this;
+    }
+
+    @Override
     public OxiaClientBuilder authentication(String authPluginClassName, String authParamsString)
             throws UnsupportedAuthenticationException {
         this.authPluginClassName = authPluginClassName;
@@ -253,6 +269,8 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
                         enableTls,
                         connectionBackoffMinDelay,
                         connectionBackoffMaxDelay,
+                        connectionKeepAliveTime,
+                        connectionKeepAliveTimeout,
                         maxConnectionsPerNode);
         return AsyncOxiaClientImpl.newInstance(config);
     }

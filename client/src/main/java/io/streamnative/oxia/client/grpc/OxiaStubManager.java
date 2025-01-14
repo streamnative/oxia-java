@@ -17,6 +17,7 @@ package io.streamnative.oxia.client.grpc;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.grpc.internal.BackoffPolicy;
+import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.api.Authentication;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,21 +27,15 @@ import javax.annotation.Nullable;
 public class OxiaStubManager implements AutoCloseable {
     @VisibleForTesting final Map<Key, OxiaStub> stubs = new ConcurrentHashMap<>();
 
-    @Nullable private final Authentication authentication;
-    private final boolean enableTls;
-    @Nullable private final BackoffPolicy.Provider backoffProvider;
-
+    private final BackoffPolicy.Provider backoffProvider;
     private final int maxConnectionPerNode;
+    private final ClientConfig clientConfig;
 
-    public OxiaStubManager(
-            @Nullable Authentication authentication,
-            boolean enableTls,
-            @Nullable BackoffPolicy.Provider backoffProvider,
-            int maxConnectionPerNode) {
-        this.authentication = authentication;
-        this.enableTls = enableTls;
+    public OxiaStubManager(ClientConfig clientConfig,
+                           BackoffPolicy.Provider backoffProvider){
         this.backoffProvider = backoffProvider;
-        this.maxConnectionPerNode = maxConnectionPerNode;
+        this.clientConfig = clientConfig;
+        this.maxConnectionPerNode = clientConfig.maxConnectionPerNode();
     }
 
     public OxiaStub getStub(String address) {
@@ -51,7 +46,7 @@ public class OxiaStubManager implements AutoCloseable {
         }
         return stubs.computeIfAbsent(
                 new Key(address, modKey),
-                key -> new OxiaStub(key.address, authentication, enableTls, backoffProvider));
+                key -> new OxiaStub(key.address, clientConfig, backoffProvider));
     }
 
     @Override

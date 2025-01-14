@@ -35,4 +35,6 @@ public record ClientConfig(
         boolean enableTls,
         @NonNull Duration connectionBackoffMinDelay,
         @NonNull Duration connectionBackoffMaxDelay,
+        Duration connectionKeepAliveTime,
+        Duration connectionKeepAliveTimeout,
         int maxConnectionPerNode) {}
