@@ -41,7 +41,9 @@ public final class WriteStreamWrapper implements StreamObserver<WriteResponse> {
     public WriteStreamWrapper(OxiaClientGrpc.OxiaClientStub stub) {
         this.clientStream = stub.writeStream(this);
         this.pendingWrites = new ArrayDeque<>();
+        this.completed = false;
         this.statusLock = new StampedLock();
+        this.completedException = null;
     }
 
     public boolean isValid() {
