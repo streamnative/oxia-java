@@ -18,9 +18,8 @@ package io.streamnative.oxia.client.util;
 import io.streamnative.oxia.client.ClientConfig;
 import io.streamnative.oxia.client.OxiaClientBuilderImpl;
 import io.streamnative.oxia.client.api.OxiaClientBuilder;
-import lombok.experimental.UtilityClass;
-
 import java.util.function.Consumer;
+import lombok.experimental.UtilityClass;
 
 @UtilityClass
 public final class ConfigUtils {

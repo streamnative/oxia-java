@@ -15,6 +15,8 @@
  */
 package io.streamnative.oxia.client.grpc;
 
+import static io.streamnative.oxia.client.util.ConfigUtils.*;
+
 import io.grpc.InsecureChannelCredentials;
 import io.grpc.TlsChannelCredentials;
 import io.grpc.stub.StreamObserver;
@@ -33,8 +35,6 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import static io.streamnative.oxia.client.util.ConfigUtils.*;
 
 @Testcontainers
 @Slf4j
@@ -133,12 +133,12 @@ public class OxiaStubTest {
     @SneakyThrows
     public void testMaxConnectionPerNode() {
         final var maxConnectionPerNode = 10;
-        final var clientConfig = getDefaultClientConfig(builder -> {
-            builder.maxConnectionPerNode(maxConnectionPerNode);
-        });
-        @Cleanup
-        var stubManager =
-                new OxiaStubManager(clientConfig, OxiaBackoffProvider.DEFAULT);
+        final var clientConfig =
+                getDefaultClientConfig(
+                        builder -> {
+                            builder.maxConnectionPerNode(maxConnectionPerNode);
+                        });
+        @Cleanup var stubManager = new OxiaStubManager(clientConfig, OxiaBackoffProvider.DEFAULT);
         for (int i = 0; i < 1000; i++) {
             stubManager.getStub(oxia.getServiceAddress());
         }

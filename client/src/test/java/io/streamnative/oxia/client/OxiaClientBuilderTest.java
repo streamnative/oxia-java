@@ -26,7 +26,6 @@ import io.streamnative.oxia.client.api.OxiaClientBuilder;
 import io.streamnative.oxia.client.auth.TokenAuthentication;
 import java.time.Duration;
 import java.util.Properties;
-
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
