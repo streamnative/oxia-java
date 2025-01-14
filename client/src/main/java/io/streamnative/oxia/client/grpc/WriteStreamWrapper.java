@@ -132,7 +132,7 @@ public final class WriteStreamWrapper implements StreamObserver<WriteResponse> {
             if (log.isDebugEnabled()) {
                 log.debug("Sending request {}", request);
             }
-                clientStream.onNext(request);
+            clientStream.onNext(request);
             pendingWrites.add(future);
             return future;
         } catch (Exception ex) {
