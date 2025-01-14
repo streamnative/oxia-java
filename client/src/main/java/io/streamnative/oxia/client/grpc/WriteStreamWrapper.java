@@ -22,76 +22,122 @@ import io.streamnative.oxia.proto.WriteRequest;
 import io.streamnative.oxia.proto.WriteResponse;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.Optional;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.locks.StampedLock;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public final class WriteStreamWrapper implements StreamObserver<WriteResponse> {
 
     private final StreamObserver<WriteRequest> clientStream;
-    private final Deque<CompletableFuture<WriteResponse>> pendingWrites = new ArrayDeque<>();
-    private volatile Throwable failed = null;
+    private final Deque<CompletableFuture<WriteResponse>> pendingWrites;
+
+    private final StampedLock statusLock;
+    private boolean completed;
+    private Throwable completedException;
 
     public WriteStreamWrapper(OxiaClientGrpc.OxiaClientStub stub) {
         this.clientStream = stub.writeStream(this);
+        this.pendingWrites = new ArrayDeque<>();
+        this.statusLock = new StampedLock();
     }
 
     public boolean isValid() {
-        return failed == null;
-    }
-
-    @Override
-    public void onNext(WriteResponse value) {
-        synchronized (WriteStreamWrapper.this) {
-            final var future = pendingWrites.poll();
-            if (future != null) {
-                future.complete(value);
+        if (completed) {
+            return false;
+        }
+        long stamp = statusLock.tryOptimisticRead();
+        boolean locked = false;
+        try {
+            while (true) {
+                final boolean completedSnapshot = completed;
+                if (locked || statusLock.validate(stamp)) {
+                    return !completedSnapshot;
+                }
+                stamp = statusLock.readLock();
+                locked = true;
+            }
+        } finally {
+            if (locked) {
+                statusLock.unlockRead(stamp);
             }
         }
     }
 
     @Override
-    public void onError(Throwable t) {
-        synchronized (WriteStreamWrapper.this) {
-            if (!pendingWrites.isEmpty()) {
-                log.warn("Got Error", t);
+    public void onNext(WriteResponse value) {
+        final long stamp = statusLock.writeLock();
+        try {
+            final var future = pendingWrites.poll();
+            if (future != null) {
+                future.complete(value);
             }
-            pendingWrites.forEach(f -> f.completeExceptionally(t));
+        } finally {
+            statusLock.unlockWrite(stamp);
+        }
+    }
+
+    @Override
+    public void onError(Throwable ex) {
+        final long stamp = statusLock.writeLock();
+        try {
+            completedException = ex;
+            completed = true;
+            if (!pendingWrites.isEmpty()) {
+                log.warn(
+                        "Receive error when writing data to server through the stream, prepare to fail pending requests. pendingWrites={}",
+                        pendingWrites.size(),
+                        completedException);
+            }
+            pendingWrites.forEach(f -> f.completeExceptionally(ex));
             pendingWrites.clear();
-            failed = t;
+        } finally {
+            statusLock.unlockWrite(stamp);
         }
     }
 
     @Override
     public void onCompleted() {
-        synchronized (WriteStreamWrapper.this) {
-            // complete pending request if the server close stream without any response
-            pendingWrites.forEach(
-                    f -> {
-                        if (!f.isDone()) {
-                            f.completeExceptionally(new CancellationException());
-                        }
-                    });
+        final long stamp = statusLock.writeLock();
+        try {
+            completed = true;
+            if (!pendingWrites.isEmpty()) {
+                log.info(
+                        "Receive stream close signal when writing data to server through the stream, prepare to cancel pending requests. pendingWrites={}",
+                        pendingWrites.size());
+            }
+            pendingWrites.forEach(f -> f.completeExceptionally(new CancellationException()));
+            pendingWrites.clear();
+        } finally {
+            statusLock.unlockWrite(stamp);
         }
     }
 
     public CompletableFuture<WriteResponse> send(WriteRequest request) {
-        synchronized (WriteStreamWrapper.this) {
-            if (failed != null) {
-                return CompletableFuture.failedFuture(failed);
+        if (completed) {
+            return CompletableFuture.failedFuture(
+                    Optional.ofNullable(completedException).orElseGet(CancellationException::new));
+        }
+        final var future = new CompletableFuture<WriteResponse>();
+        if (log.isDebugEnabled()) {
+            log.debug("Sending request {}", request);
+        }
+        final long stamp = statusLock.writeLock();
+        try {
+            if (completed) {
+                return CompletableFuture.failedFuture(
+                        Optional.ofNullable(completedException).orElseGet(CancellationException::new));
             }
-            final CompletableFuture<WriteResponse> future = new CompletableFuture<>();
-            try {
-                if (log.isDebugEnabled()) {
-                    log.debug("Sending request {}", request);
-                }
-                clientStream.onNext(request);
-                pendingWrites.add(future);
-            } catch (Exception e) {
-                future.completeExceptionally(e);
-            }
+            clientStream.onNext(request);
+            pendingWrites.add(future);
             return future;
+        } catch (Exception ex) {
+            future.completeExceptionally(ex);
+            return future;
+        } finally {
+            statusLock.unlockWrite(stamp);
         }
     }
 }
