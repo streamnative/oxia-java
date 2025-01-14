@@ -26,6 +26,8 @@ import io.streamnative.oxia.client.api.OxiaClientBuilder;
 import io.streamnative.oxia.client.auth.TokenAuthentication;
 import java.time.Duration;
 import java.util.Properties;
+
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 class OxiaClientBuilderTest {
@@ -131,5 +133,16 @@ class OxiaClientBuilderTest {
         assertThat(metadata).isNotNull();
         String token = metadata.get(Metadata.Key.of("Authorization", ASCII_STRING_MARSHALLER));
         assertThat(token).isEqualTo("Bearer 1234");
+    }
+
+    @Test
+    void connectionKeepAlive() {
+        final var keepAliveTime = Duration.ofMillis(10);
+        final var keepAliveTimeout = Duration.ofMillis(10);
+        builder.connectionKeepAliveTime(keepAliveTime);
+        builder.connectionKeepAliveTimeout(keepAliveTimeout);
+        final var impl = (OxiaClientBuilderImpl) builder;
+        Assertions.assertEquals(keepAliveTimeout, impl.connectionKeepAliveTimeout);
+        Assertions.assertEquals(keepAliveTime, impl.connectionKeepAliveTime);
     }
 }

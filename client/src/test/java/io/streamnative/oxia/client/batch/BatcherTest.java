@@ -66,6 +66,8 @@ class BatcherTest {
                     false,
                     Duration.ofMillis(100),
                     Duration.ofSeconds(30),
+                    Duration.ofSeconds(10),
+                    Duration.ofSeconds(5),
                     1);
 
     BatchedArrayBlockingQueue<Operation<?>> queue;

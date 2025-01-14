@@ -104,6 +104,8 @@ class BatchTest {
                     authentication != null,
                     Duration.ofMillis(100),
                     Duration.ofSeconds(30),
+                    Duration.ofSeconds(10),
+                    Duration.ofSeconds(5),
                     1);
 
     private final OxiaClientImplBase serviceImpl =
@@ -498,6 +500,8 @@ class BatchTest {
                         false,
                         Duration.ofMillis(100),
                         Duration.ofSeconds(30),
+                        Duration.ofSeconds(10),
+                        Duration.ofSeconds(5),
                         1);
 
         @Nested

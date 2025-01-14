@@ -17,6 +17,7 @@ package io.streamnative.oxia.client;
 
 import static java.time.Duration.ZERO;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.google.protobuf.DurationOrBuilder;
 import io.opentelemetry.api.GlobalOpenTelemetry;
@@ -254,8 +255,11 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
 
     @Override
     public @NonNull CompletableFuture<AsyncOxiaClient> asyncClient() {
-        var config =
-                new ClientConfig(
+        return AsyncOxiaClientImpl.newInstance(getClientConfig());
+    }
+
+    public ClientConfig getClientConfig() {
+       return new ClientConfig(
                         serviceAddress,
                         requestTimeout,
                         batchLinger,
@@ -272,7 +276,6 @@ public class OxiaClientBuilderImpl implements OxiaClientBuilder {
                         connectionKeepAliveTime,
                         connectionKeepAliveTimeout,
                         maxConnectionsPerNode);
-        return AsyncOxiaClientImpl.newInstance(config);
     }
 
     @Override

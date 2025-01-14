@@ -34,6 +34,8 @@ import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import static io.streamnative.oxia.client.util.ConfigUtils.*;
+
 @Testcontainers
 @Slf4j
 public class OxiaStubTest {
@@ -52,9 +54,9 @@ public class OxiaStubTest {
     public void testOxiaReconnectBackoff(BackoffType type) throws Exception {
         final OxiaStubManager stubManager;
         if (type == BackoffType.Oxia) {
-            stubManager = new OxiaStubManager(null, false, OxiaBackoffProvider.DEFAULT, 1);
+            stubManager = new OxiaStubManager(getDefaultClientConfig(), OxiaBackoffProvider.DEFAULT);
         } else {
-            stubManager = new OxiaStubManager(null, false, null, 1);
+            stubManager = new OxiaStubManager(getDefaultClientConfig(), null);
         }
 
         final OxiaStub stub = stubManager.getStub(oxia.getServiceAddress());
@@ -131,9 +133,12 @@ public class OxiaStubTest {
     @SneakyThrows
     public void testMaxConnectionPerNode() {
         final var maxConnectionPerNode = 10;
+        final var clientConfig = getDefaultClientConfig(builder -> {
+            builder.maxConnectionPerNode(maxConnectionPerNode);
+        });
         @Cleanup
         var stubManager =
-                new OxiaStubManager(null, false, OxiaBackoffProvider.DEFAULT, maxConnectionPerNode);
+                new OxiaStubManager(clientConfig, OxiaBackoffProvider.DEFAULT);
         for (int i = 0; i < 1000; i++) {
             stubManager.getStub(oxia.getServiceAddress());
         }
