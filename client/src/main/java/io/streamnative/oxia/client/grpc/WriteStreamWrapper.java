@@ -51,18 +51,16 @@ public final class WriteStreamWrapper implements StreamObserver<WriteResponse> {
             return false;
         }
         long stamp = statusLock.tryOptimisticRead();
-        boolean locked = false;
         try {
             while (true) {
                 final boolean completedSnapshot = completed;
-                if (locked || statusLock.validate(stamp)) {
+                if (StampedLock.isReadLockStamp(stamp) || statusLock.validate(stamp)) {
                     return !completedSnapshot;
                 }
-                stamp = statusLock.readLock();
-                locked = true;
+                stamp = statusLock.tryConvertToReadLock(stamp);
             }
         } finally {
-            if (locked) {
+            if (StampedLock.isReadLockStamp(stamp)) {
                 statusLock.unlockRead(stamp);
             }
         }
