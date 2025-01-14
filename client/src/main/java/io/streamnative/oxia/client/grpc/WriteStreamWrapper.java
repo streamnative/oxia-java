@@ -93,7 +93,7 @@ public final class WriteStreamWrapper implements StreamObserver<WriteResponse> {
                         pendingWrites.size(),
                         completedException);
             }
-            pendingWrites.forEach(f -> f.completeExceptionally(ex));
+            pendingWrites.forEach(f -> f.completeExceptionally(completedException));
             pendingWrites.clear();
         } finally {
             statusLock.unlockWrite(stamp);
