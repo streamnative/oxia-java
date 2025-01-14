@@ -21,6 +21,7 @@ import io.streamnative.oxia.proto.WriteRequest;
 import io.streamnative.oxia.proto.WriteResponse;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.Optional;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
@@ -88,11 +89,13 @@ public final class WriteStreamWrapper implements StreamObserver<WriteResponse> {
 
     public CompletableFuture<WriteResponse> send(WriteRequest request) {
         if (completed) {
-            return CompletableFuture.failedFuture(completedException);
+            return CompletableFuture.failedFuture(
+                    Optional.ofNullable(completedException).orElseGet(CancellationException::new));
         }
         synchronized (WriteStreamWrapper.this) {
             if (completed) {
-                return CompletableFuture.failedFuture(completedException);
+                return CompletableFuture.failedFuture(
+                        Optional.ofNullable(completedException).orElseGet(CancellationException::new));
             }
             final CompletableFuture<WriteResponse> future = new CompletableFuture<>();
             try {
