@@ -682,7 +682,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
                     @Override
                     public void onError(Throwable throwable) {
-                        gaugePendingListRequests.decrement();
+                        gaugePendingRangeScanRequests.decrement();
                         histogramRangeScanLatency.recordFailure(System.nanoTime() - startTime);
                         consumer.onError(throwable);
                     }
