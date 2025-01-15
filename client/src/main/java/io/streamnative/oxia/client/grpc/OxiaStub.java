@@ -65,6 +65,7 @@ public class OxiaStub implements AutoCloseable {
                         .keepAliveTime(clientConfig.connectionKeepAliveTime().toMillis(), MILLISECONDS)
                         .keepAliveTimeout(clientConfig.connectionKeepAliveTimeout().toMillis(), MILLISECONDS)
                         .keepAliveWithoutCalls(true)
+                        .disableRetry()
                         .directExecutor()
                         .build(), clientConfig.authentication(), backoffProvider);
     }
