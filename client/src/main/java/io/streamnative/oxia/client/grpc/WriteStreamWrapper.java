@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022-2024 StreamNative Inc.
+ * Copyright © 2022-2025 StreamNative Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package io.streamnative.oxia.client.grpc;
 
 import io.grpc.stub.StreamObserver;
@@ -22,6 +21,7 @@ import io.streamnative.oxia.proto.WriteRequest;
 import io.streamnative.oxia.proto.WriteResponse;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.Optional;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
@@ -30,15 +30,20 @@ import lombok.extern.slf4j.Slf4j;
 public final class WriteStreamWrapper implements StreamObserver<WriteResponse> {
 
     private final StreamObserver<WriteRequest> clientStream;
-    private final Deque<CompletableFuture<WriteResponse>> pendingWrites = new ArrayDeque<>();
-    private volatile Throwable failed = null;
+    private final Deque<CompletableFuture<WriteResponse>> pendingWrites;
+
+    private volatile boolean completed;
+    private volatile Throwable completedException;
 
     public WriteStreamWrapper(OxiaClientGrpc.OxiaClientStub stub) {
         this.clientStream = stub.writeStream(this);
+        this.pendingWrites = new ArrayDeque<>();
+        this.completed = false;
+        this.completedException = null;
     }
 
     public boolean isValid() {
-        return failed == null;
+        return !completed;
     }
 
     @Override
@@ -52,34 +57,45 @@ public final class WriteStreamWrapper implements StreamObserver<WriteResponse> {
     }
 
     @Override
-    public void onError(Throwable t) {
+    public void onError(Throwable error) {
         synchronized (WriteStreamWrapper.this) {
+            completedException = error;
+            completed = true;
             if (!pendingWrites.isEmpty()) {
-                log.warn("Got Error", t);
+                log.warn(
+                        "Receive error when writing data to server through the stream, prepare to fail pending requests. pendingWrites={}",
+                        pendingWrites.size(),
+                        completedException);
             }
-            pendingWrites.forEach(f -> f.completeExceptionally(t));
+            pendingWrites.forEach(f -> f.completeExceptionally(completedException));
             pendingWrites.clear();
-            failed = t;
         }
     }
 
     @Override
     public void onCompleted() {
         synchronized (WriteStreamWrapper.this) {
-            // complete pending request if the server close stream without any response
-            pendingWrites.forEach(
-                    f -> {
-                        if (!f.isDone()) {
-                            f.completeExceptionally(new CancellationException());
-                        }
-                    });
+            completed = true;
+            if (!pendingWrites.isEmpty()) {
+                log.warn(
+                        "Receive stream close signal when writing data to server through the stream, prepare to cancel pending requests. pendingWrites={}",
+                        pendingWrites.size(),
+                        completedException);
+            }
+            pendingWrites.forEach(f -> f.completeExceptionally(new CancellationException()));
+            pendingWrites.clear();
         }
     }
 
     public CompletableFuture<WriteResponse> send(WriteRequest request) {
+        if (completed) {
+            return CompletableFuture.failedFuture(
+                    Optional.ofNullable(completedException).orElseGet(CancellationException::new));
+        }
         synchronized (WriteStreamWrapper.this) {
-            if (failed != null) {
-                return CompletableFuture.failedFuture(failed);
+            if (completed) {
+                return CompletableFuture.failedFuture(
+                        Optional.ofNullable(completedException).orElseGet(CancellationException::new));
             }
             final CompletableFuture<WriteResponse> future = new CompletableFuture<>();
             try {
