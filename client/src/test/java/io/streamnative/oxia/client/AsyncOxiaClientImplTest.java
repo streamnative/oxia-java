@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022-2024 StreamNative Inc.
+ * Copyright © 2022-2025 StreamNative Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import static io.streamnative.oxia.client.api.PutOption.IfVersionIdEquals;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Optional.empty;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
@@ -47,9 +48,10 @@ import io.streamnative.oxia.client.shard.ShardManager;
 import io.streamnative.oxia.proto.ListRequest;
 import io.streamnative.oxia.proto.ListResponse;
 import io.streamnative.oxia.proto.OxiaClientGrpc;
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -70,6 +72,8 @@ class AsyncOxiaClientImplTest {
 
     AsyncOxiaClientImpl client;
 
+    private final Duration requestTimeout = Duration.ofSeconds(1);
+
     @BeforeEach
     void setUp() {
         client =
@@ -82,7 +86,8 @@ class AsyncOxiaClientImplTest {
                         notificationManager,
                         readBatchManager,
                         writeBatchManager,
-                        sessionManager);
+                        sessionManager,
+                        requestTimeout);
     }
 
     @AfterEach
@@ -112,6 +117,25 @@ class AsyncOxiaClientImplTest {
                             var putResult = new PutResult(key, new Version(1, 2, 3, 4, empty(), empty()));
                             o.callback().complete(putResult);
                         });
+    }
+
+    @Test
+    void putWithTimeout() {
+        var opCaptor = ArgumentCaptor.forClass(PutOperation.class);
+        var shardId = 1L;
+        var key = "key";
+        var value = "hello".getBytes(UTF_8);
+        when(shardManager.getShardForKey(key)).thenReturn(shardId);
+        when(writeBatchManager.getBatcher(shardId)).thenReturn(batcher);
+        doNothing().when(batcher).add(opCaptor.capture());
+        var result = client.put(key, value);
+        try {
+            result.join();
+            fail("unexpected");
+        } catch (Throwable ex) {
+            assertThat(ex).isInstanceOf(CompletionException.class);
+            assertThat(ex.getCause()).isInstanceOf(TimeoutException.class);
+        }
     }
 
     @Test
@@ -210,6 +234,22 @@ class AsyncOxiaClientImplTest {
     }
 
     @Test
+    void deleteWithTimeout() {
+        var shardId = 1L;
+        var key = "key";
+        when(shardManager.getShardForKey(key)).thenReturn(shardId);
+        when(writeBatchManager.getBatcher(shardId)).thenReturn(batcher);
+        var result = client.delete(key);
+        try {
+            result.join();
+            fail("unexpected");
+        } catch (Throwable ex) {
+            assertThat(ex).isInstanceOf(CompletionException.class);
+            assertThat(ex.getCause()).isInstanceOf(TimeoutException.class);
+        }
+    }
+
+    @Test
     void deleteClosed() throws Exception {
         client.close();
         var key = "key";
@@ -300,6 +340,58 @@ class AsyncOxiaClientImplTest {
     }
 
     @Test
+    void deleteRangeWithTimeout() {
+        var batcher1 = mock(Batcher.class);
+        var batcher2 = mock(Batcher.class);
+        var batcher3 = mock(Batcher.class);
+        var opCaptor1 = ArgumentCaptor.forClass(DeleteRangeOperation.class);
+        var opCaptor2 = ArgumentCaptor.forClass(DeleteRangeOperation.class);
+        var opCaptor3 = ArgumentCaptor.forClass(DeleteRangeOperation.class);
+        var startInclusive = "a-startInclusive";
+        var endExclusive = "z-endExclusive";
+        when(shardManager.allShardIds()).thenReturn(Set.of(1L, 2L, 3L));
+        when(writeBatchManager.getBatcher(1L)).thenReturn(batcher1);
+        when(writeBatchManager.getBatcher(2L)).thenReturn(batcher2);
+        when(writeBatchManager.getBatcher(3L)).thenReturn(batcher3);
+        doNothing().when(batcher1).add(opCaptor1.capture());
+        doNothing().when(batcher2).add(opCaptor2.capture());
+        doNothing().when(batcher3).add(opCaptor3.capture());
+        var result = client.deleteRange(startInclusive, endExclusive);
+        assertThat(result).isNotCompleted();
+
+        assertThat(opCaptor1.getValue())
+                .satisfies(
+                        o -> {
+                            assertThat(o.startKeyInclusive()).isEqualTo(startInclusive);
+                            assertThat(o.endKeyExclusive()).isEqualTo(endExclusive);
+                            assertThat(o.callback()).isNotCompleted();
+                        });
+
+        assertThat(opCaptor2.getValue())
+                .satisfies(
+                        o -> {
+                            assertThat(o.startKeyInclusive()).isEqualTo(startInclusive);
+                            assertThat(o.endKeyExclusive()).isEqualTo(endExclusive);
+                            assertThat(o.callback()).isNotCompleted();
+                        });
+
+        assertThat(opCaptor3.getValue())
+                .satisfies(
+                        o -> {
+                            assertThat(o.startKeyInclusive()).isEqualTo(startInclusive);
+                            assertThat(o.endKeyExclusive()).isEqualTo(endExclusive);
+                            assertThat(o.callback()).isNotCompleted();
+                        });
+        try {
+            result.join();
+            fail("unexpected");
+        } catch (Throwable ex) {
+            assertThat(ex).isInstanceOf(CompletionException.class);
+            assertThat(ex.getCause()).isInstanceOf(TimeoutException.class);
+        }
+    }
+
+    @Test
     void deleteRangeClosed() throws Exception {
         client.close();
         var startInclusive = "a-startInclusive";
@@ -353,6 +445,22 @@ class AsyncOxiaClientImplTest {
     }
 
     @Test
+    void getWithTimeout() {
+        var shardId = 1L;
+        var key = "key";
+        when(shardManager.getShardForKey(key)).thenReturn(shardId);
+        when(readBatchManager.getBatcher(shardId)).thenReturn(batcher);
+        var result = client.get(key);
+        try {
+            result.join();
+            fail("unexpected");
+        } catch (Throwable ex) {
+            assertThat(ex).isInstanceOf(CompletionException.class);
+            assertThat(ex.getCause()).isInstanceOf(TimeoutException.class);
+        }
+    }
+
+    @Test
     void getClosed() throws Exception {
         client.close();
         var key = "key";
@@ -378,6 +486,21 @@ class AsyncOxiaClientImplTest {
     }
 
     @Test
+    void listWithTimeout(@Mock OxiaStub stub0, @Mock OxiaStub stub1) {
+        when(shardManager.allShardIds()).thenReturn(Set.of(0L, 1L));
+        setupTimeoutStub(0L, "leader0", stub0);
+        setupTimeoutStub(1L, "leader1", stub1);
+        final var result = client.list("a", "e");
+        try {
+            result.join();
+            fail("unexpected");
+        } catch (Throwable ex) {
+            assertThat(ex).isInstanceOf(CompletionException.class);
+            assertThat(ex.getCause()).isInstanceOf(TimeoutException.class);
+        }
+    }
+
+    @Test
     void listClosed() throws Exception {
 
         client.close();
@@ -394,6 +517,15 @@ class AsyncOxiaClientImplTest {
     void listNullEnd() throws Exception {
 
         assertThat(client.list("a", null)).isCompletedExceptionally();
+    }
+
+    private void setupTimeoutStub(long shardId, String leader, OxiaStub stub) {
+        when(shardManager.leader(shardId)).thenReturn(leader);
+        when(stubManager.getStub(leader)).thenReturn(stub);
+
+        var async = mock(OxiaClientGrpc.OxiaClientStub.class);
+        when(stub.async()).thenReturn(async);
+        doNothing().when(async).list(any(ListRequest.class), any(StreamObserver.class));
     }
 
     private void setupListStub(long shardId, String leader, OxiaStub stub) {

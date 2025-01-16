@@ -51,6 +51,7 @@ import io.streamnative.oxia.proto.ListRequest;
 import io.streamnative.oxia.proto.ListResponse;
 import io.streamnative.oxia.proto.RangeScanRequest;
 import io.streamnative.oxia.proto.RangeScanResponse;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -62,6 +63,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import lombok.NonNull;
@@ -105,8 +107,8 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                         notificationManager,
                         readBatchManager,
                         writeBatchManager,
-                        sessionManager);
-
+                        sessionManager,
+                        config.requestTimeout());
         return shardManager.start().thenApply(v -> client);
     }
 
@@ -118,6 +120,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     private final @NonNull BatchManager readBatchManager;
     private final @NonNull BatchManager writeBatchManager;
     private final @NonNull SessionManager sessionManager;
+    private final long requestTimeoutMs;
     private volatile boolean closed;
 
     private final Counter counterPutBytes;
@@ -152,7 +155,8 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
             @NonNull NotificationManager notificationManager,
             @NonNull BatchManager readBatchManager,
             @NonNull BatchManager writeBatchManager,
-            @NonNull SessionManager sessionManager) {
+            @NonNull SessionManager sessionManager,
+            Duration requestTimeout) {
         this.clientIdentifier = clientIdentifier;
         this.instrumentProvider = instrumentProvider;
         this.stubManager = stubManager;
@@ -162,6 +166,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         this.writeBatchManager = writeBatchManager;
         this.sessionManager = sessionManager;
         this.scheduledExecutor = scheduledExecutor;
+        this.requestTimeoutMs = requestTimeout.toMillis();
 
         counterPutBytes =
                 instrumentProvider.newCounter(
@@ -288,18 +293,20 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         } catch (RuntimeException e) {
             callback = CompletableFuture.failedFuture(e);
         }
-        return callback.whenComplete(
-                (putResult, throwable) -> {
-                    gaugePendingPutRequests.decrement();
-                    gaugePendingPutBytes.add(-value.length);
+        return callback
+                .orTimeout(requestTimeoutMs, TimeUnit.MILLISECONDS)
+                .whenComplete(
+                        (putResult, throwable) -> {
+                            gaugePendingPutRequests.decrement();
+                            gaugePendingPutBytes.add(-value.length);
 
-                    if (throwable == null) {
-                        counterPutBytes.add(value.length);
-                        histogramPutLatency.recordSuccess(System.nanoTime() - startTime);
-                    } else {
-                        histogramPutLatency.recordFailure(System.nanoTime() - startTime);
-                    }
-                });
+                            if (throwable == null) {
+                                counterPutBytes.add(value.length);
+                                histogramPutLatency.recordSuccess(System.nanoTime() - startTime);
+                            } else {
+                                histogramPutLatency.recordFailure(System.nanoTime() - startTime);
+                            }
+                        });
     }
 
     private CompletableFuture<PutResult> internalPut(
@@ -355,7 +362,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                             });
         }
 
-        return future;
+        return future.orTimeout(requestTimeoutMs, TimeUnit.MILLISECONDS);
     }
 
     @Override
@@ -381,15 +388,17 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         } catch (RuntimeException e) {
             callback.completeExceptionally(e);
         }
-        return callback.whenComplete(
-                (putResult, throwable) -> {
-                    gaugePendingDeleteRequests.decrement();
-                    if (throwable == null) {
-                        histogramDeleteLatency.recordSuccess(System.nanoTime() - startTime);
-                    } else {
-                        histogramDeleteLatency.recordFailure(System.nanoTime() - startTime);
-                    }
-                });
+        return callback
+                .orTimeout(requestTimeoutMs, TimeUnit.MILLISECONDS)
+                .whenComplete(
+                        (putResult, throwable) -> {
+                            gaugePendingDeleteRequests.decrement();
+                            if (throwable == null) {
+                                histogramDeleteLatency.recordSuccess(System.nanoTime() - startTime);
+                            } else {
+                                histogramDeleteLatency.recordFailure(System.nanoTime() - startTime);
+                            }
+                        });
     }
 
     @Override
@@ -436,15 +445,17 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         } catch (RuntimeException e) {
             callback = CompletableFuture.failedFuture(e);
         }
-        return callback.whenComplete(
-                (putResult, throwable) -> {
-                    gaugePendingDeleteRangeRequests.decrement();
-                    if (throwable == null) {
-                        histogramDeleteRangeLatency.recordSuccess(System.nanoTime() - startTime);
-                    } else {
-                        histogramDeleteRangeLatency.recordFailure(System.nanoTime() - startTime);
-                    }
-                });
+        return callback
+                .orTimeout(requestTimeoutMs, TimeUnit.MILLISECONDS)
+                .whenComplete(
+                        (putResult, throwable) -> {
+                            gaugePendingDeleteRangeRequests.decrement();
+                            if (throwable == null) {
+                                histogramDeleteRangeLatency.recordSuccess(System.nanoTime() - startTime);
+                            } else {
+                                histogramDeleteRangeLatency.recordFailure(System.nanoTime() - startTime);
+                            }
+                        });
     }
 
     @Override
@@ -464,18 +475,20 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         } catch (RuntimeException e) {
             callback.completeExceptionally(e);
         }
-        return callback.whenComplete(
-                (getResult, throwable) -> {
-                    gaugePendingGetRequests.decrement();
-                    if (throwable == null) {
-                        if (getResult != null) {
-                            counterGetBytes.add(getResult.getValue().length);
-                        }
-                        histogramGetLatency.recordSuccess(System.nanoTime() - startTime);
-                    } else {
-                        histogramGetLatency.recordFailure(System.nanoTime() - startTime);
-                    }
-                });
+        return callback
+                .orTimeout(requestTimeoutMs, TimeUnit.MILLISECONDS)
+                .whenComplete(
+                        (getResult, throwable) -> {
+                            gaugePendingGetRequests.decrement();
+                            if (throwable == null) {
+                                if (getResult != null) {
+                                    counterGetBytes.add(getResult.getValue().length);
+                                }
+                                histogramGetLatency.recordSuccess(System.nanoTime() - startTime);
+                            } else {
+                                histogramGetLatency.recordFailure(System.nanoTime() - startTime);
+                            }
+                        });
     }
 
     private void internalGet(
@@ -566,16 +579,18 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         } catch (Exception e) {
             callback = CompletableFuture.failedFuture(e);
         }
-        return callback.whenComplete(
-                (listResult, throwable) -> {
-                    gaugePendingListRequests.decrement();
-                    if (throwable == null) {
-                        counterListBytes.add(listResult.stream().mapToInt(String::length).sum());
-                        histogramListLatency.recordSuccess(System.nanoTime() - startTime);
-                    } else {
-                        histogramListLatency.recordFailure(System.nanoTime() - startTime);
-                    }
-                });
+        return callback
+                .orTimeout(requestTimeoutMs, TimeUnit.MILLISECONDS)
+                .whenComplete(
+                        (listResult, throwable) -> {
+                            gaugePendingListRequests.decrement();
+                            if (throwable == null) {
+                                counterListBytes.add(listResult.stream().mapToInt(String::length).sum());
+                                histogramListLatency.recordSuccess(System.nanoTime() - startTime);
+                            } else {
+                                histogramListLatency.recordFailure(System.nanoTime() - startTime);
+                            }
+                        });
     }
 
     @Override
