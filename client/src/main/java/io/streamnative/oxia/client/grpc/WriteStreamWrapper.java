@@ -36,10 +36,10 @@ public final class WriteStreamWrapper implements StreamObserver<WriteResponse> {
     private volatile Throwable completedException;
 
     public WriteStreamWrapper(OxiaClientGrpc.OxiaClientStub stub) {
-        this.clientStream = stub.writeStream(this);
         this.pendingWrites = new ArrayDeque<>();
         this.completed = false;
         this.completedException = null;
+        this.clientStream = stub.writeStream(this);
     }
 
     public boolean isValid() {
