@@ -751,10 +751,6 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                 .rangeScan(
                         request,
                         new StreamObserver<>() {
-                            // using those two fields to help debug with heap dump
-                            private boolean completed = false;
-                            private Throwable completedException = null;
-
                             @Override
                             public void onNext(RangeScanResponse response) {
                                 for (int i = 0; i < response.getRecordsCount(); i++) {
@@ -764,14 +760,11 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
                             @Override
                             public void onError(Throwable t) {
-                                completed = true;
-                                completedException = t;
                                 consumer.onError(t);
                             }
 
                             @Override
                             public void onCompleted() {
-                                completed = true;
                                 consumer.onCompleted();
                             }
                         });
