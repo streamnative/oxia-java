@@ -822,6 +822,41 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         }
     }
 
+    static class ShardRangeScanConsumer implements RangeScanConsumerWithShard{
+        private final RangeScanConsumerWithShard consumer;
+
+        private final Set<Long> pendingShards;
+        private boolean failed = false;
+
+        ShardRangeScanConsumer(List<Long> shardIds, RangeScanConsumerWithShard consumer) {
+            this.consumer = consumer;
+            this.pendingShards = new HashSet<>(shardIds);
+        }
+
+        @Override
+        public synchronized void onNext(long shardId, GetResult result) {
+            if (!failed) {
+                consumer.onNext(shardId, result);
+            }
+        }
+
+        @Override
+        public synchronized void onError(Throwable throwable) {
+            failed = true;
+            consumer.onError(throwable);
+        }
+
+        @Override
+        public synchronized void onCompleted(long shardId) {
+            if (!failed) {
+                pendingShards.remove(shardId);
+                if (pendingShards.isEmpty()) {
+                    consumer.onCompleted(shardId);
+                }
+            }
+        }
+    }
+
     @Override
     public void close() throws Exception {
         if (closed) {
