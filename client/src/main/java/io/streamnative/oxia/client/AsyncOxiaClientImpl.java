@@ -54,7 +54,6 @@ import io.streamnative.oxia.proto.RangeScanResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -684,13 +683,13 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
             @NonNull Set<RangeScanOption> options) {
         gaugePendingRangeScanRequests.increment();
 
-        RangeScanConsumerWithShard timedConsumer =
-                new RangeScanConsumerWithShard() {
+        final RangeScanConsumer timedConsumer =
+                new RangeScanConsumer() {
                     final long startTime = System.nanoTime();
                     final AtomicLong totalSize = new AtomicLong();
 
                     @Override
-                    public void onNext(long shardId, GetResult result) {
+                    public void onNext(GetResult result) {
                         totalSize.addAndGet(result.getValue().length);
                         consumer.onNext(result);
                     }
@@ -703,7 +702,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                     }
 
                     @Override
-                    public void onCompleted(long shardId) {
+                    public void onCompleted() {
                         gaugePendingRangeScanRequests.decrement();
                         counterRangeScanBytes.add(totalSize.longValue());
                         histogramRangeScanLatency.recordSuccess(System.nanoTime() - startTime);
@@ -731,20 +730,12 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         }
     }
 
-    interface RangeScanConsumerWithShard {
-        void onNext(long shardId, GetResult result);
-
-        void onError(Throwable throwable);
-
-        void onCompleted(long shardId);
-    }
-
     private void internalShardRangeScan(
             long shardId,
             String startKeyInclusive,
             String endKeyExclusive,
             Optional<String> secondaryIndexName,
-            RangeScanConsumerWithShard consumer) {
+            RangeScanConsumer consumer) {
         var leader = shardManager.leader(shardId);
         var stub = stubManager.getStub(leader);
         var requestBuilder =
@@ -760,22 +751,28 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                 .rangeScan(
                         request,
                         new StreamObserver<>() {
+                            // using those two fields to help debug with heap dump
+                            private boolean completed = false;
+                            private Throwable completedException = null;
+
                             @Override
                             public void onNext(RangeScanResponse response) {
                                 for (int i = 0; i < response.getRecordsCount(); i++) {
-                                    consumer.onNext(
-                                            shardId, ProtoUtil.getResultFromProto("", response.getRecords(i)));
+                                    consumer.onNext(ProtoUtil.getResultFromProto("", response.getRecords(i)));
                                 }
                             }
 
                             @Override
                             public void onError(Throwable t) {
+                                completed = true;
+                                completedException = t;
                                 consumer.onError(t);
                             }
 
                             @Override
                             public void onCompleted() {
-                                consumer.onCompleted(shardId);
+                                completed = true;
+                                consumer.onCompleted();
                             }
                         });
     }
@@ -784,42 +781,62 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
             String startKeyInclusive,
             String endKeyExclusive,
             Optional<String> secondaryIndexName,
-            RangeScanConsumerWithShard consumer) {
-        Set<Long> shardIds = shardManager.allShardIds();
-
-        RangeScanConsumerWithShard multiShardConsumer =
-                new RangeScanConsumerWithShard() {
-                    private final Set<Long> pendingShards = new HashSet<>(shardIds);
-                    private boolean failed = false;
-
-                    @Override
-                    public synchronized void onNext(long shardId, GetResult result) {
-                        if (!failed) {
-                            consumer.onNext(shardId, result);
-                        }
-                    }
-
-                    @Override
-                    public synchronized void onError(Throwable throwable) {
-                        failed = true;
-                        consumer.onError(throwable);
-                    }
-
-                    @Override
-                    public synchronized void onCompleted(long shardId) {
-                        if (!failed) {
-                            pendingShards.remove(shardId);
-                            if (pendingShards.isEmpty()) {
-                                consumer.onCompleted(shardId);
-                            }
-                        }
-                    }
-                };
-
+            RangeScanConsumer consumer) {
+        final Set<Long> shardIds = shardManager.allShardIds();
+        final RangeScanConsumer multiShardConsumer = new ShardRangeScanConsumer(shardIds.size(), consumer);
         for (long shardId : shardIds) {
             internalShardRangeScan(
                     shardId, startKeyInclusive, endKeyExclusive, secondaryIndexName, multiShardConsumer);
         }
+    }
+
+    static class ShardRangeScanConsumer implements RangeScanConsumer {
+        private final RangeScanConsumer delegate;
+
+
+        private int pendingCompletedRequests;
+        private boolean completed = false;
+        private Throwable completedException = null;
+
+        ShardRangeScanConsumer(int shards, RangeScanConsumer delegate) {
+            this.pendingCompletedRequests = shards;
+            this.delegate = delegate;
+        }
+
+        @Override
+        public synchronized void onNext(GetResult result) {
+            if (completed) {
+                return;
+            }
+            delegate.onNext(result);
+        }
+
+        @Override
+        public synchronized void onError(Throwable throwable) {
+            if (completedException == null) {
+                completedException = throwable;
+            } else {
+                completedException.addSuppressed(throwable);
+            }
+            if (completed) {
+                return;
+            }
+            completed = true;
+            delegate.onError(throwable);
+        }
+
+        @Override
+        public synchronized void onCompleted() {
+            if (completed) {
+                return;
+            }
+            pendingCompletedRequests -= 1;
+            if (pendingCompletedRequests == 0) {
+                completed = true;
+                delegate.onCompleted();
+            }
+        }
+
     }
 
     @Override

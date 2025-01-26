@@ -32,6 +32,7 @@ import io.grpc.stub.StreamObserver;
 import io.streamnative.oxia.client.api.DeleteOption;
 import io.streamnative.oxia.client.api.GetResult;
 import io.streamnative.oxia.client.api.PutResult;
+import io.streamnative.oxia.client.api.RangeScanConsumer;
 import io.streamnative.oxia.client.api.Version;
 import io.streamnative.oxia.client.batch.BatchManager;
 import io.streamnative.oxia.client.batch.Batcher;
@@ -49,10 +50,18 @@ import io.streamnative.oxia.proto.ListRequest;
 import io.streamnative.oxia.proto.ListResponse;
 import io.streamnative.oxia.proto.OxiaClientGrpc;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinTask;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -565,5 +574,101 @@ class AsyncOxiaClientImplTest {
         inOrder.verify(shardManager).close();
         inOrder.verify(stubManager).close();
         client = null;
+    }
+
+
+    @Test
+    void testShardShardRangeScanConsumer() {
+        final int shards = 5;
+        final List<GetResult> results = new ArrayList<>();
+        final AtomicInteger onErrorCount = new AtomicInteger(0);
+        final AtomicInteger onCompletedCount = new AtomicInteger(0);
+        final Supplier<RangeScanConsumer> newShardRangeScanConsumer = () -> new AsyncOxiaClientImpl.ShardRangeScanConsumer(5, new RangeScanConsumer() {
+            @Override
+            public void onNext(GetResult result) {
+                results.add(result);
+            }
+
+            @Override
+            public void onError(Throwable throwable) {
+                onErrorCount.incrementAndGet();
+            }
+
+            @Override
+            public void onCompleted() {
+                onCompletedCount.incrementAndGet();
+            }
+        });
+        final var tasks = new ArrayList<ForkJoinTask<?>>();
+
+        // (1) complete ok
+        final var shardRangeScanConsumer1 = newShardRangeScanConsumer.get();
+        for (int i = 0; i < shards; i++) {
+            final int fi = i;
+            final ForkJoinTask<?> task = ForkJoinPool.commonPool().submit(() -> {
+                shardRangeScanConsumer1.onNext(new GetResult("shard-" + fi + "-0",
+                        new byte[10],
+                        new Version(1, 2, 3, 4, empty(), empty())));
+                shardRangeScanConsumer1.onNext(new GetResult("shard-" + fi + "-1",
+                        new byte[10],
+                        new Version(1, 2, 3, 4, empty(), empty())));
+                shardRangeScanConsumer1.onCompleted();
+            });
+            tasks.add(task);
+        }
+        tasks.forEach(ForkJoinTask::join);
+        var keys = results.stream().map(GetResult::getKey).toList();
+        for (int i = 0; i < shards; i++) {
+            Assertions.assertTrue(keys.contains("shard-" + i + "-0"));
+            Assertions.assertTrue(keys.contains("shard-" + i + "-1"));
+        }
+        Assertions.assertEquals(0, onErrorCount.get());
+        Assertions.assertEquals(1, onCompletedCount.get());
+
+        tasks.clear();
+        onErrorCount.set(0);
+        onCompletedCount.set(0);
+        results.clear();
+
+
+        // (2) complete partial exception
+        final var shardRangeScanConsumer2 = newShardRangeScanConsumer.get();
+        for (int i = 0; i < shards; i++) {
+            final int fi = i;
+            final ForkJoinTask<?> task = ForkJoinPool.commonPool().submit(() -> {
+                if (fi %2 == 0) {
+                    shardRangeScanConsumer2.onError(new IllegalStateException());
+                    return;
+                }
+                shardRangeScanConsumer2.onNext(new GetResult("shard-" + fi + "-0",
+                        new byte[10],
+                        new Version(1, 2, 3, 4, empty(), empty())));
+                shardRangeScanConsumer2.onNext(new GetResult("shard-" + fi + "-1",
+                        new byte[10],
+                        new Version(1, 2, 3, 4, empty(), empty())));
+                shardRangeScanConsumer2.onCompleted();
+            });
+            tasks.add(task);
+        }
+        tasks.forEach(ForkJoinTask::join);
+
+        Assertions.assertEquals(1, onErrorCount.get());
+        Assertions.assertEquals(0, onCompletedCount.get());
+
+        tasks.clear();
+        onErrorCount.set(0);
+        onCompletedCount.set(0);
+        results.clear();
+
+        // (3) complete all exception
+        final var shardRangeScanConsumer3 = newShardRangeScanConsumer.get();
+        for (int i = 0; i < shards; i++) {
+            final ForkJoinTask<?> task = ForkJoinPool.commonPool().submit(() -> shardRangeScanConsumer3.onError(new IllegalStateException()));
+            tasks.add(task);
+        }
+        tasks.forEach(ForkJoinTask::join);
+        Assertions.assertEquals(1, onErrorCount.get());
+        Assertions.assertEquals(0, onCompletedCount.get());
+        Assertions.assertEquals(0, results.size());
     }
 }
