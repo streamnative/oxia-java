@@ -584,7 +584,7 @@ class AsyncOxiaClientImplTest {
         final AtomicInteger onCompletedCount = new AtomicInteger(0);
         final Supplier<RangeScanConsumer> newShardRangeScanConsumer =
                 () ->
-                        new AsyncOxiaClientImpl.ShardingRangeScanConsumer(
+                        new AsyncOxiaClientImpl.SharedRangeScanConsumer(
                                 5,
                                 new RangeScanConsumer() {
                                     @Override
