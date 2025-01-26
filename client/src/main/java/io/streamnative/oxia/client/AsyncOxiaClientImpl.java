@@ -784,21 +784,21 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
             RangeScanConsumer consumer) {
         final Set<Long> shardIds = shardManager.allShardIds();
         final RangeScanConsumer multiShardConsumer =
-                new ShardRangeScanConsumer(shardIds.size(), consumer);
+                new ShardingRangeScanConsumer(shardIds.size(), consumer);
         for (long shardId : shardIds) {
             internalShardRangeScan(
                     shardId, startKeyInclusive, endKeyExclusive, secondaryIndexName, multiShardConsumer);
         }
     }
 
-    static class ShardRangeScanConsumer implements RangeScanConsumer {
+    static class ShardingRangeScanConsumer implements RangeScanConsumer {
         private final RangeScanConsumer delegate;
 
         private int pendingCompletedRequests;
         private boolean completed = false;
         private Throwable completedException = null;
 
-        ShardRangeScanConsumer(int shards, RangeScanConsumer delegate) {
+        ShardingRangeScanConsumer(int shards, RangeScanConsumer delegate) {
             this.pendingCompletedRequests = shards;
             this.delegate = delegate;
         }
