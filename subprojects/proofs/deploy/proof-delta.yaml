@@ -32,14 +32,16 @@ spec:
     spec:
       containers:
         - name: oxia-proof-delta
-          image: mattison/oxia-proofs:0.0.1
+          image: mattison/oxia-proofs:0.0.3
           command:
             - java
             - -jar
             - oxia-proofs.jar
             - --service-addr
+            - data-lost-oxia.mattison.svc.cluster.local:6648
             - --namespace
+            - default
           resources:
             limits:
-              memory: "128Mi" # 限制的内存
-              cpu: "2G"     # 限制的 CPU
+              memory: "1Gi"
+              cpu: "1"
