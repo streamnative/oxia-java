@@ -38,7 +38,9 @@ public final class SequenceCmd extends BaseCmd implements Runnable, Exec {
     @Override
     public void run() {
         this.client = OxiaClientBuilder.create(serviceAddr)
-                .asyncClient().join();
+                .namespace(namespace)
+                .asyncClient()
+                .join();
         exec();
     }
 
