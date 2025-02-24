@@ -63,9 +63,9 @@ public final class WriteStreamWrapper implements StreamObserver<WriteResponse> {
             completed = true;
             if (!pendingWrites.isEmpty()) {
                 log.warn(
-                        "Receive error when writing data to server through the stream, prepare to fail pending requests. pendingWrites={}",
+                        "Receive error when writing data to server through the stream, prepare to fail pending requests. pendingWrites={} {}",
                         pendingWrites.size(),
-                        completedException);
+                        completedException.getMessage());
             }
             pendingWrites.forEach(f -> f.completeExceptionally(completedException));
             pendingWrites.clear();
@@ -77,10 +77,7 @@ public final class WriteStreamWrapper implements StreamObserver<WriteResponse> {
         synchronized (WriteStreamWrapper.this) {
             completed = true;
             if (!pendingWrites.isEmpty()) {
-                log.warn(
-                        "Receive stream close signal when writing data to server through the stream, prepare to cancel pending requests. pendingWrites={}",
-                        pendingWrites.size(),
-                        completedException);
+                log.info("Receive stream close signal when writing data to server through the stream, prepare to cancel pending requests. pendingWrites={}", pendingWrites.size());
             }
             pendingWrites.forEach(f -> f.completeExceptionally(new CancellationException()));
             pendingWrites.clear();
