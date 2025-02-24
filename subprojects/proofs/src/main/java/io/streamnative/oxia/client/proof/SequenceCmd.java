@@ -68,8 +68,8 @@ public final class SequenceCmd extends BaseCmd implements Runnable, Exec {
                                 final AtomicLong expectDeltaL = new AtomicLong(1);
                                 final AtomicLong expectDeltaM = new AtomicLong(2);
                                 final AtomicLong expectDeltaR = new AtomicLong(3);
-                                log.info("[{}][{}] delta proof test is ready.", key,
-                                        shardManager.getShardForKey(key));
+                                log.info(
+                                        "[{}][{}] delta proof test is ready.", key, shardManager.getShardForKey(key));
                                 while (true) {
                                     rateLimiter.acquire();
                                     try {
@@ -106,27 +106,32 @@ public final class SequenceCmd extends BaseCmd implements Runnable, Exec {
                                                     final long deltaR = Long.parseLong(deltas[3]);
                                                     if (deltaL != expectDeltaL.longValue()) {
                                                         log.warn(
-                                                                "[{}][{}] detected unexpected delta(L)  expect: {} , actual: {} reset the expectation.",
+                                                                "[{}][{}] detected unexpected delta(L) dataLost:{}  expect: {} , actual: {} reset the expectation.",
                                                                 key,
                                                                 shardManager.getShardForKey(key),
+                                                                deltaL < expectDeltaL.longValue(),
                                                                 expectDeltaL.get(),
                                                                 deltaL);
+                                                        if (deltaL < expectDeltaL.longValue()) {
+                                                        }
                                                         expectDeltaL.set(deltaL);
                                                     }
                                                     if (deltaM != expectDeltaM.longValue()) {
                                                         log.warn(
-                                                                "[{}][{}] detected unexpected delta(M):  expect: {} , actual: {} reset the expectation.",
+                                                                "[{}][{}] detected unexpected delta(M) dataLost:{}  expect: {} , actual: {} reset the expectation.",
                                                                 key,
                                                                 shardManager.getShardForKey(key),
+                                                                deltaM < expectDeltaM.longValue(),
                                                                 expectDeltaM.get(),
                                                                 deltaM);
                                                         expectDeltaM.set(deltaM);
                                                     }
                                                     if (deltaR != expectDeltaR.longValue()) {
                                                         log.warn(
-                                                                "[{}][{}] detected unexpected delta(R):  expect: {} , actual: {} reset the expectation.",
+                                                                "[{}][{}] detected unexpected delta(R) dataLost:{}  expect: {} , actual: {} reset the expectation.",
                                                                 key,
                                                                 shardManager.getShardForKey(key),
+                                                                deltaR < expectDeltaR.longValue(),
                                                                 expectDeltaR.get(),
                                                                 deltaR);
                                                         expectDeltaR.set(deltaR);
