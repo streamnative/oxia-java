@@ -57,7 +57,7 @@ public final class SequenceCmd extends BaseCmd implements Runnable, Exec {
         final RateLimiter rateLimiter = RateLimiter.create(requestsRate);
 
         for (int i = 0; i < keyNum; i++) {
-            final String key = UUID.randomUUID().toString();
+            final String key = UUID.randomUUID().toString().replace("-", "");
             final Semaphore pendingRequest = new Semaphore(10000);
             log.info("[{}][{}] starting delta proof test.", key, shardManager.getShardForKey(key));
             Thread.ofVirtual()
@@ -98,41 +98,49 @@ public final class SequenceCmd extends BaseCmd implements Runnable, Exec {
                                                             error.getMessage());
                                                     return;
                                                 }
-                                                final String deltaKey = result.key();
-                                                final String[] deltas = deltaKey.split("-");
-                                                final long deltaL = Long.parseLong(deltas[1]);
-                                                final long deltaM = Long.parseLong(deltas[2]);
-                                                final long deltaR = Long.parseLong(deltas[3]);
-                                                if (deltaL != expectDeltaL.longValue()) {
+                                                try {
+                                                    final String deltaKey = result.key();
+                                                    final String[] deltas = deltaKey.split("-");
+                                                    final long deltaL = Long.parseLong(deltas[1]);
+                                                    final long deltaM = Long.parseLong(deltas[2]);
+                                                    final long deltaR = Long.parseLong(deltas[3]);
+                                                    if (deltaL != expectDeltaL.longValue()) {
+                                                        log.warn(
+                                                                "[{}][{}] detected unexpected delta(L)  expect: {} , actual: {} reset the expectation.",
+                                                                key,
+                                                                shardManager.getShardForKey(key),
+                                                                expectDeltaL.get(),
+                                                                deltaL);
+                                                        expectDeltaL.set(deltaL);
+                                                    }
+                                                    if (deltaM != expectDeltaM.longValue()) {
+                                                        log.warn(
+                                                                "[{}][{}] detected unexpected delta(M):  expect: {} , actual: {} reset the expectation.",
+                                                                key,
+                                                                shardManager.getShardForKey(key),
+                                                                expectDeltaM.get(),
+                                                                deltaM);
+                                                        expectDeltaM.set(deltaM);
+                                                    }
+                                                    if (deltaR != expectDeltaR.longValue()) {
+                                                        log.warn(
+                                                                "[{}][{}] detected unexpected delta(R):  expect: {} , actual: {} reset the expectation.",
+                                                                key,
+                                                                shardManager.getShardForKey(key),
+                                                                expectDeltaR.get(),
+                                                                deltaR);
+                                                        expectDeltaR.set(deltaR);
+                                                    }
+                                                    expectDeltaL.addAndGet(1);
+                                                    expectDeltaM.addAndGet(2);
+                                                    expectDeltaR.addAndGet(3);
+                                                } catch (Throwable error2) {
                                                     log.warn(
-                                                            "[{}][{}] detected unexpected delta(L)  expect: {} , actual: {}",
+                                                            "[{}][{}] receive put with sequence keys error. {}",
                                                             key,
                                                             shardManager.getShardForKey(key),
-                                                            expectDeltaL.get(),
-                                                            deltaL);
-                                                    expectDeltaL.set(deltaL);
+                                                            error.getMessage());
                                                 }
-                                                if (deltaM != expectDeltaM.longValue()) {
-                                                    log.warn(
-                                                            "[{}][{}] detected unexpected delta(M):  expect: {} , actual: {}",
-                                                            key,
-                                                            shardManager.getShardForKey(key),
-                                                            expectDeltaM.get(),
-                                                            deltaM);
-                                                    expectDeltaM.set(deltaM);
-                                                }
-                                                if (deltaR != expectDeltaR.longValue()) {
-                                                    log.warn(
-                                                            "[{}][{}] detected unexpected delta(R):  expect: {} , actual: {}",
-                                                            key,
-                                                            shardManager.getShardForKey(key),
-                                                            expectDeltaR.get(),
-                                                            deltaR);
-                                                    expectDeltaR.set(deltaR);
-                                                }
-                                                expectDeltaL.addAndGet(1);
-                                                expectDeltaM.addAndGet(2);
-                                                expectDeltaR.addAndGet(3);
                                             });
                                 }
                             });
