@@ -59,7 +59,7 @@ public final class SequenceCmd extends BaseCmd implements Runnable, Exec {
         for (int i = 0; i < keyNum; i++) {
             final String key = UUID.randomUUID().toString();
             final Semaphore pendingRequest = new Semaphore(10000);
-            log.info("starting delta proof test.  key={}", key);
+            log.info("[{}][{}] starting delta proof test.", key, shardManager.getShardForKey(key));
             Thread.ofVirtual()
                     .name("proof-" + key)
                     .start(
@@ -68,7 +68,8 @@ public final class SequenceCmd extends BaseCmd implements Runnable, Exec {
                                 final AtomicLong expectDeltaL = new AtomicLong(1);
                                 final AtomicLong expectDeltaM = new AtomicLong(2);
                                 final AtomicLong expectDeltaR = new AtomicLong(3);
-                                log.info("delta proof test is ready. key={}", key);
+                                log.info("[{}][{}] delta proof test is ready.", key,
+                                        shardManager.getShardForKey(key));
                                 while (true) {
                                     rateLimiter.acquire();
                                     try {

@@ -32,7 +32,7 @@ spec:
     spec:
       containers:
         - name: oxia-proof-delta
-          image: mattison/oxia-proofs:0.0.4
+          image: mattison/oxia-proofs:0.0.5
           command:
             - java
             - -jar
