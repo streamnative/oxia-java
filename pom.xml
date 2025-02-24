@@ -109,7 +109,7 @@
         <maven.enforcer.plugin.version>3.5.0</maven.enforcer.plugin.version>
         <maven.surefire.plugin.version>3.5.2</maven.surefire.plugin.version>
         <maven.shade.plugin.version>3.6.0</maven.shade.plugin.version>
-        <spotbugs.plugin.version>4.8.1.0</spotbugs.plugin.version>
+        <spotbugs.plugin.version>4.9.1.0</spotbugs.plugin.version>
         <spotless.plugin.version>2.39.0</spotless.plugin.version>
         <byte-buddy.version>1.15.10</byte-buddy.version>
     </properties>
@@ -539,6 +539,12 @@
             <id>perf-ycsb</id>
             <modules>
                 <module>perf-ycsb</module>
+            </modules>
+        </profile>
+        <profile>
+            <id>proofs</id>
+            <modules>
+                <module>subprojects/proofs</module>
             </modules>
         </profile>
     </profiles>
