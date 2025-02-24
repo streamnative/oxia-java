@@ -27,7 +27,7 @@ spec:
       requests:
         cpu: "2"
         memory: 1Gi
-  image: streamnative/oxia:0.11.11
+  image: streamnative/oxia@sha256:a3bf54664d6a068528eee6d375d44093a207ad95bbaf3e58732da0d2a5a4e2d7
   server:
     persistentVolumeClaimRetentionPolicy:
       whenDeleted: Delete
