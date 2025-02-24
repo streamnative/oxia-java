@@ -19,8 +19,7 @@ import com.google.common.util.concurrent.RateLimiter;
 import io.streamnative.oxia.client.api.AsyncOxiaClient;
 import io.streamnative.oxia.client.api.OxiaClientBuilder;
 import io.streamnative.oxia.client.api.PutOption;
-
-import java.lang.reflect.Field;
+import io.streamnative.oxia.client.shard.ShardManager;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Set;
@@ -28,8 +27,6 @@ import java.util.UUID;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
-
-import io.streamnative.oxia.client.shard.ShardManager;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine;
 
@@ -134,7 +131,7 @@ public final class SequenceCmd extends BaseCmd implements Runnable, Exec {
                                                 }
                                                 expectDeltaL.addAndGet(1);
                                                 expectDeltaM.addAndGet(2);
-                                                expectDeltaM.addAndGet(3);
+                                                expectDeltaR.addAndGet(3);
                                             });
                                 }
                             });
