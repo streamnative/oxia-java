@@ -112,8 +112,7 @@ public final class SequenceCmd extends BaseCmd implements Runnable, Exec {
                                                                 deltaL < expectDeltaL.longValue(),
                                                                 expectDeltaL.get(),
                                                                 deltaL);
-                                                        if (deltaL < expectDeltaL.longValue()) {
-                                                        }
+                                                        if (deltaL < expectDeltaL.longValue()) {}
                                                         expectDeltaL.set(deltaL);
                                                     }
                                                     if (deltaM != expectDeltaM.longValue()) {
