@@ -20,6 +20,7 @@ metadata:
   name: oxia-proof-delta
   labels:
     app: oxia-proof
+    cloud.streamnative.io/role: oxia
 spec:
   replicas: 2
   selector:
@@ -29,6 +30,7 @@ spec:
     metadata:
       labels:
         app: oxia-proof
+        cloud.streamnative.io/role: oxia
     spec:
       containers:
         - name: oxia-proof-delta
