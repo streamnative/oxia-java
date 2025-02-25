@@ -21,6 +21,7 @@ import io.streamnative.oxia.client.api.OxiaClientBuilder;
 import io.streamnative.oxia.client.api.PutOption;
 import io.streamnative.oxia.client.shard.ShardManager;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -78,12 +79,10 @@ public final class SequenceCmd extends BaseCmd implements Runnable, Exec {
                                         log.error("delta proof test interrupted. {}", ex.getMessage());
                                         throw new RuntimeException(ex);
                                     }
-                                    final ByteBuffer buf = ByteBuffer.allocate(8);
-                                    buf.putLong(payloadCounter.getAndIncrement());
                                     final var sendFuture =
                                             client.put(
                                                     key,
-                                                    buf.array(),
+                                                    (payloadCounter.get() +"").getBytes(StandardCharsets.UTF_8),
                                                     Set.of(
                                                             PutOption.SequenceKeysDeltas(List.of(1L, 2L, 3L)),
                                                             PutOption.PartitionKey(key)));
@@ -112,7 +111,6 @@ public final class SequenceCmd extends BaseCmd implements Runnable, Exec {
                                                                 deltaL < expectDeltaL.longValue(),
                                                                 expectDeltaL.get(),
                                                                 deltaL);
-                                                        if (deltaL < expectDeltaL.longValue()) {}
                                                         expectDeltaL.set(deltaL);
                                                     }
                                                     if (deltaM != expectDeltaM.longValue()) {
