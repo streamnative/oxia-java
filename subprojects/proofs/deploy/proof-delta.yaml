@@ -22,7 +22,7 @@ metadata:
     app: oxia-proof
     cloud.streamnative.io/role: oxia
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: oxia-proof

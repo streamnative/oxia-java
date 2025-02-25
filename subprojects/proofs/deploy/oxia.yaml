@@ -20,7 +20,7 @@ metadata:
   name: data-lost
 spec:
   coordinator:
-    logLevel: DEBUG
+#    logLevel: DEBUG
     resources:
       limits:
         cpu: "2"
@@ -28,9 +28,9 @@ spec:
       requests:
         cpu: "2"
         memory: 1Gi
-  image: streamnative/oxia@sha256:164deb9b0bcd818a4707d263c7a3d84dbb0db8a8b25fab0c1f18801f599f2eb8
+  image: streamnative/oxia@sha256:2d47f35bca37ec5ba4086ad3c0e94df534a0a2feac9d63c2782227d75d0f12e0
   server:
-    logLevel: DEBUG
+#    logLevel: DEBUG
     persistentVolumeClaimRetentionPolicy:
       whenDeleted: Delete
     replicas: 3
