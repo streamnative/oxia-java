@@ -17,7 +17,7 @@ package io.streamnative.oxia.client.api;
 
 import lombok.NonNull;
 
-public sealed interface GetOption permits OptionComparisonType, OptionPartitionKey {
+public sealed interface GetOption permits OptionComparisonType, OptionIncludeValue, OptionPartitionKey {
 
     /** ComparisonEqual sets the Get() operation to compare the stored key for equality. */
     GetOption ComparisonEqual = new OptionComparisonType(OptionComparisonType.ComparisonType.Equal);
@@ -58,5 +58,18 @@ public sealed interface GetOption permits OptionComparisonType, OptionPartitionK
      */
     static GetOption PartitionKey(@NonNull String partitionKey) {
         return new OptionPartitionKey(partitionKey);
+    }
+
+    /**
+     * Creates and returns a GetOption that specifies whether to include a value.
+     * This method is used to configure whether a value should be included in the operation.
+     *
+     * @param includeValue A boolean flag indicating whether the value should be included.
+     *                     - true: The value will be included.
+     *                     - false: The value will not be included.
+     * @return A GetOption instance representing the include value setting.
+     */
+    static GetOption IncludeValue(boolean includeValue) {
+        return new OptionIncludeValue(includeValue);
     }
 }

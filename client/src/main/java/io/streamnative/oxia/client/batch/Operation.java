@@ -31,13 +31,13 @@ import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.exceptions.KeyAlreadyExistsException;
 import io.streamnative.oxia.client.api.exceptions.SessionDoesNotExistException;
 import io.streamnative.oxia.client.api.exceptions.UnexpectedVersionIdException;
+import io.streamnative.oxia.client.options.GetOptions;
 import io.streamnative.oxia.proto.DeleteRangeRequest;
 import io.streamnative.oxia.proto.DeleteRangeResponse;
 import io.streamnative.oxia.proto.DeleteRequest;
 import io.streamnative.oxia.proto.DeleteResponse;
 import io.streamnative.oxia.proto.GetRequest;
 import io.streamnative.oxia.proto.GetResponse;
-import io.streamnative.oxia.proto.KeyComparisonType;
 import io.streamnative.oxia.proto.PutRequest;
 import io.streamnative.oxia.proto.PutResponse;
 import io.streamnative.oxia.proto.Status;
@@ -61,13 +61,13 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
         record GetOperation(
                 @NonNull CompletableFuture<GetResult> callback,
                 @NonNull String key,
-                KeyComparisonType comparisonType)
+                @NonNull GetOptions options)
                 implements ReadOperation<GetResult> {
             GetRequest toProto() {
                 return GetRequest.newBuilder()
                         .setKey(key)
-                        .setComparisonType(comparisonType)
-                        .setIncludeValue(true)
+                        .setComparisonType(options.comparisonType())
+                        .setIncludeValue(options.includeValue())
                         .build();
             }
 
