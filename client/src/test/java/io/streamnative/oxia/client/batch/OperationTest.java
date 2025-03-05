@@ -62,7 +62,8 @@ class OperationTest {
     class GetOperationTests {
 
         CompletableFuture<GetResult> callback = new CompletableFuture<>();
-        GetOperation op = new GetOperation(callback, "key", new GetOptions(null, true, KeyComparisonType.EQUAL));
+        GetOperation op =
+                new GetOperation(callback, "key", new GetOptions(null, true, KeyComparisonType.EQUAL));
 
         @Test
         void toProto() {

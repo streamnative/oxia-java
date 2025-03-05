@@ -49,10 +49,8 @@ import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.RangeScanOption;
 import io.streamnative.oxia.client.api.SyncOxiaClient;
 import io.streamnative.oxia.client.api.exceptions.KeyAlreadyExistsException;
-import io.streamnative.oxia.client.api.exceptions.OxiaException;
 import io.streamnative.oxia.client.api.exceptions.UnexpectedVersionIdException;
 import io.streamnative.oxia.testcontainers.OxiaContainer;
-
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -661,7 +659,6 @@ public class OxiaClientIT {
         assertThat(list).containsExactly("si-a", "si-c");
     }
 
-
     @Test
     @SneakyThrows
     void testGetIncludeValue() {
@@ -671,36 +668,46 @@ public class OxiaClientIT {
         final String key = "stream";
 
         final List<String> keys = new ArrayList<>();
-        PutResult putResult = client.put(key, UUID.randomUUID().toString().getBytes(),
-                Set.of(
-                        PutOption.PartitionKey(key),
-                        PutOption.SequenceKeysDeltas(List.of(1L))
-                )
-        );
+        PutResult putResult =
+                client.put(
+                        key,
+                        UUID.randomUUID().toString().getBytes(),
+                        Set.of(PutOption.PartitionKey(key), PutOption.SequenceKeysDeltas(List.of(1L))));
         keys.add(putResult.key());
-        putResult = client.put(key, UUID.randomUUID().toString().getBytes(),
-                Set.of(
-                        PutOption.PartitionKey(key),
-                        PutOption.SequenceKeysDeltas(List.of(1L))
-                )
-        );
+        putResult =
+                client.put(
+                        key,
+                        UUID.randomUUID().toString().getBytes(),
+                        Set.of(PutOption.PartitionKey(key), PutOption.SequenceKeysDeltas(List.of(1L))));
         keys.add(putResult.key());
-
 
         for (String subKey : keys) {
-            GetResult result = client.get(subKey, Set.of(GetOption.PartitionKey(key), GetOption.IncludeValue(true)));
+            GetResult result =
+                    client.get(subKey, Set.of(GetOption.PartitionKey(key), GetOption.IncludeValue(true)));
             Assertions.assertNotNull(result.getValue());
 
-            result = client.get(subKey, Set.of(GetOption.PartitionKey(key), GetOption.IncludeValue(false)));
+            result =
+                    client.get(subKey, Set.of(GetOption.PartitionKey(key), GetOption.IncludeValue(false)));
             Assertions.assertEquals(result.getValue().length, 0);
         }
 
-        var result = client.get(keys.get(0), Set.of(GetOption.PartitionKey(key), GetOption.IncludeValue(false), GetOption.ComparisonHigher));
+        var result =
+                client.get(
+                        keys.get(0),
+                        Set.of(
+                                GetOption.PartitionKey(key),
+                                GetOption.IncludeValue(false),
+                                GetOption.ComparisonHigher));
         Assertions.assertEquals(result.getValue().length, 0);
         Assertions.assertEquals(result.getKey(), keys.get(1));
 
-
-        result = client.get(keys.get(1), Set.of(GetOption.PartitionKey(key), GetOption.IncludeValue(false), GetOption.ComparisonLower));
+        result =
+                client.get(
+                        keys.get(1),
+                        Set.of(
+                                GetOption.PartitionKey(key),
+                                GetOption.IncludeValue(false),
+                                GetOption.ComparisonLower));
         Assertions.assertEquals(result.getValue().length, 0);
         Assertions.assertEquals(result.getKey(), keys.get(0));
     }

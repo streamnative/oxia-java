@@ -492,11 +492,11 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                         });
     }
 
-    private void internalGet(
-            String key, GetOptions options, CompletableFuture<GetResult> result) {
+    private void internalGet(String key, GetOptions options, CompletableFuture<GetResult> result) {
         if (options.comparisonType() == KeyComparisonType.EQUAL || options.partitionKey() != null) {
             // Single shard get operation
-            long shardId = shardManager.getShardForKey(Optional.ofNullable(options.partitionKey()).orElse(key));
+            long shardId =
+                    shardManager.getShardForKey(Optional.ofNullable(options.partitionKey()).orElse(key));
             readBatchManager.getBatcher(shardId).add(new GetOperation(result, key, options));
         } else {
             internalGetFloorCeiling(key, options, result);

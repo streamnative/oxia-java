@@ -88,7 +88,8 @@ class BatcherTest {
     @Test
     void createBatchAndAdd() throws Exception {
         var callback = new CompletableFuture<GetResult>();
-        Operation<?> op = new GetOperation(callback, "key", new GetOptions(null,  true, KeyComparisonType.EQUAL));
+        Operation<?> op =
+                new GetOperation(callback, "key", new GetOptions(null, true, KeyComparisonType.EQUAL));
         when(batchFactory.getBatch(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(1);
         when(batch.canAdd(any())).thenReturn(true);
@@ -100,7 +101,8 @@ class BatcherTest {
     @Test
     void sendBatchOnFull() throws Exception {
         var callback = new CompletableFuture<GetResult>();
-        Operation<?> op = new GetOperation(callback, "key", new GetOptions(null,  true,KeyComparisonType.EQUAL));
+        Operation<?> op =
+                new GetOperation(callback, "key", new GetOptions(null, true, KeyComparisonType.EQUAL));
         when(batchFactory.getBatch(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(config.maxRequestsPerBatch());
         when(batch.canAdd(any())).thenReturn(true);
@@ -137,7 +139,8 @@ class BatcherTest {
     @Test
     void sendBatchOnFullThenNewBatch() throws Exception {
         var callback = new CompletableFuture<GetResult>();
-        Operation<?> op = new GetOperation(callback, "key", new GetOptions(null,  true,KeyComparisonType.EQUAL));
+        Operation<?> op =
+                new GetOperation(callback, "key", new GetOptions(null, true, KeyComparisonType.EQUAL));
         when(batchFactory.getBatch(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(config.maxRequestsPerBatch(), 1);
         when(batch.canAdd(any())).thenReturn(true);
@@ -155,7 +158,8 @@ class BatcherTest {
     @Test
     void sendBatchOnLingerExpiration() throws Exception {
         var callback = new CompletableFuture<GetResult>();
-        Operation<?> op = new GetOperation(callback, "key", new GetOptions(null,  true,KeyComparisonType.EQUAL));
+        Operation<?> op =
+                new GetOperation(callback, "key", new GetOptions(null, true, KeyComparisonType.EQUAL));
         when(batchFactory.getBatch(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(1);
         when(batch.canAdd(any())).thenReturn(true);
@@ -168,7 +172,8 @@ class BatcherTest {
     @Test
     void sendBatchOnLingerExpirationMulti() throws Exception {
         var callback = new CompletableFuture<GetResult>();
-        Operation<?> op = new GetOperation(callback, "key", new GetOptions(null,  true,KeyComparisonType.EQUAL));
+        Operation<?> op =
+                new GetOperation(callback, "key", new GetOptions(null, true, KeyComparisonType.EQUAL));
         when(batchFactory.getBatch(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(1);
         when(batch.canAdd(any())).thenReturn(true);
@@ -184,7 +189,8 @@ class BatcherTest {
     @Test
     void unboundedTakeAtStart() throws Exception {
         var callback = new CompletableFuture<GetResult>();
-        Operation<?> op = new GetOperation(callback, "key", new GetOptions(null,  true,KeyComparisonType.EQUAL));
+        Operation<?> op =
+                new GetOperation(callback, "key", new GetOptions(null, true, KeyComparisonType.EQUAL));
 
         when(batchFactory.getBatch(shardId)).thenReturn(batch);
         when(batch.size()).thenReturn(1);

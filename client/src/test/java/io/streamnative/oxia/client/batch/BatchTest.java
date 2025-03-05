@@ -394,7 +394,8 @@ class BatchTest {
     class ReadBatchTests {
         ReadBatch batch;
         CompletableFuture<GetResult> getCallable = new CompletableFuture<>();
-        GetOperation get = new GetOperation(getCallable, "", new GetOptions(null, true, KeyComparisonType.EQUAL));
+        GetOperation get =
+                new GetOperation(getCallable, "", new GetOptions(null, true, KeyComparisonType.EQUAL));
 
         @BeforeEach
         void setup() {
