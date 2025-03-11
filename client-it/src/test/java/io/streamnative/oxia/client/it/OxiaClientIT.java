@@ -683,11 +683,11 @@ public class OxiaClientIT {
 
         for (String subKey : keys) {
             GetResult result =
-                    client.get(subKey, Set.of(GetOption.PartitionKey(key), GetOption.IncludeValue(true)));
+                    client.get(subKey, Set.of(GetOption.PartitionKey(key), GetOption.IncludeValue));
             Assertions.assertNotNull(result.getValue());
 
             result =
-                    client.get(subKey, Set.of(GetOption.PartitionKey(key), GetOption.IncludeValue(false)));
+                    client.get(subKey, Set.of(GetOption.PartitionKey(key), GetOption.IncludeValue));
             Assertions.assertEquals(result.getValue().length, 0);
         }
 
@@ -696,7 +696,7 @@ public class OxiaClientIT {
                         keys.get(0),
                         Set.of(
                                 GetOption.PartitionKey(key),
-                                GetOption.IncludeValue(false),
+                                GetOption.ExcludeValue,
                                 GetOption.ComparisonHigher));
         Assertions.assertEquals(result.getValue().length, 0);
         Assertions.assertEquals(result.getKey(), keys.get(1));
@@ -706,7 +706,7 @@ public class OxiaClientIT {
                         keys.get(1),
                         Set.of(
                                 GetOption.PartitionKey(key),
-                                GetOption.IncludeValue(false),
+                                GetOption.ExcludeValue,
                                 GetOption.ComparisonLower));
         Assertions.assertEquals(result.getValue().length, 0);
         Assertions.assertEquals(result.getKey(), keys.get(0));
