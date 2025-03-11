@@ -48,14 +48,10 @@ public sealed interface GetOption
      */
     GetOption ComparisonHigher = new OptionComparisonType(OptionComparisonType.ComparisonType.Higher);
 
-    /**
-     * The specified value will be included in the result.
-     */
+    /** The specified value will be included in the result. */
     GetOption IncludeValue = new OptionIncludeValue(true);
 
-    /**
-     * The specified value will be excluded from the result.
-     */
+    /** The specified value will be excluded from the result. */
     GetOption ExcludeValue = new OptionIncludeValue(false);
 
     /**
