@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022-2024 StreamNative Inc.
+ * Copyright © 2022-2025 StreamNative Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@ import io.streamnative.oxia.client.batch.Operation.ReadOperation.GetOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOperation;
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
+import io.streamnative.oxia.client.options.GetOptions;
 import io.streamnative.oxia.proto.DeleteRangeResponse;
 import io.streamnative.oxia.proto.DeleteResponse;
 import io.streamnative.oxia.proto.GetResponse;
@@ -61,7 +62,8 @@ class OperationTest {
     class GetOperationTests {
 
         CompletableFuture<GetResult> callback = new CompletableFuture<>();
-        GetOperation op = new GetOperation(callback, "key", KeyComparisonType.EQUAL);
+        GetOperation op =
+                new GetOperation(callback, "key", new GetOptions(null, true, KeyComparisonType.EQUAL));
 
         @Test
         void toProto() {

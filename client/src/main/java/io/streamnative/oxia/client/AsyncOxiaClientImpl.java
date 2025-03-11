@@ -44,6 +44,7 @@ import io.streamnative.oxia.client.metrics.LatencyHistogram;
 import io.streamnative.oxia.client.metrics.Unit;
 import io.streamnative.oxia.client.metrics.UpDownCounter;
 import io.streamnative.oxia.client.notify.NotificationManager;
+import io.streamnative.oxia.client.options.GetOptions;
 import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.client.shard.ShardManager;
 import io.streamnative.oxia.proto.KeyComparisonType;
@@ -464,13 +465,14 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
     @Override
     public @NonNull CompletableFuture<GetResult> get(String key, Set<GetOption> options) {
+        final GetOptions internalOptions = GetOptions.parseFrom(options);
         long startTime = System.nanoTime();
         gaugePendingGetRequests.increment();
         var callback = new CompletableFuture<GetResult>();
         try {
             checkIfClosed();
             Objects.requireNonNull(key);
-            internalGet(key, options, callback);
+            internalGet(key, internalOptions, callback);
         } catch (RuntimeException e) {
             callback.completeExceptionally(e);
         }
@@ -490,26 +492,24 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                         });
     }
 
-    private void internalGet(
-            String key, Set<GetOption> options, CompletableFuture<GetResult> result) {
-        KeyComparisonType comparisonType = OptionsUtils.getComparisonType(options);
-        Optional<String> partitionKey = OptionsUtils.getPartitionKey(options);
-        if (comparisonType == KeyComparisonType.EQUAL || partitionKey.isPresent()) {
+    private void internalGet(String key, GetOptions options, CompletableFuture<GetResult> result) {
+        if (options.comparisonType() == KeyComparisonType.EQUAL || options.partitionKey() != null) {
             // Single shard get operation
-            long shardId = shardManager.getShardForKey(partitionKey.orElse(key));
-            readBatchManager.getBatcher(shardId).add(new GetOperation(result, key, comparisonType));
+            long shardId =
+                    shardManager.getShardForKey(Optional.ofNullable(options.partitionKey()).orElse(key));
+            readBatchManager.getBatcher(shardId).add(new GetOperation(result, key, options));
         } else {
-            internalGetFloorCeiling(key, comparisonType, result);
+            internalGetFloorCeiling(key, options, result);
         }
     }
 
     private void internalGetFloorCeiling(
-            String key, KeyComparisonType comparisonType, CompletableFuture<GetResult> result) {
+            String key, GetOptions options, CompletableFuture<GetResult> result) {
         // We need check on all the shards for a floor/ceiling query
         List<CompletableFuture<GetResult>> futures = new ArrayList<>();
         for (long shardId : shardManager.allShardIds()) {
             CompletableFuture<GetResult> f = new CompletableFuture<>();
-            readBatchManager.getBatcher(shardId).add(new GetOperation(f, key, comparisonType));
+            readBatchManager.getBatcher(shardId).add(new GetOperation(f, key, options));
             futures.add(f);
         }
 
@@ -535,7 +535,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                                 }
 
                                 GetResult gr =
-                                        switch (comparisonType) {
+                                        switch (options.comparisonType()) {
                                             case EQUAL,
                                                     UNRECOGNIZED -> null; // This would be handled withing context of single
                                                 // shard

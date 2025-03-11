@@ -47,6 +47,7 @@ import io.streamnative.oxia.client.batch.Operation.WriteOperation.DeleteRangeOpe
 import io.streamnative.oxia.client.batch.Operation.WriteOperation.PutOperation;
 import io.streamnative.oxia.client.grpc.*;
 import io.streamnative.oxia.client.metrics.InstrumentProvider;
+import io.streamnative.oxia.client.options.GetOptions;
 import io.streamnative.oxia.client.session.Session;
 import io.streamnative.oxia.client.session.SessionManager;
 import io.streamnative.oxia.client.shard.NoShardAvailableException;
@@ -393,7 +394,8 @@ class BatchTest {
     class ReadBatchTests {
         ReadBatch batch;
         CompletableFuture<GetResult> getCallable = new CompletableFuture<>();
-        GetOperation get = new GetOperation(getCallable, "", KeyComparisonType.EQUAL);
+        GetOperation get =
+                new GetOperation(getCallable, "", new GetOptions(null, true, KeyComparisonType.EQUAL));
 
         @BeforeEach
         void setup() {

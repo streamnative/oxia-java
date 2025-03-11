@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022-2024 StreamNative Inc.
+ * Copyright © 2022-2025 StreamNative Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,8 @@ package io.streamnative.oxia.client.api;
 
 import lombok.NonNull;
 
-public sealed interface GetOption permits OptionComparisonType, OptionPartitionKey {
+public sealed interface GetOption
+        permits OptionComparisonType, OptionIncludeValue, OptionPartitionKey {
 
     /** ComparisonEqual sets the Get() operation to compare the stored key for equality. */
     GetOption ComparisonEqual = new OptionComparisonType(OptionComparisonType.ComparisonType.Equal);
@@ -47,6 +48,12 @@ public sealed interface GetOption permits OptionComparisonType, OptionPartitionK
      */
     GetOption ComparisonHigher = new OptionComparisonType(OptionComparisonType.ComparisonType.Higher);
 
+    /** The specified value will be included in the result. */
+    GetOption IncludeValue = new OptionIncludeValue(true);
+
+    /** The specified value will be excluded from the result. */
+    GetOption ExcludeValue = new OptionIncludeValue(false);
+
     /**
      * PartitionKey overrides the partition routing with the specified `partitionKey` instead of the
      * regular record key.
@@ -58,5 +65,17 @@ public sealed interface GetOption permits OptionComparisonType, OptionPartitionK
      */
     static GetOption PartitionKey(@NonNull String partitionKey) {
         return new OptionPartitionKey(partitionKey);
+    }
+
+    /**
+     * Creates and returns a GetOption that specifies whether to include a value. This method is used
+     * to configure whether a value should be included in the operation.
+     *
+     * @param includeValue A boolean flag indicating whether the value should be included. - true: The
+     *     value will be included. - false: The value will not be included.
+     * @return A GetOption instance representing the include value setting.
+     */
+    static GetOption IncludeValue(boolean includeValue) {
+        return new OptionIncludeValue(includeValue);
     }
 }
