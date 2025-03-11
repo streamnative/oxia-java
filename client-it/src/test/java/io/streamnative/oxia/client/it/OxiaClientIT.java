@@ -686,8 +686,8 @@ public class OxiaClientIT {
                     client.get(subKey, Set.of(GetOption.PartitionKey(key), GetOption.IncludeValue));
             Assertions.assertNotNull(result.getValue());
 
-            result = client.get(subKey, Set.of(GetOption.PartitionKey(key), GetOption.IncludeValue));
-            Assertions.assertEquals(result.getValue().length, 0);
+            result = client.get(subKey, Set.of(GetOption.PartitionKey(key), GetOption.ExcludeValue));
+            Assertions.assertEquals(0, result.getValue().length);
         }
 
         var result =
