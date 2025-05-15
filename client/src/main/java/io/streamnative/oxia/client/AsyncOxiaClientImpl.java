@@ -635,7 +635,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         var stub = stubManager.getStub(leader);
         var requestBuilder =
                 ListRequest.newBuilder()
-                        .setShardId(shardId)
+                        .setShard(shardId)
                         .setStartInclusive(startKeyInclusive)
                         .setEndExclusive(endKeyExclusive);
         secondaryIndexName.ifPresent(requestBuilder::setSecondaryIndexName);
@@ -740,7 +740,7 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
         var stub = stubManager.getStub(leader);
         var requestBuilder =
                 RangeScanRequest.newBuilder()
-                        .setShardId(shardId)
+                        .setShard(shardId)
                         .setStartInclusive(startKeyInclusive)
                         .setEndExclusive(endKeyExclusive);
 

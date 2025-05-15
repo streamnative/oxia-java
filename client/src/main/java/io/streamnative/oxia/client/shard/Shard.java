@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022-2024 StreamNative Inc.
+ * Copyright © 2022-2025 StreamNative Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,6 +32,6 @@ public record Shard(long id, @NonNull String leader, @NonNull HashRange hashRang
     }
 
     static @NonNull Shard fromProto(@NonNull ShardAssignment s) {
-        return new Shard(s.getShardId(), s.getLeader(), HashRange.fromProto(s.getInt32HashRange()));
+        return new Shard(s.getShard(), s.getLeader(), HashRange.fromProto(s.getInt32HashRange()));
     }
 }

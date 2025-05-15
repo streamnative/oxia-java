@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022-2024 StreamNative Inc.
+ * Copyright © 2022-2025 StreamNative Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -70,7 +70,7 @@ public class ShardNotificationReceiver implements Closeable, StreamObserver<Noti
     }
 
     void start() {
-        var request = NotificationsRequest.newBuilder().setShardId(shardId);
+        var request = NotificationsRequest.newBuilder().setShard(shardId);
         offset.ifPresent(request::setStartOffsetExclusive);
         stub.async().getNotifications(request.build(), this);
     }
