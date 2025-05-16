@@ -103,7 +103,7 @@ public class OxiaStubTest {
     private static CompletableFuture<Void> sendMessage(OxiaStub stub) {
         final var readRequest =
                 ReadRequest.newBuilder()
-                        .setShardId(0)
+                        .setShard(0)
                         .addGets(GetRequest.newBuilder().setKey("test").build())
                         .build();
         final CompletableFuture<Void> f = new CompletableFuture<>();

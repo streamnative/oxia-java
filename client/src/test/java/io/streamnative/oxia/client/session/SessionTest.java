@@ -145,7 +145,7 @@ class SessionTest {
                                     .containsOnly(
                                             SessionHeartbeat.newBuilder()
                                                     .setSessionId(sessionId)
-                                                    .setShardId(shardId)
+                                                    .setShard(shardId)
                                                     .build());
                         });
         session.close().join();

@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022-2024 StreamNative Inc.
+ * Copyright © 2022-2025 StreamNative Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -163,7 +163,7 @@ public class ShardManagerTest {
 
         @Test
         void start() {
-            var assignment = ShardAssignment.newBuilder().setShardId(0).setLeader("leader0").build();
+            var assignment = ShardAssignment.newBuilder().setShard(0).setLeader("leader0").build();
             var nsAssignment = NamespaceShardsAssignment.newBuilder().addAssignments(assignment).build();
             when(stub.async()).thenReturn(async);
 

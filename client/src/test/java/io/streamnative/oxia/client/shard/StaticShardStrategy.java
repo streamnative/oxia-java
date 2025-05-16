@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022-2024 StreamNative Inc.
+ * Copyright © 2022-2025 StreamNative Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -63,7 +63,7 @@ class StaticShardStrategy implements ShardStrategy {
     }
 
     private static boolean isEquivalent(Shard shard, ShardAssignment assignment) {
-        return shard.id() == assignment.getShardId()
+        return shard.id() == assignment.getShard()
                 && shard.hashRange().minInclusive() == assignment.getInt32HashRange().getMinHashInclusive()
                 && shard.hashRange().maxInclusive() == assignment.getInt32HashRange().getMaxHashInclusive();
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022-2024 StreamNative Inc.
+ * Copyright © 2022-2025 StreamNative Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -134,7 +134,7 @@ final class WriteBatch extends BatchBase implements Batch {
     @NonNull
     WriteRequest toProto() {
         return WriteRequest.newBuilder()
-                .setShardId(getShardId())
+                .setShard(getShardId())
                 .addAllPuts(
                         puts.stream().map(Operation.WriteOperation.PutOperation::toProto).collect(toList()))
                 .addAllDeletes(

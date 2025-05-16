@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022-2024 StreamNative Inc.
+ * Copyright © 2022-2025 StreamNative Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -87,7 +87,7 @@ public class Session implements StreamObserver<KeepAliveResponse> {
         this.sessionId = sessionId;
         this.clientIdentifier = config.clientIdentifier();
         this.heartbeat =
-                SessionHeartbeat.newBuilder().setShardId(shardId).setSessionId(sessionId).build();
+                SessionHeartbeat.newBuilder().setShard(shardId).setSessionId(sessionId).build();
         this.listener = listener;
 
         log.info(
@@ -179,7 +179,7 @@ public class Session implements StreamObserver<KeepAliveResponse> {
         heartbeatFuture.cancel(true);
         var stub = stubProvider.getStubForShard(shardId);
         var request =
-                CloseSessionRequest.newBuilder().setShardId(shardId).setSessionId(sessionId).build();
+                CloseSessionRequest.newBuilder().setShard(shardId).setSessionId(sessionId).build();
 
         CompletableFuture<Void> result = new CompletableFuture<>();
         stub.async()
