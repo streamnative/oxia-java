@@ -493,17 +493,19 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     }
 
     private void internalGet(String key, GetOptions options, CompletableFuture<GetResult> result) {
-        if (options.comparisonType() == KeyComparisonType.EQUAL || options.partitionKey() != null) {
+        if (options.partitionKey() == null
+                && (options.comparisonType() != KeyComparisonType.EQUAL
+                        || options.secondaryIndexName() != null)) {
+            internalGetMultiShards(key, options, result);
+        } else {
             // Single shard get operation
             long shardId =
                     shardManager.getShardForKey(Optional.ofNullable(options.partitionKey()).orElse(key));
             readBatchManager.getBatcher(shardId).add(new GetOperation(result, key, options));
-        } else {
-            internalGetFloorCeiling(key, options, result);
         }
     }
 
-    private void internalGetFloorCeiling(
+    private void internalGetMultiShards(
             String key, GetOptions options, CompletableFuture<GetResult> result) {
         // We need check on all the shards for a floor/ceiling query
         List<CompletableFuture<GetResult>> futures = new ArrayList<>();
@@ -536,11 +538,9 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
                                 GetResult gr =
                                         switch (options.comparisonType()) {
-                                            case EQUAL,
-                                                    UNRECOGNIZED -> null; // This would be handled withing context of single
-                                                // shard
+                                            case EQUAL, CEILING, HIGHER -> results.get(0);
                                             case FLOOR, LOWER -> results.get(results.size() - 1);
-                                            case CEILING, HIGHER -> results.get(0);
+                                            case UNRECOGNIZED -> null;
                                         };
 
                                 result.complete(gr);
