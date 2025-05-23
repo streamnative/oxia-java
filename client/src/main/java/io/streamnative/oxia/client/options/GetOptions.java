@@ -19,16 +19,21 @@ import io.streamnative.oxia.client.api.GetOption;
 import io.streamnative.oxia.client.api.OptionComparisonType;
 import io.streamnative.oxia.client.api.OptionIncludeValue;
 import io.streamnative.oxia.client.api.OptionPartitionKey;
+import io.streamnative.oxia.client.api.OptionSecondaryIndexName;
 import io.streamnative.oxia.proto.KeyComparisonType;
 import java.util.Set;
 
 public record GetOptions(
-        String partitionKey, boolean includeValue, KeyComparisonType comparisonType) {
+        String partitionKey,
+        boolean includeValue,
+        KeyComparisonType comparisonType,
+        String secondaryIndexName) {
 
     public static GetOptions parseFrom(Set<GetOption> options) {
         boolean includeValue = true;
         KeyComparisonType comparisonType = KeyComparisonType.EQUAL;
         String partitionKey = null;
+        String secondaryIndexName = null;
         for (GetOption option : options) {
             if (option instanceof OptionIncludeValue) {
                 includeValue = ((OptionIncludeValue) option).includeValue();
@@ -49,7 +54,11 @@ public record GetOptions(
                 partitionKey = ((OptionPartitionKey) option).partitionKey();
                 continue;
             }
+            if (option instanceof OptionSecondaryIndexName) {
+                secondaryIndexName = ((OptionSecondaryIndexName) option).secondaryIndexName();
+                continue;
+            }
         }
-        return new GetOptions(partitionKey, includeValue, comparisonType);
+        return new GetOptions(partitionKey, includeValue, comparisonType, secondaryIndexName);
     }
 }
