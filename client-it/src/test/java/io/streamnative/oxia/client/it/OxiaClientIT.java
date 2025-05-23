@@ -711,8 +711,10 @@ public class OxiaClientIT {
         @Cleanup
         SyncOxiaClient client = OxiaClientBuilder.create(oxia.getServiceAddress()).syncClient();
 
+        String prefix = "si-get-" + UUID.randomUUID();
+
         for (int i = 1; i < 10; i++) {
-            String primKey = String.format("%c", 'a' + i);
+            String primKey = String.format("%s-%c", prefix, 'a' + i);
             String val = String.format("%03d", i);
 
             client.put(primKey, val.getBytes(), Set.of(PutOption.SecondaryIndex("val-idx", val)));
@@ -725,17 +727,17 @@ public class OxiaClientIT {
 
         gr = client.get("001", Set.of(GetOption.UseIndex("val-idx")));
         assertThat(gr).isNotNull();
-        assertThat(gr.getKey()).isEqualTo("b");
+        assertThat(gr.getKey()).isEqualTo(prefix + "-b");
         assertThat(gr.getValue()).isEqualTo("001".getBytes());
 
         gr = client.get("005", Set.of(GetOption.UseIndex("val-idx")));
         assertThat(gr).isNotNull();
-        assertThat(gr.getKey()).isEqualTo("f");
+        assertThat(gr.getKey()).isEqualTo(prefix + "-f");
         assertThat(gr.getValue()).isEqualTo("005".getBytes());
 
         gr = client.get("009", Set.of(GetOption.UseIndex("val-idx")));
         assertThat(gr).isNotNull();
-        assertThat(gr.getKey()).isEqualTo("j");
+        assertThat(gr.getKey()).isEqualTo(prefix + "-j");
         assertThat(gr.getValue()).isEqualTo("009".getBytes());
 
         gr = client.get("999", Set.of(GetOption.UseIndex("val-idx")));
@@ -751,34 +753,34 @@ public class OxiaClientIT {
 
         gr = client.get("005", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonLower));
         assertThat(gr).isNotNull();
-        assertThat(gr.getKey()).isEqualTo("e");
+        assertThat(gr.getKey()).isEqualTo(prefix + "-e");
         assertThat(gr.getValue()).isEqualTo("004".getBytes());
 
         gr = client.get("009", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonLower));
         assertThat(gr).isNotNull();
-        assertThat(gr.getKey()).isEqualTo("i");
+        assertThat(gr.getKey()).isEqualTo(prefix + "-i");
         assertThat(gr.getValue()).isEqualTo("008".getBytes());
 
         gr = client.get("999", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonLower));
         assertThat(gr).isNotNull();
-        assertThat(gr.getKey()).isEqualTo("j");
+        assertThat(gr.getKey()).isEqualTo(prefix + "-j");
         assertThat(gr.getValue()).isEqualTo("009".getBytes());
 
         ////////////////////////////////////////////////////////////////////////
 
         gr = client.get("000", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonHigher));
         assertThat(gr).isNotNull();
-        assertThat(gr.getKey()).isEqualTo("b");
+        assertThat(gr.getKey()).isEqualTo(prefix + "-b");
         assertThat(gr.getValue()).isEqualTo("001".getBytes());
 
         gr = client.get("001", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonHigher));
         assertThat(gr).isNotNull();
-        assertThat(gr.getKey()).isEqualTo("c");
+        assertThat(gr.getKey()).isEqualTo(prefix + "-c");
         assertThat(gr.getValue()).isEqualTo("002".getBytes());
 
         gr = client.get("005", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonHigher));
         assertThat(gr).isNotNull();
-        assertThat(gr.getKey()).isEqualTo("g");
+        assertThat(gr.getKey()).isEqualTo(prefix + "-g");
         assertThat(gr.getValue()).isEqualTo("006".getBytes());
 
         gr = client.get("009", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonHigher));
@@ -791,22 +793,22 @@ public class OxiaClientIT {
 
         gr = client.get("000", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonCeiling));
         assertThat(gr).isNotNull();
-        assertThat(gr.getKey()).isEqualTo("b");
+        assertThat(gr.getKey()).isEqualTo(prefix + "-b");
         assertThat(gr.getValue()).isEqualTo("001".getBytes());
 
         gr = client.get("001", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonCeiling));
         assertThat(gr).isNotNull();
-        assertThat(gr.getKey()).isEqualTo("b");
+        assertThat(gr.getKey()).isEqualTo(prefix + "-b");
         assertThat(gr.getValue()).isEqualTo("001".getBytes());
 
         gr = client.get("005", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonCeiling));
         assertThat(gr).isNotNull();
-        assertThat(gr.getKey()).isEqualTo("f");
+        assertThat(gr.getKey()).isEqualTo(prefix + "-f");
         assertThat(gr.getValue()).isEqualTo("005".getBytes());
 
         gr = client.get("009", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonCeiling));
         assertThat(gr).isNotNull();
-        assertThat(gr.getKey()).isEqualTo("j");
+        assertThat(gr.getKey()).isEqualTo(prefix + "-j");
         assertThat(gr.getValue()).isEqualTo("009".getBytes());
 
         gr = client.get("999", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonCeiling));
