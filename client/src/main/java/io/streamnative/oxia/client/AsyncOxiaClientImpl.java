@@ -24,6 +24,7 @@ import io.streamnative.oxia.client.api.DeleteOption;
 import io.streamnative.oxia.client.api.DeleteRangeOption;
 import io.streamnative.oxia.client.api.GetOption;
 import io.streamnative.oxia.client.api.GetResult;
+import io.streamnative.oxia.client.api.GetSequenceUpdatesOption;
 import io.streamnative.oxia.client.api.ListOption;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.PutOption;
@@ -52,6 +53,7 @@ import io.streamnative.oxia.proto.ListRequest;
 import io.streamnative.oxia.proto.ListResponse;
 import io.streamnative.oxia.proto.RangeScanRequest;
 import io.streamnative.oxia.proto.RangeScanResponse;
+import java.io.Closeable;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -67,12 +69,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import lombok.NonNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 class AsyncOxiaClientImpl implements AsyncOxiaClient {
-
-    private static final Logger log = LoggerFactory.getLogger(AsyncOxiaClientImpl.class);
 
     static @NonNull CompletableFuture<AsyncOxiaClient> newInstance(@NonNull ClientConfig config) {
         ScheduledExecutorService executor =
@@ -665,6 +663,27 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                             }
                         });
         return future;
+    }
+
+    @Override
+    public Closeable getSequenceUpdates(
+            @NonNull String key,
+            @NonNull Consumer<String> listener,
+            @NonNull Set<GetSequenceUpdatesOption> options) {
+        checkIfClosed();
+        var partitionKey = OptionsUtils.getPartitionKey(options);
+        if (partitionKey.isEmpty()) {
+            throw new IllegalArgumentException("partitionKey must be present");
+        }
+
+        return new SequenceUpdates(
+                key,
+                partitionKey.get(),
+                listener,
+                this.stubManager,
+                this.shardManager,
+                this.instrumentProvider,
+                x -> closed);
     }
 
     @Override

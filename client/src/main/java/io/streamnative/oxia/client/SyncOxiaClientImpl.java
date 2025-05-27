@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022-2024 StreamNative Inc.
+ * Copyright © 2022-2025 StreamNative Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ import io.streamnative.oxia.client.api.DeleteOption;
 import io.streamnative.oxia.client.api.DeleteRangeOption;
 import io.streamnative.oxia.client.api.GetOption;
 import io.streamnative.oxia.client.api.GetResult;
+import io.streamnative.oxia.client.api.GetSequenceUpdatesOption;
 import io.streamnative.oxia.client.api.ListOption;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.PutOption;
@@ -27,6 +28,7 @@ import io.streamnative.oxia.client.api.PutResult;
 import io.streamnative.oxia.client.api.RangeScanOption;
 import io.streamnative.oxia.client.api.SyncOxiaClient;
 import io.streamnative.oxia.client.api.exceptions.UnexpectedVersionIdException;
+import java.io.Closeable;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -147,6 +149,14 @@ class SyncOxiaClientImpl implements SyncOxiaClient {
     @Override
     public void notifications(@NonNull Consumer<Notification> notificationCallback) {
         asyncClient.notifications(notificationCallback);
+    }
+
+    @Override
+    public Closeable getSequenceUpdates(
+            @NonNull String key,
+            @NonNull Consumer<String> listener,
+            @NonNull Set<GetSequenceUpdatesOption> options) {
+        return asyncClient.getSequenceUpdates(key, listener, options);
     }
 
     @Override

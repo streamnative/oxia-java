@@ -38,6 +38,7 @@ import io.streamnative.oxia.client.api.DeleteOption;
 import io.streamnative.oxia.client.api.DeleteRangeOption;
 import io.streamnative.oxia.client.api.GetOption;
 import io.streamnative.oxia.client.api.GetResult;
+import io.streamnative.oxia.client.api.GetSequenceUpdatesOption;
 import io.streamnative.oxia.client.api.ListOption;
 import io.streamnative.oxia.client.api.Notification;
 import io.streamnative.oxia.client.api.Notification.KeyCreated;
@@ -52,8 +53,10 @@ import io.streamnative.oxia.client.api.exceptions.KeyAlreadyExistsException;
 import io.streamnative.oxia.client.api.exceptions.UnexpectedVersionIdException;
 import io.streamnative.oxia.testcontainers.OxiaContainer;
 import java.util.*;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import lombok.Cleanup;
@@ -813,5 +816,64 @@ public class OxiaClientIT {
 
         gr = client.get("999", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonCeiling));
         assertThat(gr).isNull();
+    }
+
+    @Test
+    void testGetSequenceUpdates() throws Exception {
+        @Cleanup
+        SyncOxiaClient client = OxiaClientBuilder.create(oxia.getServiceAddress()).syncClient();
+
+        String key = "su-" + UUID.randomUUID();
+
+        assertThatThrownBy(() -> client.getSequenceUpdates(key, s -> {}, Set.of()))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        var updates1 = new ArrayBlockingQueue<>(100);
+        var closer1 =
+                client.getSequenceUpdates(
+                        key, updates1::add, Set.of(GetSequenceUpdatesOption.PartitionKey("x")));
+        assertThat(closer1).isNotNull();
+
+        assertThat(updates1.poll(1, TimeUnit.SECONDS)).isNull();
+
+        // Positive case scenarios
+        PutResult pr =
+                client.put(
+                        key,
+                        "0".getBytes(),
+                        Set.of(PutOption.PartitionKey("x"), PutOption.SequenceKeysDeltas(List.of(1L))));
+        assertThat(pr.key()).isEqualTo(String.format(key + "-%020d", 1));
+
+        assertThat(updates1.poll(1, TimeUnit.SECONDS)).isEqualTo(pr.key());
+        closer1.close();
+
+        var pr2 =
+                client.put(
+                        key,
+                        "0".getBytes(),
+                        Set.of(PutOption.PartitionKey("x"), PutOption.SequenceKeysDeltas(List.of(1L))));
+
+        assertThat(updates1.poll(1, TimeUnit.SECONDS)).isNull();
+
+        var updates2 = new ArrayBlockingQueue<>(100);
+        var closer2 =
+                client.getSequenceUpdates(
+                        key, updates2::add, Set.of(GetSequenceUpdatesOption.PartitionKey("x")));
+        assertThat(updates2.poll(1, TimeUnit.SECONDS)).isEqualTo(pr2.key());
+
+        var pr3 =
+                client.put(
+                        key,
+                        "0".getBytes(),
+                        Set.of(PutOption.PartitionKey("x"), PutOption.SequenceKeysDeltas(List.of(1L))));
+        var pr4 =
+                client.put(
+                        key,
+                        "0".getBytes(),
+                        Set.of(PutOption.PartitionKey("x"), PutOption.SequenceKeysDeltas(List.of(1L))));
+
+        assertThat(updates2.poll(1, TimeUnit.SECONDS)).isEqualTo(pr3.key());
+        assertThat(updates2.poll(1, TimeUnit.SECONDS)).isEqualTo(pr4.key());
+        assertThat(updates2.poll(1, TimeUnit.SECONDS)).isNull();
     }
 }
