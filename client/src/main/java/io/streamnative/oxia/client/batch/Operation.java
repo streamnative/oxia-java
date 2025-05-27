@@ -64,11 +64,15 @@ public sealed interface Operation<R> permits ReadOperation, WriteOperation {
                 @NonNull GetOptions options)
                 implements ReadOperation<GetResult> {
             GetRequest toProto() {
-                return GetRequest.newBuilder()
-                        .setKey(key)
-                        .setComparisonType(options.comparisonType())
-                        .setIncludeValue(options.includeValue())
-                        .build();
+                var builder =
+                        GetRequest.newBuilder()
+                                .setKey(key)
+                                .setComparisonType(options.comparisonType())
+                                .setIncludeValue(options.includeValue());
+                if (options.secondaryIndexName() != null) {
+                    builder.setSecondaryIndexName(options.secondaryIndexName());
+                }
+                return builder.build();
             }
 
             void complete(@NonNull GetResponse response) {

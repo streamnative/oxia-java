@@ -18,7 +18,7 @@ package io.streamnative.oxia.client.api;
 import lombok.NonNull;
 
 public sealed interface GetOption
-        permits OptionComparisonType, OptionIncludeValue, OptionPartitionKey {
+        permits OptionComparisonType, OptionIncludeValue, OptionPartitionKey, OptionSecondaryIndexName {
 
     /** ComparisonEqual sets the Get() operation to compare the stored key for equality. */
     GetOption ComparisonEqual = new OptionComparisonType(OptionComparisonType.ComparisonType.Equal);
@@ -77,5 +77,16 @@ public sealed interface GetOption
      */
     static GetOption IncludeValue(boolean includeValue) {
         return new OptionIncludeValue(includeValue);
+    }
+
+    /**
+     * UseIndex let the users specify a different index to follow for the list operation
+     *
+     * <p>Note: if the secondary index is not unique, which primary record is returned is undefined.
+     *
+     * @param secondaryIndexName the name of the secondary index to use for the list operation
+     */
+    static GetOption UseIndex(@NonNull String secondaryIndexName) {
+        return new OptionSecondaryIndexName(secondaryIndexName);
     }
 }
