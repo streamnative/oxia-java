@@ -20,6 +20,7 @@ import io.oxia.client.api.DeleteOption;
 import io.oxia.client.api.DeleteRangeOption;
 import io.oxia.client.api.GetOption;
 import io.oxia.client.api.GetResult;
+import io.oxia.client.api.GetSequenceUpdatesOption;
 import io.oxia.client.api.ListOption;
 import io.oxia.client.api.Notification;
 import io.oxia.client.api.PutOption;
@@ -27,6 +28,7 @@ import io.oxia.client.api.PutResult;
 import io.oxia.client.api.RangeScanOption;
 import io.oxia.client.api.SyncOxiaClient;
 import io.oxia.client.api.exceptions.UnexpectedVersionIdException;
+import java.io.Closeable;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -147,6 +149,14 @@ class SyncOxiaClientImpl implements SyncOxiaClient {
     @Override
     public void notifications(@NonNull Consumer<Notification> notificationCallback) {
         asyncClient.notifications(notificationCallback);
+    }
+
+    @Override
+    public Closeable getSequenceUpdates(
+            @NonNull String key,
+            @NonNull Consumer<String> listener,
+            @NonNull Set<GetSequenceUpdatesOption> options) {
+        return asyncClient.getSequenceUpdates(key, listener, options);
     }
 
     @Override

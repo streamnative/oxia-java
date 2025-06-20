@@ -16,6 +16,7 @@
 package io.oxia.client.api;
 
 import io.oxia.client.api.exceptions.UnexpectedVersionIdException;
+import java.io.Closeable;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -206,4 +207,19 @@ public interface AsyncOxiaClient extends AutoCloseable {
      * @param notificationCallback A callback to receive notifications.
      */
     void notifications(@NonNull Consumer<Notification> notificationCallback);
+
+    /**
+     * GetSequenceUpdates allows to subscribe to the updates happening on a sequential key The channel
+     * will report the current latest sequence for a given key. Multiple updates can be collapsed into
+     * one single event with the highest sequence.
+     *
+     * @param key
+     * @param listener
+     * @param optionss
+     * @return
+     */
+    Closeable getSequenceUpdates(
+            @NonNull String key,
+            @NonNull Consumer<String> listener,
+            @NonNull Set<GetSequenceUpdatesOption> options);
 }

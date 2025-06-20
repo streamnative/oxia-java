@@ -15,5 +15,20 @@
  */
 package io.oxia.client.api;
 
-public record OptionSecondaryIndexName(String secondaryIndexName)
-        implements ListOption, RangeScanOption, GetOption {}
+import lombok.NonNull;
+
+public sealed interface GetSequenceUpdatesOption permits OptionPartitionKey {
+
+    /**
+     * PartitionKey overrides the partition routing with the specified `partitionKey` instead of the
+     * regular record key.
+     *
+     * <p>Records with the same partitionKey will always be guaranteed to be co-located in the same
+     * Oxia shard.
+     *
+     * @param partitionKey the partition key to use
+     */
+    static GetSequenceUpdatesOption PartitionKey(@NonNull String partitionKey) {
+        return new OptionPartitionKey(partitionKey);
+    }
+}

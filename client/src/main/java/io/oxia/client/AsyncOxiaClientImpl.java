@@ -24,6 +24,7 @@ import io.oxia.client.api.DeleteOption;
 import io.oxia.client.api.DeleteRangeOption;
 import io.oxia.client.api.GetOption;
 import io.oxia.client.api.GetResult;
+import io.oxia.client.api.GetSequenceUpdatesOption;
 import io.oxia.client.api.ListOption;
 import io.oxia.client.api.Notification;
 import io.oxia.client.api.PutOption;
@@ -52,6 +53,7 @@ import io.oxia.proto.ListRequest;
 import io.oxia.proto.ListResponse;
 import io.oxia.proto.RangeScanRequest;
 import io.oxia.proto.RangeScanResponse;
+import java.io.Closeable;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -67,12 +69,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import lombok.NonNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 class AsyncOxiaClientImpl implements AsyncOxiaClient {
-
-    private static final Logger log = LoggerFactory.getLogger(AsyncOxiaClientImpl.class);
 
     static @NonNull CompletableFuture<AsyncOxiaClient> newInstance(@NonNull ClientConfig config) {
         ScheduledExecutorService executor =
@@ -493,17 +491,19 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
     }
 
     private void internalGet(String key, GetOptions options, CompletableFuture<GetResult> result) {
-        if (options.comparisonType() == KeyComparisonType.EQUAL || options.partitionKey() != null) {
+        if (options.partitionKey() == null
+                && (options.comparisonType() != KeyComparisonType.EQUAL
+                        || options.secondaryIndexName() != null)) {
+            internalGetMultiShards(key, options, result);
+        } else {
             // Single shard get operation
             long shardId =
                     shardManager.getShardForKey(Optional.ofNullable(options.partitionKey()).orElse(key));
             readBatchManager.getBatcher(shardId).add(new GetOperation(result, key, options));
-        } else {
-            internalGetFloorCeiling(key, options, result);
         }
     }
 
-    private void internalGetFloorCeiling(
+    private void internalGetMultiShards(
             String key, GetOptions options, CompletableFuture<GetResult> result) {
         // We need check on all the shards for a floor/ceiling query
         List<CompletableFuture<GetResult>> futures = new ArrayList<>();
@@ -536,11 +536,9 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
 
                                 GetResult gr =
                                         switch (options.comparisonType()) {
-                                            case EQUAL,
-                                                    UNRECOGNIZED -> null; // This would be handled withing context of single
-                                                // shard
+                                            case EQUAL, CEILING, HIGHER -> results.get(0);
                                             case FLOOR, LOWER -> results.get(results.size() - 1);
-                                            case CEILING, HIGHER -> results.get(0);
+                                            case UNRECOGNIZED -> null;
                                         };
 
                                 result.complete(gr);
@@ -665,6 +663,27 @@ class AsyncOxiaClientImpl implements AsyncOxiaClient {
                             }
                         });
         return future;
+    }
+
+    @Override
+    public Closeable getSequenceUpdates(
+            @NonNull String key,
+            @NonNull Consumer<String> listener,
+            @NonNull Set<GetSequenceUpdatesOption> options) {
+        checkIfClosed();
+        var partitionKey = OptionsUtils.getPartitionKey(options);
+        if (partitionKey.isEmpty()) {
+            throw new IllegalArgumentException("partitionKey must be present");
+        }
+
+        return new SequenceUpdates(
+                key,
+                partitionKey.get(),
+                listener,
+                this.stubManager,
+                this.shardManager,
+                this.instrumentProvider,
+                x -> closed);
     }
 
     @Override

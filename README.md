@@ -1,6 +1,6 @@
-# Oxia Java
+# Oxia Java client SDK
 
-[![Build](https://github.com/streamnative/oxia-client-java/actions/workflows/pr-build-and-test.yml/badge.svg)](https://github.com/streamnative/oxia-client-java/actions/workflows/pr-build-and-test.yml)
+[![Build](https://github.com/oxia-db/oxia-client-java/actions/workflows/pr-build-and-test.yml/badge.svg)](https://github.com/oxia-db/oxia-client-java/actions/workflows/pr-build-and-test.yml)
 
 ## Overview
 
@@ -30,25 +30,14 @@ Common build actions:
 | Format code                     | `mvn spotless:apply`                     |
 | Generate license headers        | `mvn license:format`                     |
 
-## Release
+### Contributing to Oxia
 
-1. Go to the [release workflow][release-workflow]
-2. Click the gray <kbd>Run workflow</kbd> button on the righthand side
-3. Choose:
-   * **use workflow from**: branch `master`
-   * **Git repository**: `streamnative/oxia-java`
-   * **JDK version**: `17`
-4. Click the green <kbd>Run workflow</kbd> button
+Please 🌟 star the project if you like it.
 
-### Questions
+Feel free to open an [issue](https://github.com/oxia-db/oxia/issues/new) or start a [discussion](https://github.com/oxia-db/oxia/discussions/new/choose). You can also follow the development [guide]() to contribute and build on it.
 
-* **Q: _Why do we publish it in `streamnative-ci`?_**<br/>
-  **A:** `streamnative-ci` repo has some secrets and scripts to use streamnative bot account
-* **Q: _What can I do if want to put the release `nar` package to `pulsar-cloud` image?_**<br/>
-  **A:** Ask the EE team to add the release version in the [`images/dependencies.json`][dependencies-file] file in the [`streamnative-ci`][ci-repo] repo
+### License
 
-[oxia]: https://github.com/streamnative/oxia
-[release-workflow]: https://github.com/streamnative/streamnative-ci/actions/workflows/maven-tag-deploy.yml
-[dependencies-file]: https://github.com/streamnative/streamnative-ci/blob/master/images/dependencies.json
-[ci-repo]: https://github.com/streamnative/streamnative-ci
+Copyright 2023 StreamNative, Inc.
 
+Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0

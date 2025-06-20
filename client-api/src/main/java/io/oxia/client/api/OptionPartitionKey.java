@@ -16,4 +16,10 @@
 package io.oxia.client.api;
 
 public record OptionPartitionKey(String partitionKey)
-        implements DeleteRangeOption, GetOption, ListOption, PutOption, DeleteOption, RangeScanOption {}
+        implements DeleteRangeOption,
+                GetOption,
+                ListOption,
+                PutOption,
+                DeleteOption,
+                RangeScanOption,
+                GetSequenceUpdatesOption {}

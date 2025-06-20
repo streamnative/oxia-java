@@ -24,8 +24,4 @@ public record OptionComparisonType(ComparisonType comparisonType) implements Get
         Lower,
         Higher,
     }
-
-    public ComparisonType getComparisonType() {
-        return comparisonType;
-    }
 }

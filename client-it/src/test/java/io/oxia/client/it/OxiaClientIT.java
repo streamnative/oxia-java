@@ -23,7 +23,6 @@ import static java.util.function.Function.identity;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
-
 import io.opentelemetry.api.OpenTelemetry;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
@@ -38,6 +37,7 @@ import io.oxia.client.api.DeleteOption;
 import io.oxia.client.api.DeleteRangeOption;
 import io.oxia.client.api.GetOption;
 import io.oxia.client.api.GetResult;
+import io.oxia.client.api.GetSequenceUpdatesOption;
 import io.oxia.client.api.ListOption;
 import io.oxia.client.api.Notification;
 import io.oxia.client.api.Notification.KeyCreated;
@@ -51,9 +51,16 @@ import io.oxia.client.api.SyncOxiaClient;
 import io.oxia.client.api.exceptions.KeyAlreadyExistsException;
 import io.oxia.client.api.exceptions.UnexpectedVersionIdException;
 import io.oxia.testcontainers.OxiaContainer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Queue;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import lombok.Cleanup;
@@ -704,5 +711,173 @@ public class OxiaClientIT {
                         Set.of(GetOption.PartitionKey(key), GetOption.ExcludeValue, GetOption.ComparisonLower));
         Assertions.assertEquals(result.getValue().length, 0);
         Assertions.assertEquals(result.getKey(), keys.get(0));
+    }
+
+    @Test
+    void testSecondaryIndexGet() throws Exception {
+        @Cleanup
+        SyncOxiaClient client = OxiaClientBuilder.create(oxia.getServiceAddress()).syncClient();
+
+        String prefix = "si-get-" + UUID.randomUUID();
+
+        for (int i = 1; i < 10; i++) {
+            String primKey = String.format("%s-%c", prefix, 'a' + i);
+            String val = String.format("%03d", i);
+
+            client.put(primKey, val.getBytes(), Set.of(PutOption.SecondaryIndex("val-idx", val)));
+        }
+
+        ////////////////////////////////////////////////////////////////////////
+
+        GetResult gr = client.get("000", Set.of(GetOption.UseIndex("val-idx")));
+        assertThat(gr).isNull();
+
+        gr = client.get("001", Set.of(GetOption.UseIndex("val-idx")));
+        assertThat(gr).isNotNull();
+        assertThat(gr.getKey()).isEqualTo(prefix + "-b");
+        assertThat(gr.getValue()).isEqualTo("001".getBytes());
+
+        gr = client.get("005", Set.of(GetOption.UseIndex("val-idx")));
+        assertThat(gr).isNotNull();
+        assertThat(gr.getKey()).isEqualTo(prefix + "-f");
+        assertThat(gr.getValue()).isEqualTo("005".getBytes());
+
+        gr = client.get("009", Set.of(GetOption.UseIndex("val-idx")));
+        assertThat(gr).isNotNull();
+        assertThat(gr.getKey()).isEqualTo(prefix + "-j");
+        assertThat(gr.getValue()).isEqualTo("009".getBytes());
+
+        gr = client.get("999", Set.of(GetOption.UseIndex("val-idx")));
+        assertThat(gr).isNull();
+
+        ////////////////////////////////////////////////////////////////////////
+
+        gr = client.get("000", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonLower));
+        assertThat(gr).isNull();
+
+        gr = client.get("001", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonLower));
+        assertThat(gr).isNull();
+
+        gr = client.get("005", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonLower));
+        assertThat(gr).isNotNull();
+        assertThat(gr.getKey()).isEqualTo(prefix + "-e");
+        assertThat(gr.getValue()).isEqualTo("004".getBytes());
+
+        gr = client.get("009", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonLower));
+        assertThat(gr).isNotNull();
+        assertThat(gr.getKey()).isEqualTo(prefix + "-i");
+        assertThat(gr.getValue()).isEqualTo("008".getBytes());
+
+        gr = client.get("999", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonLower));
+        assertThat(gr).isNotNull();
+        assertThat(gr.getKey()).isEqualTo(prefix + "-j");
+        assertThat(gr.getValue()).isEqualTo("009".getBytes());
+
+        ////////////////////////////////////////////////////////////////////////
+
+        gr = client.get("000", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonHigher));
+        assertThat(gr).isNotNull();
+        assertThat(gr.getKey()).isEqualTo(prefix + "-b");
+        assertThat(gr.getValue()).isEqualTo("001".getBytes());
+
+        gr = client.get("001", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonHigher));
+        assertThat(gr).isNotNull();
+        assertThat(gr.getKey()).isEqualTo(prefix + "-c");
+        assertThat(gr.getValue()).isEqualTo("002".getBytes());
+
+        gr = client.get("005", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonHigher));
+        assertThat(gr).isNotNull();
+        assertThat(gr.getKey()).isEqualTo(prefix + "-g");
+        assertThat(gr.getValue()).isEqualTo("006".getBytes());
+
+        gr = client.get("009", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonHigher));
+        assertThat(gr).isNull();
+
+        gr = client.get("999", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonHigher));
+        assertThat(gr).isNull();
+
+        ////////////////////////////////////////////////////////////////////////
+
+        gr = client.get("000", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonCeiling));
+        assertThat(gr).isNotNull();
+        assertThat(gr.getKey()).isEqualTo(prefix + "-b");
+        assertThat(gr.getValue()).isEqualTo("001".getBytes());
+
+        gr = client.get("001", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonCeiling));
+        assertThat(gr).isNotNull();
+        assertThat(gr.getKey()).isEqualTo(prefix + "-b");
+        assertThat(gr.getValue()).isEqualTo("001".getBytes());
+
+        gr = client.get("005", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonCeiling));
+        assertThat(gr).isNotNull();
+        assertThat(gr.getKey()).isEqualTo(prefix + "-f");
+        assertThat(gr.getValue()).isEqualTo("005".getBytes());
+
+        gr = client.get("009", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonCeiling));
+        assertThat(gr).isNotNull();
+        assertThat(gr.getKey()).isEqualTo(prefix + "-j");
+        assertThat(gr.getValue()).isEqualTo("009".getBytes());
+
+        gr = client.get("999", Set.of(GetOption.UseIndex("val-idx"), GetOption.ComparisonCeiling));
+        assertThat(gr).isNull();
+    }
+
+    @Test
+    void testGetSequenceUpdates() throws Exception {
+        @Cleanup
+        SyncOxiaClient client = OxiaClientBuilder.create(oxia.getServiceAddress()).syncClient();
+
+        String key = "su-" + UUID.randomUUID();
+
+        assertThatThrownBy(() -> client.getSequenceUpdates(key, s -> {}, Set.of()))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        var updates1 = new ArrayBlockingQueue<>(100);
+        var closer1 =
+                client.getSequenceUpdates(
+                        key, updates1::add, Set.of(GetSequenceUpdatesOption.PartitionKey("x")));
+        assertThat(closer1).isNotNull();
+
+        assertThat(updates1.poll(1, TimeUnit.SECONDS)).isNull();
+
+        // Positive case scenarios
+        PutResult pr =
+                client.put(
+                        key,
+                        "0".getBytes(),
+                        Set.of(PutOption.PartitionKey("x"), PutOption.SequenceKeysDeltas(List.of(1L))));
+        assertThat(pr.key()).isEqualTo(String.format(key + "-%020d", 1));
+
+        assertThat(updates1.poll(1, TimeUnit.SECONDS)).isEqualTo(pr.key());
+        closer1.close();
+
+        var pr2 =
+                client.put(
+                        key,
+                        "0".getBytes(),
+                        Set.of(PutOption.PartitionKey("x"), PutOption.SequenceKeysDeltas(List.of(1L))));
+
+        assertThat(updates1.poll(1, TimeUnit.SECONDS)).isNull();
+
+        var updates2 = new ArrayBlockingQueue<>(100);
+        var closer2 =
+                client.getSequenceUpdates(
+                        key, updates2::add, Set.of(GetSequenceUpdatesOption.PartitionKey("x")));
+        assertThat(updates2.poll(1, TimeUnit.SECONDS)).isEqualTo(pr2.key());
+
+        var pr3 =
+                client.put(
+                        key,
+                        "0".getBytes(),
+                        Set.of(PutOption.PartitionKey("x"), PutOption.SequenceKeysDeltas(List.of(1L))));
+        var pr4 =
+                client.put(
+                        key,
+                        "0".getBytes(),
+                        Set.of(PutOption.PartitionKey("x"), PutOption.SequenceKeysDeltas(List.of(1L))));
+
+        assertThat(updates2.poll(1, TimeUnit.SECONDS)).isEqualTo(pr3.key());
+        assertThat(updates2.poll(1, TimeUnit.SECONDS)).isEqualTo(pr4.key());
+        assertThat(updates2.poll(1, TimeUnit.SECONDS)).isNull();
     }
 }
