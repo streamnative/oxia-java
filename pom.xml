@@ -98,6 +98,7 @@
         <spotbugs.plugin.version>4.9.3.0</spotbugs.plugin.version>
         <spotless.plugin.version>2.39.0</spotless.plugin.version>
         <byte-buddy.version>1.15.10</byte-buddy.version>
+        <commons-compress.version>1.26.0</commons-compress.version>
     </properties>
 
     <dependencyManagement>
@@ -156,6 +157,11 @@
                 <groupId>net.bytebuddy</groupId>
                 <artifactId>byte-buddy-agent</artifactId>
                 <version>${byte-buddy.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-compress</artifactId>
+                <version>${commons-compress.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.assertj</groupId>
