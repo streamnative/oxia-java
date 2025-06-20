@@ -37,7 +37,7 @@ public class OxiaContainer extends GenericContainer<OxiaContainer> {
     @With private final int shards;
 
     public static final DockerImageName DEFAULT_IMAGE_NAME =
-            DockerImageName.parse("streamnative/oxia:main");
+            DockerImageName.parse("oxia/oxia:main");
 
     public OxiaContainer(@NonNull DockerImageName imageName) {
         this(imageName, DEFAULT_SHARDS, false);
