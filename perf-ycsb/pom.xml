@@ -21,7 +21,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>io.streamnative.oxia</groupId>
+        <groupId>io.github.oxia-db</groupId>
         <artifactId>oxia-java</artifactId>
         <version>0.5.1-SNAPSHOT</version>
     </parent>
@@ -140,7 +140,7 @@
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ApacheLicenseResourceTransformer"/>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>io.streamnative.oxia.client.perf.ycsb.WorkerStarter</mainClass>
+                                    <mainClass>io.oxia.client.perf.ycsb.WorkerStarter</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>
