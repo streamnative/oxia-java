@@ -5,9 +5,7 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
-  # Publish nightly builds
-  schedule:
-    - cron: '0 0 * * *' # run at midnight UTC
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -21,22 +19,10 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-          server-id: ossrh
-          server-username: MAVEN_USERNAME
-          server-password: MAVEN_PASSWORD
       - name: Checkout code
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
       - name: Release Maven package
-        uses: samuelmeuli/action-maven-publish@v1
-        with:
-          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-          gpg_passphrase: ${{ secrets.GPG_PRIVATE_KEY_PASSPHRASE }}
-          nexus_username: ${{ secrets.SONATYPE_USERNAME }}
-          nexus_password: ${{ secrets.SONATYPE_PASSWORD }}
-          server_id: ossrh
-          maven_profiles: release
-          maven_goals_phases: clean deploy
-          maven_args: -DskipTests -Dspotless.skip=true
+        run: mvn -s etc/settings.xml -B deploy -Prelease -Dspotless.check.skip=true -DskipTests
