@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022-2024 StreamNative Inc.
+ * Copyright © 2022-2025 StreamNative Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,19 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.streamnative.pulsarmetadatastoreoxia;
+package io.oxia.pulsarmetadatastore.bookkeeper;
 
-import io.streamnative.oxia.testcontainers.OxiaContainer;
-import java.util.function.Supplier;
+import io.oxia.pulsarmetadatastore.OxiaTestBase;
+import io.oxia.testcontainers.OxiaContainer;
 import lombok.Getter;
 import lombok.Setter;
-import org.apache.pulsar.metadata.LockManagerTest;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.pulsar.metadata.bookkeeper.PulsarRegistrationManagerTest;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
-import org.testng.annotations.Ignore;
-import org.testng.annotations.Test;
 
-public class OxiaLockManagerTest extends LockManagerTest implements OxiaTestBase {
+@Slf4j
+public class OxiaPulsarRegistrationManagerTest extends PulsarRegistrationManagerTest
+        implements OxiaTestBase {
 
     @Getter @Setter private OxiaContainer container;
 
@@ -38,11 +39,4 @@ public class OxiaLockManagerTest extends LockManagerTest implements OxiaTestBase
     public Object[][] implementations() {
         return impl();
     }
-
-    // TODO -------- Failing tests:
-
-    @Ignore
-    @Test(dataProvider = "impl")
-    public void updateValueWhenKeyDisappears(String provider, Supplier<String> urlSupplier)
-            throws Exception {}
 }

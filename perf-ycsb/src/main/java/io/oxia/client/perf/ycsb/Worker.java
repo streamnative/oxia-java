@@ -121,7 +121,7 @@ public final class Worker implements Runnable, Closeable, Operations {
                                         options.globalOutputPulsarAuthenticationPlugin,
                                         options.globalOutputPulsarAuthenticationParams)));
         this.options = options;
-        final var meter = openTelemetry.getMeter("io.streamnative.oxia.perf-ycsb");
+        final var meter = openTelemetry.getMeter("io.oxia.perf-ycsb");
         this.operationCounter =
                 meter
                         .counterBuilder("oxia.perf.ycsb.op")

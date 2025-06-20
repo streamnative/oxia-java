@@ -36,7 +36,7 @@ public class InstrumentProvider {
 
         this.meter =
                 otel.getMeterProvider()
-                        .meterBuilder("io.streamnative.oxia.client")
+                        .meterBuilder("io.oxia.client")
                         //                .setInstrumentationVersion(OxiaClient.getVersion())
                         .build();
     }

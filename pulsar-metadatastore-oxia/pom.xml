@@ -32,7 +32,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <shade.relocation.package>io.streamnative.pulsarmetadatastoreoxia.shaded</shade.relocation.package>
+        <shade.relocation.package>io.oxia.pulsarmetadatastore.shaded</shade.relocation.package>
 
         <!-- Breaks for 3.0.5 to 3.0.7 due to missing https://github.com/apache/pulsar/pull/21950 -->
         <pulsar.version>3.0.2</pulsar.version>
@@ -47,7 +47,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>io.streamnative.oxia</groupId>
+            <groupId>${project.groupId}</groupId>
             <artifactId>oxia-client</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -68,15 +68,15 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>io.dropwizard.metrics</groupId>
-            <artifactId>metrics-core</artifactId>
-            <version>${dropwizard.version}</version>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>oxia-testcontainers</artifactId>
+            <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>io.streamnative.oxia</groupId>
-            <artifactId>oxia-testcontainers</artifactId>
-            <version>${project.version}</version>
+            <groupId>io.dropwizard.metrics</groupId>
+            <artifactId>metrics-core</artifactId>
+            <version>${dropwizard.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>

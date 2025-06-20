@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022-2024 StreamNative Inc.
+ * Copyright © 2022-2025 StreamNative Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,30 +13,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.streamnative.pulsarmetadatastoreoxia.bookkeeper;
+package io.oxia.pulsarmetadatastore.bookkeeper;
 
-import io.streamnative.oxia.testcontainers.OxiaContainer;
-import io.streamnative.pulsarmetadatastoreoxia.OxiaTestBase;
+import io.oxia.pulsarmetadatastore.OxiaTestBase;
+import io.oxia.testcontainers.OxiaContainer;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.pulsar.metadata.bookkeeper.PulsarRegistrationManagerTest;
-import org.testng.annotations.BeforeClass;
+import org.apache.pulsar.metadata.bookkeeper.PulsarLedgerIdGeneratorTest;
 import org.testng.annotations.DataProvider;
+import org.testng.annotations.Ignore;
+import org.testng.annotations.Test;
 
 @Slf4j
-public class OxiaPulsarRegistrationManagerTest extends PulsarRegistrationManagerTest
+public class OxiaPulsarLedgerIdGeneratorTest extends PulsarLedgerIdGeneratorTest
         implements OxiaTestBase {
 
     @Getter @Setter private OxiaContainer container;
-
-    @BeforeClass(alwaysRun = true)
-    public void setup() throws Exception {
-        this.incrementSetupNumber();
-    }
 
     @DataProvider(name = "impl")
     public Object[][] implementations() {
         return impl();
     }
+
+    // -------- Override ZK-specific tests to do nothing --------
+
+    @Ignore
+    @Test
+    public void testGenerateLedgerIdWithZkPrefix() throws Exception {}
 }

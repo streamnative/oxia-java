@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022-2024 StreamNative Inc.
+ * Copyright © 2022-2025 StreamNative Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,21 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.streamnative.pulsarmetadatastoreoxia.bookkeeper;
+package io.oxia.pulsarmetadatastore;
 
-import io.streamnative.oxia.testcontainers.OxiaContainer;
-import io.streamnative.pulsarmetadatastoreoxia.OxiaTestBase;
+import io.oxia.testcontainers.OxiaContainer;
+import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.pulsar.metadata.bookkeeper.PulsarLedgerIdGeneratorTest;
+import org.apache.pulsar.metadata.MetadataCacheTest;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Ignore;
 import org.testng.annotations.Test;
 
-@Slf4j
-public class OxiaPulsarLedgerIdGeneratorTest extends PulsarLedgerIdGeneratorTest
-        implements OxiaTestBase {
+public class OxiaMetadataCacheTest extends MetadataCacheTest implements OxiaTestBase {
 
     @Getter @Setter private OxiaContainer container;
 
@@ -36,9 +34,22 @@ public class OxiaPulsarLedgerIdGeneratorTest extends PulsarLedgerIdGeneratorTest
         return impl();
     }
 
+    @BeforeClass(alwaysRun = true)
+    public void setup() throws Exception {
+        this.incrementSetupNumber();
+    }
+
     // -------- Override ZK-specific tests to do nothing --------
 
     @Ignore
+    @Test(dataProvider = "impl")
+    public void crossStoreAddDelete(String provider, Supplier<String> urlSupplier) throws Exception {}
+
+    @Ignore
+    @Test(dataProvider = "impl")
+    public void crossStoreUpdates(String provider, Supplier<String> urlSupplier) throws Exception {}
+
+    @Ignore
     @Test
-    public void testGenerateLedgerIdWithZkPrefix() throws Exception {}
+    public void readModifyUpdateBadVersionRetry() throws Exception {}
 }

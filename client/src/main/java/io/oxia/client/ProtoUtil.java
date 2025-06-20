@@ -52,8 +52,7 @@ public class ProtoUtil {
                 key, response.getValue().toByteArray(), getVersionFromProto(response.getVersion()));
     }
 
-    public static @NonNull Version getVersionFromProto(
-            @NonNull io.oxia.proto.Version version) {
+    public static @NonNull Version getVersionFromProto(@NonNull io.oxia.proto.Version version) {
         return new Version(
                 version.getVersionId(),
                 version.getCreatedTimestamp(),

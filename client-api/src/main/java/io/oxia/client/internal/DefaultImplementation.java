@@ -26,7 +26,7 @@ import java.lang.reflect.Constructor;
 public class DefaultImplementation {
     private static final Constructor<?> CONSTRUCTOR;
 
-    private static final String IMPL_CLASS_NAME = "io.streamnative.oxia.client.OxiaClientBuilderImpl";
+    private static final String IMPL_CLASS_NAME = "io.oxia.client.OxiaClientBuilderImpl";
 
     static {
         Constructor<?> impl;

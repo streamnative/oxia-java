@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.streamnative.pulsarmetadatastoreoxia;
+package io.oxia.pulsarmetadatastore;
 
 import io.oxia.client.api.AsyncOxiaClient;
 import io.oxia.client.api.DeleteOption;
@@ -105,8 +105,7 @@ public class OxiaMetadataStore extends AbstractMetadataStore {
         }
     }
 
-    Optional<GetResult> convertGetResult(
-            String path, io.oxia.client.api.GetResult result) {
+    Optional<GetResult> convertGetResult(String path, io.oxia.client.api.GetResult result) {
         if (result == null) {
             return Optional.empty();
         }

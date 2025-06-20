@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022-2024 StreamNative Inc.
+ * Copyright © 2022-2025 StreamNative Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,19 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.streamnative.pulsarmetadatastoreoxia;
+package io.oxia.pulsarmetadatastore.bookkeeper;
 
-import io.streamnative.oxia.testcontainers.OxiaContainer;
-import java.util.function.Supplier;
+import io.oxia.pulsarmetadatastore.OxiaTestBase;
+import io.oxia.testcontainers.OxiaContainer;
 import lombok.Getter;
 import lombok.Setter;
-import org.apache.pulsar.metadata.MetadataStoreBatchingTest;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.pulsar.metadata.bookkeeper.PulsarLedgerAuditorManagerTest;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
-import org.testng.annotations.Ignore;
-import org.testng.annotations.Test;
 
-public class OxiaMetadataStoreBatchingTest extends MetadataStoreBatchingTest
+@Slf4j
+public class OxiaPulsarLedgerAuditorManagerTest extends PulsarLedgerAuditorManagerTest
         implements OxiaTestBase {
 
     @Getter @Setter private OxiaContainer container;
@@ -39,10 +39,4 @@ public class OxiaMetadataStoreBatchingTest extends MetadataStoreBatchingTest
     public Object[][] implementations() {
         return impl();
     }
-
-    // TODO -------- Failing tests:
-
-    @Ignore("We need batch size limit of at least .5MB")
-    @Test(dataProvider = "impl")
-    public void testBigBatchSize(String provider, Supplier<String> urlSupplier) throws Exception {}
 }

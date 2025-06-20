@@ -72,7 +72,7 @@
             <artifactId>opentelemetry-sdk-extension-autoconfigure</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.streamnative.oxia</groupId>
+            <groupId>${project.groupId}</groupId>
             <artifactId>oxia-client</artifactId>
             <version>${project.version}</version>
         </dependency>

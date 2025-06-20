@@ -18,7 +18,7 @@ package io.oxia.client.perf.ycsb;
 import io.opentelemetry.exporter.prometheus.PrometheusHttpServer;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.autoconfigure.AutoConfiguredOpenTelemetrySdk;
-import io.streamnative.oxia.client.OxiaClientBuilderImpl;
+import io.oxia.client.OxiaClientBuilderImpl;
 import lombok.extern.slf4j.Slf4j;
 import picocli.CommandLine;
 

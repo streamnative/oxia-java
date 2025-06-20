@@ -1,5 +1,5 @@
 /*
- * Copyright © 2022-2024 StreamNative Inc.
+ * Copyright © 2022-2025 StreamNative Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,17 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.streamnative.pulsarmetadatastoreoxia;
+package io.oxia.pulsarmetadatastore;
 
-import io.streamnative.oxia.testcontainers.OxiaContainer;
+import io.oxia.testcontainers.OxiaContainer;
 import lombok.Getter;
 import lombok.Setter;
-import org.apache.pulsar.metadata.CounterTest;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.pulsar.metadata.MetadataStoreExtendedTest;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.DataProvider;
 
-public class OxiaCounterTest extends CounterTest implements OxiaTestBase {
+@Slf4j
+public class OxiaMetadataStoreExtendedTest extends MetadataStoreExtendedTest
+        implements OxiaTestBase {
 
     @Getter @Setter private OxiaContainer container;
+
+    @BeforeClass(alwaysRun = true)
+    public void setup() throws Exception {
+        this.incrementSetupNumber();
+    }
 
     @DataProvider(name = "impl")
     public Object[][] implementations() {

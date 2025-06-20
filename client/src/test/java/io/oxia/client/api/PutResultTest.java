@@ -42,8 +42,6 @@ class PutResultTest {
                                         .build()))
                 .isEqualTo(
                         new PutResult(
-                                "test-key",
-                                new Version(
-                                        1L, 2L, 3L, 4L, Optional.empty(), Optional.empty())));
+                                "test-key", new Version(1L, 2L, 3L, 4L, Optional.empty(), Optional.empty())));
     }
 }

@@ -25,11 +25,11 @@
     <Bug pattern="EI_EXPOSE_REP2" />
   </Match>
   <Match>
-    <Class name="io.streamnative.oxia.client.OxiaClientBuilder" />
+    <Class name="io.oxia.client.OxiaClientBuilder" />
     <Bug pattern="URF_UNREAD_FIELD" />
   </Match>
   <Match>
-    <Package name="io.streamnative.oxia.client" />
+    <Package name="io.oxia.client" />
     <Bug pattern="CT_CONSTRUCTOR_THROW" />
   </Match>
 </FindBugsFilter>
