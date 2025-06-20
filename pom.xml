@@ -54,7 +54,6 @@
         <module>testcontainers</module>
         <module>client-it</module>
         <module>perf</module>
-        <module>pulsar-metadatastore-oxia</module>
     </modules>
 
     <scm>
