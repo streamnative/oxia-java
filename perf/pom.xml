@@ -21,7 +21,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>io.streamnative.oxia</groupId>
+        <groupId>io.github.oxia-db</groupId>
         <artifactId>oxia-java</artifactId>
         <version>0.5.2-SNAPSHOT</version>
     </parent>
@@ -36,6 +36,11 @@
     </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>oxia-client</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>oxia-client-api</artifactId>
@@ -62,11 +67,6 @@
         <dependency>
             <groupId>io.opentelemetry</groupId>
             <artifactId>opentelemetry-sdk-extension-autoconfigure</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.streamnative.oxia</groupId>
-            <artifactId>oxia-client</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.hdrhistogram</groupId>
@@ -106,7 +106,7 @@
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ApacheLicenseResourceTransformer"/>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>io.streamnative.oxia.client.perf.PerfClient</mainClass>
+                                    <mainClass>io.oxia.client.perf.PerfClient</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>

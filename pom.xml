@@ -20,13 +20,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>io.streamnative.oxia</groupId>
+    <groupId>io.github.oxia-db</groupId>
     <artifactId>oxia-java</artifactId>
     <version>0.5.2-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>Oxia Client SDK for Java</name>
     <description>Oxia Client SDK for Java</description>
-    <url>http://github.com/streamnative/oxia-java</url>
+    <url>https://oxia-db.github.com</url>
     <inceptionYear>2022</inceptionYear>
 
     <organization>
@@ -94,7 +94,7 @@
 
         <assertj.version>3.24.1</assertj.version>
         <awaitility.version>4.2.2</awaitility.version>
-        <lombok.version>1.18.32</lombok.version>
+        <lombok.version>1.18.38</lombok.version>
         <slf4j.version>1.7.32</slf4j.version>
         <junit.jupiter.version>5.11.3</junit.jupiter.version>
         <mockito.junit.jupiter.version>5.14.2</mockito.junit.jupiter.version>
@@ -109,7 +109,7 @@
         <maven.enforcer.plugin.version>3.5.0</maven.enforcer.plugin.version>
         <maven.surefire.plugin.version>3.5.2</maven.surefire.plugin.version>
         <maven.shade.plugin.version>3.6.0</maven.shade.plugin.version>
-        <spotbugs.plugin.version>4.8.1.0</spotbugs.plugin.version>
+        <spotbugs.plugin.version>4.9.3.0</spotbugs.plugin.version>
         <spotless.plugin.version>2.39.0</spotless.plugin.version>
         <byte-buddy.version>1.15.10</byte-buddy.version>
     </properties>
@@ -301,7 +301,7 @@
                 <version>${spotbugs.plugin.version}</version>
                 <configuration>
                     <excludeFilterFile>etc/findbugsExclude.xml</excludeFilterFile>
-                    <onlyAnalyze>io.streamnative.oxia.client.*</onlyAnalyze>
+                    <onlyAnalyze>io.oxia.client.*</onlyAnalyze>
                 </configuration>
                 <executions>
                     <execution>

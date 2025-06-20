@@ -30,10 +30,9 @@ Common build actions:
 | Format code                     | `mvn spotless:apply`                     |
 | Generate license headers        | `mvn license:format`                     |
 
-
 ### Contributing to Oxia
 
-Please 🌟 star the project if you like it. 
+Please 🌟 star the project if you like it.
 
 Feel free to open an [issue](https://github.com/oxia-db/oxia/issues/new) or start a [discussion](https://github.com/oxia-db/oxia/discussions/new/choose). You can also follow the development [guide]() to contribute and build on it.
 

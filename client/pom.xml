@@ -21,7 +21,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>io.streamnative.oxia</groupId>
+        <groupId>io.github.oxia-db</groupId>
         <artifactId>oxia-java</artifactId>
         <version>0.5.2-SNAPSHOT</version>
     </parent>
@@ -79,15 +79,15 @@
             <version>${zah.version}</version>
         </dependency>
         <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-inprocess</artifactId>
-            <version>1.59.0</version>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>oxia-testcontainers</artifactId>
+            <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>io.streamnative.oxia</groupId>
-            <artifactId>oxia-testcontainers</artifactId>
-            <version>${project.version}</version>
+            <groupId>io.grpc</groupId>
+            <artifactId>grpc-inprocess</artifactId>
+            <version>1.59.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
